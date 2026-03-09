@@ -1,0 +1,8 @@
+markets:
+  - market_id: "epl-wol-ars-2026-02-18-wol"
+    label: "Wolves win vs Arsenal"
+    category: "sports"
+
+  - market_id: "epl-wol-ars-2026-02-18-total-2pt5"
+    label: "Wolves vs Arsenal over 2.5 goals"
+    category: "sports"

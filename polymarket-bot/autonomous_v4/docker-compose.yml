@@ -1,0 +1,23 @@
+version: "3.9"
+services:
+  bot:
+    build:
+      context: ..
+      dockerfile: autonomous_v4/Dockerfile
+    restart: always
+    env_file:
+      - ../.env
+    volumes:
+      - ./data:/app/autonomous_v4/data
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"

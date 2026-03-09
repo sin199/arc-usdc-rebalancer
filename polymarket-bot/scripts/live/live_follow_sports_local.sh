@@ -1,0 +1,331 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ENV_FILE="$ROOT_DIR/.env"
+
+if [[ -f "$ENV_FILE" ]]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+  set +a
+fi
+
+PY_SCRIPT="$ROOT_DIR/scripts/live/live_follow_sports_local.py"
+PY_BIN="${LIVE_FOLLOW_PYTHON:-python3}"
+CYCLE_TIMEOUT_SECONDS="${LIVE_FOLLOW_CYCLE_TIMEOUT_SECONDS:-40}"
+
+LEADER="${LIVE_FOLLOW_LEADER_OVERRIDE:-${LIVE_FOLLOW_LEADER_ADDRESS:-}}"
+if [[ -z "$LEADER" ]]; then
+  echo "missing LIVE_FOLLOW_LEADER_ADDRESS" >&2
+  exit 1
+fi
+LEADER_SLUG="$(printf '%s' "$LEADER" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9._-')"
+
+FETCH_LIMIT="${LIVE_FOLLOW_FETCH_LIMIT:-80}"
+EQUITY_DEFAULT="${LIVE_FOLLOW_EQUITY_DEFAULT:-10000}"
+EDGE_THRESHOLD="${LIVE_FOLLOW_EDGE_THRESHOLD:-0.02}"
+MIN_CONFIDENCE="${LIVE_FOLLOW_MIN_CONFIDENCE:-0.55}"
+MIN_LIQUIDITY="${LIVE_FOLLOW_MIN_LIQUIDITY:-500}"
+NEAR_RES_MINUTES="${LIVE_FOLLOW_NEAR_RESOLUTION_BLOCK_MINUTES:-5}"
+KELLY="${LIVE_FOLLOW_KELLY_FRACTION:-0.25}"
+HARD_CAP="${LIVE_FOLLOW_HARD_CAP_PER_MARKET_PCT:-0.03}"
+MIN_ORDER="${LIVE_FOLLOW_MIN_ORDER_USDC:-1.0}"
+MAX_ORDER="${LIVE_FOLLOW_MAX_ORDER_USDC:-0}"
+SPORTS_ONLY="${LIVE_FOLLOW_SPORTS_ONLY:-1}"
+FORCE_COPY_ALL="${LIVE_FOLLOW_FORCE_COPY_ALL_TRADES:-0}"
+
+MIRROR_SELL="${LIVE_FOLLOW_MIRROR_SELL:-0}"
+DRY_RUN="${LIVE_FOLLOW_DRY_RUN:-0}"
+DRY_RUN_SKIP_EXEC="${LIVE_FOLLOW_DRY_RUN_SKIP_EXEC:-1}"
+VALUATION_REFRESH_ONLY="${LIVE_FOLLOW_VALUATION_REFRESH_ONLY:-0}"
+RESEARCH_MODE="${LIVE_FOLLOW_RESEARCH_MODE:-collect}"
+RESEARCH_CONS_STRESS_SLIP_MULT="${LIVE_FOLLOW_RESEARCH_CONS_STRESS_SLIPPAGE_MULT:-1.5}"
+RESEARCH_CONS_FILL_CAP="${LIVE_FOLLOW_RESEARCH_CONS_FILL_RATIO_CAP:-0.7}"
+STALE_SIGNAL_THRESHOLD_MS="${LIVE_FOLLOW_STALE_SIGNAL_THRESHOLD_MS:-120000}"
+SIGNAL_TTL_MS="${LIVE_FOLLOW_SIGNAL_TTL_MS:-120000}"
+STATE_LOCK_TIMEOUT_SECONDS="${LIVE_FOLLOW_STATE_LOCK_TIMEOUT_SECONDS:-45}"
+NOTIFY_TELEGRAM="${LIVE_FOLLOW_NOTIFY_TELEGRAM:-1}"
+RESET_ACCOUNT="${LIVE_FOLLOW_RESET_ACCOUNT:-0}"
+LIVE_CANARY_ENABLED="${LIVE_FOLLOW_CANARY_ENABLED:-0}"
+LIVE_CANARY_ALLOWED_LEADERS="${LIVE_FOLLOW_CANARY_ALLOWED_LEADERS:-}"
+LIVE_CANARY_ALLOWED_MARKET_FAMILIES="${LIVE_FOLLOW_CANARY_ALLOWED_MARKET_FAMILIES:-}"
+LIVE_CANARY_ALLOWED_MARKET_SECTORS="${LIVE_FOLLOW_CANARY_ALLOWED_MARKET_SECTORS:-}"
+LIVE_CANARY_ALLOWED_MARKET_SECTORS_BY_LEADER="${LIVE_FOLLOW_CANARY_ALLOWED_MARKET_SECTORS_BY_LEADER:-}"
+LIVE_CANARY_MAX_BUYS_PER_CYCLE="${LIVE_FOLLOW_CANARY_MAX_BUYS_PER_CYCLE:-0}"
+LIVE_CANARY_MAX_NOTIONAL_PER_CYCLE="${LIVE_FOLLOW_CANARY_MAX_NOTIONAL_PER_CYCLE:-0}"
+LIVE_CANARY_DAILY_NOTIONAL_USDC="${LIVE_FOLLOW_CANARY_DAILY_NOTIONAL_USDC:-0}"
+DRY_RUN_ENFORCE_CANARY_SCOPE="${LIVE_FOLLOW_DRY_RUN_ENFORCE_CANARY_SCOPE:-0}"
+LIVE_CLIENT_ORDER_MAX_AGE_DAYS="${LIVE_FOLLOW_CLIENT_ORDER_MAX_AGE_DAYS:-7}"
+LIVE_CLIENT_ORDER_MAX_ENTRIES="${LIVE_FOLLOW_CLIENT_ORDER_MAX_ENTRIES:-5000}"
+INGEST_ONLY="${LIVE_FOLLOW_INGEST_ONLY:-0}"
+CONSUME_SIGNAL_QUEUE="${LIVE_FOLLOW_CONSUME_SIGNAL_QUEUE:-0}"
+MAX_QUEUED_BATCHES="${LIVE_FOLLOW_MAX_QUEUED_BATCHES:-8}"
+MAX_QUEUED_SIGNALS_PER_CYCLE="${LIVE_FOLLOW_MAX_QUEUED_SIGNALS_PER_CYCLE:-8}"
+SIGNAL_QUEUE_MAX_PENDING_SIGNALS_PER_LEADER="${LIVE_FOLLOW_SIGNAL_QUEUE_MAX_PENDING_SIGNALS_PER_LEADER:-64}"
+SIGNAL_QUEUE_ACTIONABLE_ONLY="${LIVE_FOLLOW_SIGNAL_QUEUE_ACTIONABLE_ONLY:-1}"
+SIGNAL_QUEUE_COALESCE_SIGNALS="${LIVE_FOLLOW_SIGNAL_QUEUE_COALESCE_SIGNALS:-1}"
+ADVERSE_MODE="${LIVE_FOLLOW_ADVERSE_MODE:-0}"
+ADVERSE_LAT_MULT="${LIVE_FOLLOW_ADVERSE_LATENCY_MULTIPLIER:-1.6}"
+ADVERSE_SPIKE_ADD="${LIVE_FOLLOW_ADVERSE_SPIKE_PROB_ADD:-0.03}"
+ADVERSE_SLIP_ADD_BPS="${LIVE_FOLLOW_ADVERSE_SLIPPAGE_ADD_BPS:-35}"
+ADVERSE_FALLBACK_ADD="${LIVE_FOLLOW_ADVERSE_FALLBACK_SLIPPAGE_ADD:-0.01}"
+ADVERSE_PARTICIPATION_MULT="${LIVE_FOLLOW_ADVERSE_PARTICIPATION_MULTIPLIER:-0.6}"
+SIM_RANDOM_SEED="${LIVE_FOLLOW_SIM_RANDOM_SEED:-}"
+
+SIM_MIN_SHARES="${LIVE_FOLLOW_SIM_MIN_SHARES:-5}"
+SIM_SHARE_STEP="${LIVE_FOLLOW_SIM_SHARE_STEP:-0.01}"
+SIM_FEE_BPS="${LIVE_FOLLOW_SIM_FEE_RATE_BPS:-20}"
+SIM_MAX_SLIPPAGE_BPS="${LIVE_FOLLOW_SIM_MAX_SLIPPAGE_BPS:-150}"
+SIM_PARTICIPATION_CAP="${LIVE_FOLLOW_SIM_PARTICIPATION_CAP_PCT:-0.20}"
+SIM_LAT_MIN_MS="${LIVE_FOLLOW_SIM_LATENCY_MIN_MS:-500}"
+SIM_LAT_MAX_MS="${LIVE_FOLLOW_SIM_LATENCY_MAX_MS:-2500}"
+SIM_SPIKE_PROB="${LIVE_FOLLOW_SIM_LATENCY_SPIKE_PROB:-0.02}"
+SIM_SPIKE_MIN_MS="${LIVE_FOLLOW_SIM_LATENCY_SPIKE_MIN_MS:-3000}"
+SIM_SPIKE_MAX_MS="${LIVE_FOLLOW_SIM_LATENCY_SPIKE_MAX_MS:-8000}"
+SIM_FALLBACK_SLIP_MIN="${LIVE_FOLLOW_SIM_FALLBACK_SLIPPAGE_MIN:-0.01}"
+SIM_FALLBACK_SLIP_MAX="${LIVE_FOLLOW_SIM_FALLBACK_SLIPPAGE_MAX:-0.03}"
+SIM_FALLBACK_MARK_DISCOUNT_PCT="${LIVE_FOLLOW_SIM_FALLBACK_MARK_DISCOUNT_PCT:-0.02}"
+SIM_FALLBACK_MARK_DISCOUNT_STEP_PCT="${LIVE_FOLLOW_SIM_FALLBACK_MARK_DISCOUNT_STEP_PCT:-0.015}"
+SIM_FALLBACK_MARK_MAX_DISCOUNT_PCT="${LIVE_FOLLOW_SIM_FALLBACK_MARK_MAX_DISCOUNT_PCT:-0.35}"
+SIM_FALLBACK_MARK_AGE_STEP_SECONDS="${LIVE_FOLLOW_SIM_FALLBACK_MARK_AGE_STEP_SECONDS:-900}"
+SIM_FALLBACK_MARK_AGE_DISCOUNT_STEP_PCT="${LIVE_FOLLOW_SIM_FALLBACK_MARK_AGE_DISCOUNT_STEP_PCT:-0.005}"
+SIM_STRESS_ENABLED="${LIVE_FOLLOW_SIM_STRESS_ENABLED:-0}"
+SIM_STRESS_LAT_MIN_MS="${LIVE_FOLLOW_SIM_STRESS_LATENCY_MIN_MS:-500}"
+SIM_STRESS_LAT_MAX_MS="${LIVE_FOLLOW_SIM_STRESS_LATENCY_MAX_MS:-4000}"
+SIM_STRESS_SLIP_MIN_PCT="${LIVE_FOLLOW_SIM_STRESS_SLIPPAGE_MIN_PCT:-0.005}"
+SIM_STRESS_SLIP_MAX_PCT="${LIVE_FOLLOW_SIM_STRESS_SLIPPAGE_MAX_PCT:-0.04}"
+SIM_EXEC_WAIT_MODE="${LIVE_FOLLOW_SIM_EXEC_WAIT_MODE:-auto}"
+SIM_EXEC_MAX_REAL_WAIT_MS="${LIVE_FOLLOW_SIM_EXEC_MAX_REAL_WAIT_MS:-1200}"
+SIM_CHECKPOINT_INTERVAL="${LIVE_FOLLOW_SIM_CHECKPOINT_INTERVAL_SECONDS:-300}"
+SIM_CHECKPOINT_MAX_POINTS="${LIVE_FOLLOW_SIM_CHECKPOINT_MAX_POINTS:-5000}"
+SIM_QUALITY_WINDOW_POINTS="${LIVE_FOLLOW_SIM_QUALITY_WINDOW_POINTS:-5000}"
+SIM_EVENT_RECENT_LIMIT="${LIVE_FOLLOW_SIM_EVENT_RECENT_LIMIT:-2000}"
+SIM_MTM_MAX_FETCHES="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_MAX_FETCHES:-400}"
+SIM_MTM_CACHE_TTL_SECONDS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_CACHE_TTL_SECONDS:-180}"
+SIM_MTM_CACHE_MAX_AGE_SECONDS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_CACHE_MAX_AGE_SECONDS:-1800}"
+SIM_MTM_CACHE_MAX_ENTRIES="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_CACHE_MAX_ENTRIES:-1200}"
+SIM_MTM_FETCH_TIMEOUT_SECONDS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_FETCH_TIMEOUT_SECONDS:-1.5}"
+SIM_MTM_MAX_WORKERS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_MAX_WORKERS:-24}"
+SIM_MTM_WORKER_CAP="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_WORKER_CAP:-48}"
+SIM_MTM_BUDGET_SECONDS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_BUDGET_SECONDS:-12}"
+SIM_MTM_BUDGET_MAX_SECONDS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_BUDGET_MAX_SECONDS:-24}"
+SIM_MTM_REFRESH_BUDGET_FLOOR_SECONDS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_REFRESH_BUDGET_FLOOR_SECONDS:-18}"
+SIM_MTM_REFRESH_BUDGET_MAX_SECONDS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_REFRESH_BUDGET_MAX_SECONDS:-36}"
+SIM_MTM_BUDGET_PER_MISSING_SLUG_MS="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_BUDGET_PER_MISSING_SLUG_MS:-45}"
+SIM_MTM_RETRY_COUNT="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_RETRY_COUNT:-1}"
+SIM_MTM_RETRY_TIMEOUT_MULTIPLIER="${LIVE_FOLLOW_SIM_MARK_TO_MARKET_RETRY_TIMEOUT_MULTIPLIER:-1.5}"
+SIM_VAL_FALLBACK_THRESHOLD="${LIVE_FOLLOW_SIM_VALUATION_FALLBACK_THRESHOLD:-0.15}"
+SIM_VAL_FALLBACK_HAIRCUT_PCT="${LIVE_FOLLOW_SIM_VALUATION_FALLBACK_HAIRCUT_PCT:-0.25}"
+SIM_VAL_DEGRADED_RATIO="${LIVE_FOLLOW_SIM_VALUATION_DEGRADED_RATIO:-0.30}"
+SIM_REGIME_HISTORY_MAX_POINTS="${LIVE_FOLLOW_SIM_REGIME_HISTORY_MAX_POINTS:-5000}"
+REGIME_REPORT_FILE="${LIVE_FOLLOW_REGIME_REPORT_FILE:-$ROOT_DIR/logs/live_follow_regime_report_${LEADER_SLUG}.log}"
+LEADER_RANK_FILE="${LIVE_FOLLOW_LEADER_RANK_FILE:-$ROOT_DIR/logs/live_follow_leader_rank.log}"
+LEADER_RANK_TOPK="${LIVE_FOLLOW_LEADER_RANK_TOPK:-12}"
+
+TG_TOKEN="${LIVE_FOLLOW_TELEGRAM_BOT_TOKEN:-${PAPER_FOLLOW_TELEGRAM_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-}}}"
+TG_CHAT="${LIVE_FOLLOW_TELEGRAM_CHAT_ID:-${PAPER_FOLLOW_TELEGRAM_CHAT_ID:-${TELEGRAM_CHAT_ID:-}}}"
+
+STATE_FILE="${LIVE_FOLLOW_STATE_FILE:-}"
+SIGNAL_FILE="${LIVE_FOLLOW_SIGNAL_FILE:-}"
+SIGNAL_QUEUE_FILE="${LIVE_FOLLOW_SIGNAL_QUEUE_FILE:-$ROOT_DIR/logs/live_follow_signal_queue.ndjson}"
+LATEST_FILE="${LIVE_FOLLOW_LATEST_FILE:-}"
+EVENTS_FILE="${LIVE_FOLLOW_EVENTS_FILE:-}"
+EVENT_STREAM_FILE="${LIVE_FOLLOW_EVENT_STREAM_FILE:-}"
+EXEC_FILE="${LIVE_FOLLOW_EXEC_FILE:-}"
+TRADE_LEDGER_FILE="${LIVE_FOLLOW_TRADE_LEDGER_FILE:-$ROOT_DIR/logs/live_follow_trade_ledger_${LEADER_SLUG}.ndjson}"
+LIVE_INTENT_LEDGER_FILE="${LIVE_FOLLOW_LIVE_INTENT_LEDGER_FILE:-$ROOT_DIR/logs/live_follow_live_intents_${LEADER_SLUG}.ndjson}"
+
+args=(
+  "$PY_SCRIPT"
+  --leader-address "$LEADER"
+  --fetch-limit "$FETCH_LIMIT"
+  --equity-default "$EQUITY_DEFAULT"
+  --edge-threshold "$EDGE_THRESHOLD"
+  --min-confidence "$MIN_CONFIDENCE"
+  --min-liquidity "$MIN_LIQUIDITY"
+  --near-resolution-block-minutes "$NEAR_RES_MINUTES"
+  --kelly-fraction "$KELLY"
+  --hard-cap-per-market-pct "$HARD_CAP"
+  --min-order-usdc "$MIN_ORDER"
+  --max-order-usdc "$MAX_ORDER"
+  --research-mode "$RESEARCH_MODE"
+  --research-conservative-stress-slippage-mult "$RESEARCH_CONS_STRESS_SLIP_MULT"
+  --research-conservative-fill-ratio-cap "$RESEARCH_CONS_FILL_CAP"
+  --stale-signal-threshold-ms "$STALE_SIGNAL_THRESHOLD_MS"
+  --signal-ttl-ms "$SIGNAL_TTL_MS"
+  --live-canary-allowed-leaders "$LIVE_CANARY_ALLOWED_LEADERS"
+  --live-canary-allowed-market-families "$LIVE_CANARY_ALLOWED_MARKET_FAMILIES"
+  --live-canary-allowed-market-sectors "$LIVE_CANARY_ALLOWED_MARKET_SECTORS"
+  --live-canary-allowed-market-sectors-by-leader "$LIVE_CANARY_ALLOWED_MARKET_SECTORS_BY_LEADER"
+  --live-canary-max-buys-per-cycle "$LIVE_CANARY_MAX_BUYS_PER_CYCLE"
+  --live-canary-max-notional-per-cycle "$LIVE_CANARY_MAX_NOTIONAL_PER_CYCLE"
+  --live-canary-daily-notional-usdc "$LIVE_CANARY_DAILY_NOTIONAL_USDC"
+  --live-client-order-max-age-days "$LIVE_CLIENT_ORDER_MAX_AGE_DAYS"
+  --live-client-order-max-entries "$LIVE_CLIENT_ORDER_MAX_ENTRIES"
+  --state-lock-timeout-seconds "$STATE_LOCK_TIMEOUT_SECONDS"
+  --max-queued-batches "$MAX_QUEUED_BATCHES"
+  --max-queued-signals-per-cycle "$MAX_QUEUED_SIGNALS_PER_CYCLE"
+  --signal-queue-max-pending-signals-per-leader "$SIGNAL_QUEUE_MAX_PENDING_SIGNALS_PER_LEADER"
+  --sim-min-shares "$SIM_MIN_SHARES"
+  --sim-share-step "$SIM_SHARE_STEP"
+  --sim-fee-rate-bps "$SIM_FEE_BPS"
+  --sim-max-slippage-bps "$SIM_MAX_SLIPPAGE_BPS"
+  --sim-participation-cap-pct "$SIM_PARTICIPATION_CAP"
+  --sim-latency-min-ms "$SIM_LAT_MIN_MS"
+  --sim-latency-max-ms "$SIM_LAT_MAX_MS"
+  --sim-latency-spike-prob "$SIM_SPIKE_PROB"
+  --sim-latency-spike-min-ms "$SIM_SPIKE_MIN_MS"
+  --sim-latency-spike-max-ms "$SIM_SPIKE_MAX_MS"
+  --sim-fallback-slippage-min "$SIM_FALLBACK_SLIP_MIN"
+  --sim-fallback-slippage-max "$SIM_FALLBACK_SLIP_MAX"
+  --sim-fallback-mark-discount-pct "$SIM_FALLBACK_MARK_DISCOUNT_PCT"
+  --sim-fallback-mark-discount-step-pct "$SIM_FALLBACK_MARK_DISCOUNT_STEP_PCT"
+  --sim-fallback-mark-max-discount-pct "$SIM_FALLBACK_MARK_MAX_DISCOUNT_PCT"
+  --sim-fallback-mark-age-step-seconds "$SIM_FALLBACK_MARK_AGE_STEP_SECONDS"
+  --sim-fallback-mark-age-discount-step-pct "$SIM_FALLBACK_MARK_AGE_DISCOUNT_STEP_PCT"
+  --sim-stress-latency-min-ms "$SIM_STRESS_LAT_MIN_MS"
+  --sim-stress-latency-max-ms "$SIM_STRESS_LAT_MAX_MS"
+  --sim-stress-slippage-min-pct "$SIM_STRESS_SLIP_MIN_PCT"
+  --sim-stress-slippage-max-pct "$SIM_STRESS_SLIP_MAX_PCT"
+  --sim-exec-wait-mode "$SIM_EXEC_WAIT_MODE"
+  --sim-exec-max-real-wait-ms "$SIM_EXEC_MAX_REAL_WAIT_MS"
+  --sim-checkpoint-interval-seconds "$SIM_CHECKPOINT_INTERVAL"
+  --sim-checkpoint-max-points "$SIM_CHECKPOINT_MAX_POINTS"
+  --sim-quality-window-points "$SIM_QUALITY_WINDOW_POINTS"
+  --sim-event-recent-limit "$SIM_EVENT_RECENT_LIMIT"
+  --sim-mark-to-market-max-fetches "$SIM_MTM_MAX_FETCHES"
+  --sim-mark-to-market-cache-ttl-seconds "$SIM_MTM_CACHE_TTL_SECONDS"
+  --sim-mark-to-market-cache-max-age-seconds "$SIM_MTM_CACHE_MAX_AGE_SECONDS"
+  --sim-mark-to-market-cache-max-entries "$SIM_MTM_CACHE_MAX_ENTRIES"
+  --sim-mark-to-market-fetch-timeout-seconds "$SIM_MTM_FETCH_TIMEOUT_SECONDS"
+  --sim-mark-to-market-max-workers "$SIM_MTM_MAX_WORKERS"
+  --sim-mark-to-market-worker-cap "$SIM_MTM_WORKER_CAP"
+  --sim-mark-to-market-budget-seconds "$SIM_MTM_BUDGET_SECONDS"
+  --sim-mark-to-market-budget-max-seconds "$SIM_MTM_BUDGET_MAX_SECONDS"
+  --sim-mark-to-market-refresh-budget-floor-seconds "$SIM_MTM_REFRESH_BUDGET_FLOOR_SECONDS"
+  --sim-mark-to-market-refresh-budget-max-seconds "$SIM_MTM_REFRESH_BUDGET_MAX_SECONDS"
+  --sim-mark-to-market-budget-per-missing-slug-ms "$SIM_MTM_BUDGET_PER_MISSING_SLUG_MS"
+  --sim-mark-to-market-retry-count "$SIM_MTM_RETRY_COUNT"
+  --sim-mark-to-market-retry-timeout-multiplier "$SIM_MTM_RETRY_TIMEOUT_MULTIPLIER"
+  --sim-regime-history-max-points "$SIM_REGIME_HISTORY_MAX_POINTS"
+  --sim-valuation-fallback-threshold "$SIM_VAL_FALLBACK_THRESHOLD"
+  --sim-valuation-fallback-haircut-pct "$SIM_VAL_FALLBACK_HAIRCUT_PCT"
+  --sim-valuation-degraded-ratio "$SIM_VAL_DEGRADED_RATIO"
+  --adverse-latency-multiplier "$ADVERSE_LAT_MULT"
+  --adverse-spike-prob-add "$ADVERSE_SPIKE_ADD"
+  --adverse-slippage-add-bps "$ADVERSE_SLIP_ADD_BPS"
+  --adverse-fallback-slippage-add "$ADVERSE_FALLBACK_ADD"
+  --adverse-participation-multiplier "$ADVERSE_PARTICIPATION_MULT"
+  --trade-ledger-file "$TRADE_LEDGER_FILE"
+  --live-intent-ledger-file "$LIVE_INTENT_LEDGER_FILE"
+  --signal-queue-file "$SIGNAL_QUEUE_FILE"
+  --regime-report-file "$REGIME_REPORT_FILE"
+  --leader-rank-file "$LEADER_RANK_FILE"
+  --leader-rank-topk "$LEADER_RANK_TOPK"
+)
+
+if [[ "$MIRROR_SELL" == "1" || "$MIRROR_SELL" == "true" ]]; then
+  args+=(--mirror-sell)
+fi
+if [[ "$SPORTS_ONLY" == "1" || "$SPORTS_ONLY" == "true" ]]; then
+  args+=(--sports-only)
+else
+  args+=(--all-markets)
+fi
+if [[ "$FORCE_COPY_ALL" == "1" || "$FORCE_COPY_ALL" == "true" ]]; then
+  args+=(--force-copy-all-trades)
+fi
+if [[ "$DRY_RUN" == "1" || "$DRY_RUN" == "true" ]]; then
+  args+=(--dry-run)
+fi
+if [[ "$VALUATION_REFRESH_ONLY" == "1" || "$VALUATION_REFRESH_ONLY" == "true" ]]; then
+  args+=(--valuation-refresh-only)
+fi
+if [[ "$SIM_STRESS_ENABLED" == "1" || "$SIM_STRESS_ENABLED" == "true" ]]; then
+  args+=(--sim-stress-enabled)
+fi
+if [[ "$DRY_RUN_SKIP_EXEC" == "1" || "$DRY_RUN_SKIP_EXEC" == "true" ]]; then
+  args+=(--dry-run-skip-exec)
+else
+  args+=(--dry-run-run-exec)
+fi
+if [[ "$RESET_ACCOUNT" == "1" || "$RESET_ACCOUNT" == "true" ]]; then
+  args+=(--reset-account)
+fi
+if [[ "$LIVE_CANARY_ENABLED" == "1" || "$LIVE_CANARY_ENABLED" == "true" ]]; then
+  args+=(--live-canary-enabled)
+fi
+if [[ "$DRY_RUN_ENFORCE_CANARY_SCOPE" == "1" || "$DRY_RUN_ENFORCE_CANARY_SCOPE" == "true" ]]; then
+  args+=(--dry-run-enforce-canary-scope)
+fi
+if [[ "$INGEST_ONLY" == "1" || "$INGEST_ONLY" == "true" ]]; then
+  args+=(--ingest-only)
+fi
+if [[ "$CONSUME_SIGNAL_QUEUE" == "1" || "$CONSUME_SIGNAL_QUEUE" == "true" ]]; then
+  args+=(--consume-signal-queue)
+fi
+if [[ "$SIGNAL_QUEUE_ACTIONABLE_ONLY" == "1" || "$SIGNAL_QUEUE_ACTIONABLE_ONLY" == "true" ]]; then
+  args+=(--signal-queue-actionable-only)
+fi
+if [[ "$SIGNAL_QUEUE_COALESCE_SIGNALS" == "1" || "$SIGNAL_QUEUE_COALESCE_SIGNALS" == "true" ]]; then
+  args+=(--signal-queue-coalesce-signals)
+fi
+if [[ "$ADVERSE_MODE" == "1" || "$ADVERSE_MODE" == "true" ]]; then
+  args+=(--adverse-mode)
+fi
+if [[ -n "$SIM_RANDOM_SEED" ]]; then
+  args+=(--sim-random-seed "$SIM_RANDOM_SEED")
+fi
+if [[ "$NOTIFY_TELEGRAM" == "1" || "$NOTIFY_TELEGRAM" == "true" ]]; then
+  args+=(--notify-telegram)
+fi
+if [[ -n "$TG_TOKEN" ]]; then
+  args+=(--telegram-bot-token "$TG_TOKEN")
+fi
+if [[ -n "$TG_CHAT" ]]; then
+  args+=(--telegram-chat-id "$TG_CHAT")
+fi
+if [[ -n "$STATE_FILE" ]]; then
+  args+=(--state-file "$STATE_FILE")
+fi
+if [[ -n "$SIGNAL_FILE" ]]; then
+  args+=(--signal-file "$SIGNAL_FILE")
+fi
+if [[ -n "$LATEST_FILE" ]]; then
+  args+=(--latest-file "$LATEST_FILE")
+fi
+if [[ -n "$EVENTS_FILE" ]]; then
+  args+=(--events-file "$EVENTS_FILE")
+fi
+if [[ -n "$EVENT_STREAM_FILE" ]]; then
+  args+=(--event-stream-file "$EVENT_STREAM_FILE")
+fi
+if [[ -n "$EXEC_FILE" ]]; then
+  args+=(--exec-file "$EXEC_FILE")
+fi
+if [[ -n "$TRADE_LEDGER_FILE" ]]; then
+  args+=(--trade-ledger-file "$TRADE_LEDGER_FILE")
+fi
+
+if python3 - <<'PY' "$CYCLE_TIMEOUT_SECONDS" >/dev/null 2>&1
+import sys
+raise SystemExit(0 if float(sys.argv[1]) > 0 else 1)
+PY
+then
+  exec "$PY_BIN" - "$CYCLE_TIMEOUT_SECONDS" "${args[@]}" <<'PY'
+import subprocess
+import sys
+
+timeout_seconds = float(sys.argv[1])
+cmd = sys.argv[2:]
+try:
+    proc = subprocess.run(cmd, check=False, timeout=timeout_seconds)
+except subprocess.TimeoutExpired:
+    print(f"live_follow cycle timeout after {timeout_seconds:.1f}s", file=sys.stderr)
+    raise SystemExit(124)
+raise SystemExit(int(proc.returncode))
+PY
+fi
+
+exec "$PY_BIN" "${args[@]}"

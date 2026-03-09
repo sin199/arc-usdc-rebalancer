@@ -1,0 +1,4 @@
+aiohttp==3.12.15
+aiosqlite==0.21.0
+PyYAML==6.0.2
+websockets==15.0.1

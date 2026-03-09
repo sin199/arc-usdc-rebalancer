@@ -1,0 +1,12 @@
+markets:
+  - market_id: "epl-wol-ars-2026-02-18-wol"
+    market_slug: "wolves-win-vs-arsenal"
+    label: "Wolves win vs Arsenal"
+    keywords: ["Wolves", "Arsenal", "Premier League"]
+    bias: 0.0
+
+  - market_id: "epl-wol-ars-2026-02-18-total-2pt5"
+    market_slug: "wolves-vs-arsenal-over-2.5-goals"
+    label: "Wolves vs Arsenal over 2.5 goals"
+    keywords: ["Wolves", "Arsenal", "over 2.5", "Premier League"]
+    bias: 0.0
