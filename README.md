@@ -1,31 +1,37 @@
-# Arc USDC Rebalancer
+# Arc USDC Rebalancer v3
 
-Arc USDC Rebalancer is a testnet-only treasury dashboard for Arc Testnet.
-It is not a trading bot. It helps a user:
+Arc USDC Rebalancer v3 is a testnet-only stablecoin treasury execution module for Arc Testnet.
+It is not an alpha bot. It is built to stay safe by default:
 
-- connect a wallet
-- detect Arc Testnet
-- read the connected wallet's USDC balance
-- read the deployed `TreasuryPolicy` contract
-- submit policy updates from the owner wallet
-- review the latest `PolicyUpdated` event
-- simulate a rebalance against the current policy
+- `dry-run` is the default execution mode
+- `manual-approve` creates plans but waits for an explicit dashboard approval
+- `auto` stays disabled unless the required credentials exist
+- real execution is gated by safety controls, allowlists, and cooldown limits
+
+The repo contains:
+
+- a Next.js frontend for treasury policy visibility and execution approval
+- a server-side worker that polls Arc Testnet state on a schedule
+- shared execution helpers for plan generation and safety evaluation
+- Foundry contracts for the deployed `TreasuryPolicy`
 
 ## Stack
 
 - Next.js
 - TypeScript
 - Tailwind CSS
-- shadcn/ui
+- shadcn/ui-style primitives
 - wagmi
 - viem
+- Node worker service
 - Solidity
 - Foundry
 
 ## Repository Layout
 
 - `apps/web` - Next.js frontend
-- `packages/shared` - shared Arc and treasury helpers
+- `apps/worker` - scheduled execution worker and JSON state API
+- `packages/shared` - shared Arc, policy, ERC20, and execution helpers
 - `packages/contracts` - Solidity contract and Foundry scripts
 
 ## Arc Testnet Details
@@ -37,6 +43,31 @@ It is not a trading bot. It helps a user:
 - Native USDC decimals: `18`
 - USDC token address used by the app: `0x3600000000000000000000000000000000000000`
 
+## Execution Modes
+
+- `dry-run` - evaluate policy, build a plan, and record a simulated run
+- `manual-approve` - build a plan, store it as awaiting approval, and require a dashboard action before submission
+- `auto` - reserved for credential-gated automation; stays disabled when the required executor credentials are missing
+
+## Safety Model
+
+The worker enforces these controls before it generates or submits runs:
+
+- global pause
+- per-policy pause
+- emergency stop / kill switch
+- max execution amount
+- daily notional cap
+- cooldown period
+- destination allowlist
+
+The worker also keeps execution testnet-only and records:
+
+- latest runs
+- statuses
+- trigger timestamps
+- human-readable logs
+
 ## Local Setup
 
 Install dependencies from the repository root:
@@ -45,10 +76,16 @@ Install dependencies from the repository root:
 pnpm install
 ```
 
-Run the frontend:
+Start the worker:
 
 ```bash
-pnpm --filter @arc-usdc-rebalancer/web dev
+pnpm worker:dev
+```
+
+Start the frontend:
+
+```bash
+pnpm dev
 ```
 
 Open:
@@ -58,87 +95,100 @@ Open:
 
 ## Environment Variables
 
-The second PR uses explicit env-driven deployment and runtime config.
-
-### Contract deployment
-
-Copy `packages/contracts/.env.example` to `packages/contracts/.env` and set:
-
-- `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint
-- `PRIVATE_KEY` - deployer private key for the Arc Testnet owner wallet
-- `MIN_THRESHOLD_USDC` - policy minimum threshold in whole USDC
-- `TARGET_BALANCE_USDC` - policy target balance in whole USDC
-- `MAX_REBALANCE_AMOUNT_USDC` - maximum rebalance amount in whole USDC
-
 ### Frontend runtime
 
 Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 
 - `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint used by the frontend
-- `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address from the Arc Testnet deployment
+- `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address
+- `NEXT_PUBLIC_EXECUTION_API_URL` - worker API base URL, for example `http://127.0.0.1:8787`
 
-The frontend treats the contract address as required for onchain policy reads and writes.
+### Worker runtime
 
-## Exact Commands
+Copy `apps/worker/.env.example` to `apps/worker/.env` and set:
 
-### Forge build
+- `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint used by the worker
+- `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address
+- `TREASURY_EXECUTION_ADDRESS` - Arc Testnet treasury wallet the worker polls
+- `EXECUTION_MODE` - `dry-run`, `manual-approve`, or `auto`
+- `EXECUTION_STATE_PATH` - JSON file used to persist runs and status
+- `EXECUTION_POLL_INTERVAL_MS` - schedule interval in milliseconds
+- `EXECUTION_BALANCE_OVERRIDE_USDC` - optional local test override for deterministic verification
+- `EXECUTION_GLOBAL_PAUSE` - pause all execution
+- `EXECUTION_POLICY_PAUSED` - pause the current policy
+- `EXECUTION_EMERGENCY_STOP` - kill switch
+- `EXECUTION_MAX_EXECUTION_AMOUNT_USDC` - max amount per run
+- `EXECUTION_DAILY_NOTIONAL_CAP_USDC` - max notional per day
+- `EXECUTION_COOLDOWN_MINUTES` - minimum gap between runs
+- `EXECUTION_DESTINATION_ALLOWLIST` - comma-separated allowlisted destination addresses
+- `EXECUTION_REBALANCE_DESTINATION_ADDRESS` - optional explicit destination for rebalance plans
+- `EXECUTION_PAYOUT_BATCHES_JSON` - optional payout batch array as JSON
+- `EXECUTION_BRIDGE_TOP_UP_ENABLED` - enable bridge top-up planning when bridge config exists
+
+### Optional Circle executor credentials
+
+`auto` mode is disabled unless these exist:
+
+- `CIRCLE_API_KEY`
+- `CIRCLE_ENTITY_SECRET`
+- `CIRCLE_WALLET_ADDRESS`
+- `CIRCLE_WALLET_BLOCKCHAIN`
+
+### Optional bridge planning credentials
+
+Bridge top-up planning stays disabled unless these exist:
+
+- `BRIDGE_SOURCE_CHAIN`
+- `BRIDGE_SOURCE_WALLET_ADDRESS`
+- `BRIDGE_DESTINATION_CHAIN`
+- `BRIDGE_DESTINATION_WALLET_ADDRESS`
+
+## Commands
+
+### Contracts build
 
 ```bash
-cd packages/contracts
-forge build
+pnpm contracts:build
 ```
 
-### Forge test
+### Contracts test
 
 ```bash
-cd packages/contracts
-forge test
+pnpm contracts:test
 ```
 
-### Deployment
+### Frontend build
 
 ```bash
-cd packages/contracts
-set -a
-source .env
-set +a
-forge script script/DeployTreasuryPolicy.s.sol:DeployTreasuryPolicy \
-  --rpc-url "$ARC_TESTNET_RPC_URL" \
-  --broadcast \
-  --private-key "$PRIVATE_KEY"
+pnpm build
 ```
 
-After deployment, copy the contract address from the Forge output into `apps/web/.env.local` as `TREASURY_POLICY_ADDRESS`.
-
-### Frontend run
+### Worker build
 
 ```bash
-pnpm --filter @arc-usdc-rebalancer/web dev
+pnpm worker:build
 ```
 
-## Manual Arc Testnet Checklist
+### Worker test
 
-1. Deploy `TreasuryPolicy` to Arc Testnet with the Foundry script.
-2. Put the deployed contract address into `apps/web/.env.local`.
+```bash
+pnpm worker:test
+```
+
+## Local Verification Flow
+
+1. Start the worker with `EXECUTION_MODE=dry-run`.
+2. Set `EXECUTION_BALANCE_OVERRIDE_USDC` to force a deterministic plan during local testing.
 3. Start the frontend and open `/dashboard`.
-4. Connect the owner wallet that deployed the contract.
-5. Confirm the wallet badge shows the connected address and owner status.
-6. Confirm the dashboard reads the current policy from chain.
-7. Confirm the latest `PolicyUpdated` event appears after deployment or after a policy change.
-8. Edit the policy values and submit the update from the owner wallet.
-9. Confirm the transaction is accepted on Arc Testnet and the latest event refreshes.
-10. Confirm the simulated rebalance status updates when the connected balance or policy changes.
-11. Try the same update flow with a non-owner wallet and confirm the submit action is blocked.
-
-## GitHub And Vercel Notes
-
-- Commit and push the repo as a normal GitHub project.
-- In Vercel, set the project root directory to `apps/web`.
-- Set the Arc runtime env values in Vercel for the frontend deployment.
-- The contract package is separate and can be deployed independently from the frontend.
+4. Confirm the execution module shows the current mode, safety controls, and latest runs.
+5. Switch the worker to `manual-approve`.
+6. Confirm the dashboard shows a run awaiting approval.
+7. Approve or reject the run from the dashboard and verify the status updates.
+8. Leave `auto` off unless the Circle credentials exist.
 
 ## Notes
 
-- The dashboard reads and writes the deployed contract on Arc Testnet only.
-- The app does not claim privacy features or advanced automation.
-- The simulation panel is a local preview of policy-driven treasury behavior, not an execution engine.
+- The app stays testnet-only.
+- The worker persists execution runs to a local JSON file by default.
+- Real execution is disabled unless the required credentials exist and the mode explicitly requests `auto`.
+- Bridge execution remains optional and is left as a credential-gated extension.

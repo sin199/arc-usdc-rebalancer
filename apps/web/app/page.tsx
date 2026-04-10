@@ -21,8 +21,8 @@ const features = [
   },
   {
     icon: Waves,
-    title: 'Arc ready',
-    description: 'The app is wired for Arc Testnet chain detection and explicit deployment/runtime env config.',
+    title: 'Execution module',
+    description: 'Dry-run by default, manual approval when requested, and auto mode gated on credentials.',
   },
 ]
 
@@ -31,8 +31,8 @@ export default function HomePage() {
     <main className="min-h-screen">
       <SiteHeader
         eyebrow="Arc Testnet"
-        title="Arc USDC Rebalancer"
-        description="A clean treasury dashboard for stablecoin policy checks and simulated rebalances."
+        title="Arc USDC Rebalancer v3"
+        description="A testnet-only treasury execution module with safe defaults and explicit approval gates."
         ctaHref="/dashboard"
         ctaLabel="Open dashboard"
       />
@@ -45,12 +45,12 @@ export default function HomePage() {
             </Badge>
             <div className="space-y-4">
               <h2 className="max-w-2xl font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-                A simple USDC treasury policy dashboard, not a trading bot.
+                A stablecoin treasury execution module for Arc Testnet, not an alpha bot.
               </h2>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                 Set a minimum threshold, a target balance, and a max rebalance amount. The dashboard reads the
-                deployed TreasuryPolicy contract, submits owner wallet updates, shows your Arc USDC balance, and
-                simulates rebalances against chain state.
+                deployed TreasuryPolicy contract, simulates policy-driven execution on Arc Testnet, and only enables
+                real execution when the worker credentials and mode allow it.
               </p>
             </div>
           </div>
