@@ -43,6 +43,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { SiteHeader } from '@/components/site-header'
+import { ExecutionConsole } from '@/components/execution-console'
 import { readJson, writeJson } from '@/lib/storage'
 import {
   arcTestnetRpcUrl,
@@ -866,6 +867,8 @@ export function TreasuryDashboard() {
                 )}
               </CardContent>
             </Card>
+
+            <ExecutionConsole />
 
             <Card>
               <CardHeader>
