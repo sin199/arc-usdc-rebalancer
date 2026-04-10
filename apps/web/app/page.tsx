@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { arcTestnetChainId, arcTestnetExplorerUrl, arcTestnetRpcUrl } from '@arc-usdc-rebalancer/shared'
+import { arcTestnetChainId, arcTestnetExplorerUrl } from '@arc-usdc-rebalancer/shared'
+import { arcTestnetRpcUrl } from '@/lib/treasury-policy'
 
 const features = [
   {
@@ -15,13 +16,13 @@ const features = [
   },
   {
     icon: ShieldCheck,
-    title: 'Treasury policy',
-    description: 'Store minimum threshold, target balance, and max rebalance amount locally first.',
+    title: 'Onchain policy',
+    description: 'Read the deployed TreasuryPolicy contract, watch PolicyUpdated events, and submit owner-only updates.',
   },
   {
     icon: Waves,
     title: 'Arc ready',
-    description: 'The app is wired for Arc Testnet chain detection and future onchain policy sync.',
+    description: 'The app is wired for Arc Testnet chain detection and explicit deployment/runtime env config.',
   },
 ]
 
@@ -47,8 +48,9 @@ export default function HomePage() {
                 A simple USDC treasury policy dashboard, not a trading bot.
               </h2>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Set a minimum threshold, a target balance, and a max rebalance amount. The MVP saves policy locally,
-                shows your Arc USDC balance, and simulates rebalances before any contract wiring is added.
+                Set a minimum threshold, a target balance, and a max rebalance amount. The dashboard reads the
+                deployed TreasuryPolicy contract, submits owner wallet updates, shows your Arc USDC balance, and
+                simulates rebalances against chain state.
               </p>
             </div>
           </div>
@@ -105,9 +107,9 @@ export default function HomePage() {
                 <div className="mt-1 break-all">{arcTestnetExplorerUrl}</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="font-medium text-foreground">Local policy first</div>
+                <div className="font-medium text-foreground">Onchain policy</div>
                 <div className="mt-1">
-                  Treasury settings are saved in browser storage until the smart contract sync is connected.
+                  Treasury settings now come from the deployed TreasuryPolicy contract when the frontend address is set.
                 </div>
               </div>
             </CardContent>

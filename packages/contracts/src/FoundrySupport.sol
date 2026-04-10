@@ -10,6 +10,8 @@ interface Vm {
     function stopBroadcast() external;
 
     function prank(address newSender) external;
+
+    function expectEmit(bool checkTopic1, bool checkTopic2, bool checkTopic3, bool checkData) external;
 }
 
 abstract contract BroadcastScript {
