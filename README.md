@@ -43,6 +43,44 @@ The repo contains:
 - Native USDC decimals: `18`
 - USDC token address used by the app: `0x3600000000000000000000000000000000000000`
 
+## Demo Setup
+
+Use these exact values for the safe v3 demo path:
+
+### Web app
+
+```bash
+ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
+TREASURY_POLICY_ADDRESS=0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6
+NEXT_PUBLIC_EXECUTION_API_URL=http://127.0.0.1:8787
+```
+
+### Worker
+
+```bash
+ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
+TREASURY_POLICY_ADDRESS=0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6
+TREASURY_EXECUTION_ADDRESS=0x0000000000000000000000000000000000000004
+EXECUTION_MODE=dry-run
+EXECUTION_STATE_PATH=./data/execution-state.json
+EXECUTION_BALANCE_OVERRIDE_USDC=10
+EXECUTION_POLL_INTERVAL_MS=60000
+EXECUTION_GLOBAL_PAUSE=false
+EXECUTION_POLICY_PAUSED=false
+EXECUTION_EMERGENCY_STOP=false
+EXECUTION_MAX_EXECUTION_AMOUNT_USDC=1000
+EXECUTION_DAILY_NOTIONAL_CAP_USDC=5000
+EXECUTION_COOLDOWN_MINUTES=30
+EXECUTION_DESTINATION_ALLOWLIST=
+EXECUTION_REBALANCE_DESTINATION_ADDRESS=
+EXECUTION_PAYOUT_BATCHES_JSON=
+EXECUTION_BRIDGE_TOP_UP_ENABLED=false
+```
+
+- Leave the `CIRCLE_*` variables unset so `auto` stays credential-gated and disabled.
+- Leave the bridge variables unset so bridge execution stays disabled.
+- Use `EXECUTION_BALANCE_OVERRIDE_USDC=10` to force a deterministic dry-run plan during the demo.
+
 ## Execution Modes
 
 - `dry-run` - evaluate policy, build a plan, and record a simulated run
@@ -177,14 +215,14 @@ pnpm worker:test
 
 ## Local Verification Flow
 
-1. Start the worker with `EXECUTION_MODE=dry-run`.
-2. Set `EXECUTION_BALANCE_OVERRIDE_USDC` to force a deterministic plan during local testing.
-3. Start the frontend and open `/dashboard`.
-4. Confirm the execution module shows the current mode, safety controls, and latest runs.
+1. Start the worker with the demo env block above.
+2. Start the frontend with the demo env block above and open `/dashboard`.
+3. Confirm the execution module shows `dry-run`, the safety controls, and the latest runs.
+4. Confirm the worker reads the live Arc Testnet `TreasuryPolicy` contract.
 5. Switch the worker to `manual-approve`.
 6. Confirm the dashboard shows a run awaiting approval.
 7. Approve or reject the run from the dashboard and verify the status updates.
-8. Leave `auto` off unless the Circle credentials exist.
+8. Keep `auto` off unless the Circle credentials exist.
 
 ## Notes
 
