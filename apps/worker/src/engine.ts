@@ -4,18 +4,34 @@ import {
   arcTestnetExplorerUrl,
   arcUsdcAddress,
   arcUsdcDecimals,
+  buildRobotIdentity,
+  createInitialJobLogs,
+  describeApprovalRequirement,
   erc20Abi,
-  selectExecutionPlan,
-  summarizeExecutionCandidate,
+  formatTreasuryJobType,
+  makeJobTimelineEvent,
+  selectTreasuryJobPlan,
+  summarizeTreasuryJobCandidate,
   treasuryPolicyContractAbi,
-  type ExecutionAvailability,
-  type ExecutionCandidate,
-  type ExecutionRunRecord,
-  type ExecutionRuntimeState,
-  type ExecutionSnapshot,
-  type ExecutionStatus,
+  type RobotAvailability,
+  type RobotExecutionMode,
+  type RobotRuntimeState,
+  type TreasuryJobCandidate,
+  type TreasuryJobRecord,
+  type TreasuryJobStatus,
+  type TreasuryJobTimelineEvent,
+  type TreasuryJobTrigger,
+  type TreasurySnapshot,
 } from '@arc-usdc-rebalancer/shared'
-import { createDefaultExecutionState, replaceRun, runById, sortRunsByNewest, touchRun, type ExecutionStore } from './store'
+import {
+  createDefaultRobotStateSnapshot,
+  createRobotStore,
+  jobById,
+  replaceJob,
+  sortJobsByNewest,
+  touchJob,
+  type RobotStore,
+} from './store'
 import { resolveWorkerConfig, type WorkerConfig } from './config'
 
 const arcTestnet = defineChain({
@@ -49,40 +65,231 @@ function formatNumber(value: bigint) {
   return Number(formatUnits(value, arcUsdcDecimals))
 }
 
-function buildAvailability(config: WorkerConfig): ExecutionAvailability {
-  return {
-    circleExecutorAvailable: config.circle.circleExecutorAvailable,
-    bridgeProviderAvailable: config.circle.bridgeProviderAvailable,
-    autoEnabled: config.circle.autoEnabled,
-    missingEnvVars: config.circle.missingEnvVars,
-  }
+function buildAvailability(config: WorkerConfig): RobotAvailability {
+  return config.availability
 }
 
-function buildRunLogs(candidate: ExecutionCandidate, status: ExecutionStatus, note?: string) {
-  const logs = [summarizeExecutionCandidate(candidate), `Status: ${status}`]
-
-  if (note) {
-    logs.push(note)
-  }
-
-  return logs
+function createLocalTxHash(jobId: string) {
+  return `0x${jobId.replace(/[^a-fA-F0-9]/g, '').padEnd(64, '0').slice(0, 64)}`
 }
 
-function createLocalTxHash(runId: string) {
-  return `0x${runId.replace(/[^a-fA-F0-9]/g, '').padEnd(64, '0').slice(0, 64)}`
-}
-
-async function submitLocalExecution(run: ExecutionRunRecord): Promise<LocalExecutionResult> {
-  const txHash = createLocalTxHash(run.id)
+async function submitLocalExecution(job: TreasuryJobRecord): Promise<LocalExecutionResult> {
+  const txHash = createLocalTxHash(job.id)
 
   return {
     txHash,
     txUrl: `${arcTestnetExplorerUrl}/tx/${txHash}`,
-    logs: ['Local test executor accepted the run.', `Prepared local transaction hash ${txHash}.`],
+    logs: [
+      'Local test executor accepted the approved job.',
+      `Prepared local transaction hash ${txHash}.`,
+    ],
   }
 }
 
-export async function readRuntimeSnapshot(config: WorkerConfig): Promise<ExecutionSnapshot> {
+function appendJobEvent(
+  job: TreasuryJobRecord,
+  status: TreasuryJobStatus,
+  message: string,
+  actor: TreasuryJobTimelineEvent['actor'] = 'robot',
+  patch: Partial<TreasuryJobRecord> = {},
+) {
+  return touchJob(job, {
+    ...patch,
+    status,
+    logs: [...job.logs, message],
+    timeline: [...job.timeline, makeJobTimelineEvent(status, message, actor)],
+  })
+}
+
+function buildJobRecord(params: {
+  id: string
+  config: WorkerConfig
+  snapshot: TreasurySnapshot
+  candidate: TreasuryJobCandidate
+  triggerSource: TreasuryJobTrigger
+  status: TreasuryJobStatus
+  executorName: TreasuryJobRecord['executor']['name']
+  executorEnabled: boolean
+  result?: string
+  failureReason?: string
+  txHash?: string
+  txUrl?: string
+  note?: string
+}): TreasuryJobRecord {
+  const now = new Date().toISOString()
+  const summary = summarizeTreasuryJobCandidate(params.candidate)
+  const createdMessage = `Robot created a ${formatTreasuryJobType(params.candidate.type).toLowerCase()} job from the live Arc Testnet snapshot.`
+  const logs = createInitialJobLogs(summary, 'created')
+  if (params.note) {
+    logs.push(params.note)
+  }
+
+  return {
+    id: params.id,
+    type: params.candidate.type,
+    amountUsdc: params.candidate.amountUsdc,
+    requestedAction: params.candidate.requestedAction,
+    parameters: params.candidate.parameters,
+    riskChecks: params.candidate.riskChecks,
+    executionMode: params.config.mode,
+    status: params.status,
+    approvalRequired: params.config.mode === 'manual-approve',
+    approvalReason: describeApprovalRequirement(params.config.mode),
+    createdAt: now,
+    updatedAt: now,
+    policyAddress: params.snapshot.policyAddress,
+    treasuryAddress: params.snapshot.treasuryAddress,
+    balanceUsdc: params.snapshot.treasuryBalanceUsdc,
+    policyMinThresholdUsdc: params.snapshot.policy.minThreshold,
+    policyTargetBalanceUsdc: params.snapshot.policy.targetBalance,
+    policyMaxRebalanceAmountUsdc: params.snapshot.policy.maxRebalanceAmount,
+    txHash: params.txHash,
+    txUrl: params.txUrl,
+    result: params.result,
+    failureReason: params.failureReason,
+    executor: {
+      name: params.executorName,
+      enabled: params.executorEnabled,
+      txHash: params.txHash,
+      txUrl: params.txUrl,
+      error: params.failureReason,
+    },
+    triggerSource: params.triggerSource,
+    logs,
+    timeline: [
+      {
+        status: 'created',
+        at: now,
+        actor: 'robot',
+        message: createdMessage,
+      },
+    ],
+  }
+}
+
+function buildDryRunJob(
+  config: WorkerConfig,
+  snapshot: TreasurySnapshot,
+  candidate: TreasuryJobCandidate,
+  triggerSource: TreasuryJobTrigger,
+) {
+  const created = buildJobRecord({
+    id: crypto.randomUUID(),
+    config,
+    snapshot,
+    candidate,
+    triggerSource,
+    status: 'created',
+    executorName: 'none',
+    executorEnabled: false,
+  })
+
+  return appendJobEvent(created, 'planned', 'Dry-run mode recorded the job without submission.', 'robot', {
+    result: 'Dry-run plan recorded. No transaction was submitted.',
+    executor: {
+      ...created.executor,
+      name: 'none',
+      enabled: false,
+    },
+  })
+}
+
+function buildManualApprovalJob(
+  config: WorkerConfig,
+  snapshot: TreasurySnapshot,
+  candidate: TreasuryJobCandidate,
+  triggerSource: TreasuryJobTrigger,
+) {
+  const created = buildJobRecord({
+    id: crypto.randomUUID(),
+    config,
+    snapshot,
+    candidate,
+    triggerSource,
+    status: 'created',
+    executorName: 'local',
+    executorEnabled: true,
+  })
+
+  const planned = appendJobEvent(created, 'planned', 'Job plan recorded and queued for approval.', 'robot', {
+    result: 'Job plan recorded. Awaiting operator approval.',
+    executor: {
+      ...created.executor,
+      name: 'local',
+      enabled: true,
+    },
+  })
+
+  return appendJobEvent(planned, 'awaiting-approval', 'Manual approval is required before submission.', 'operator', {
+    result: 'The job is waiting for operator approval.',
+    executor: {
+      ...planned.executor,
+      name: 'local',
+      enabled: true,
+    },
+  })
+}
+
+function buildAutoFailureJob(
+  config: WorkerConfig,
+  snapshot: TreasurySnapshot,
+  candidate: TreasuryJobCandidate,
+  triggerSource: TreasuryJobTrigger,
+) {
+  const created = buildJobRecord({
+    id: crypto.randomUUID(),
+    config,
+    snapshot,
+    candidate,
+    triggerSource,
+    status: 'created',
+    executorName: 'none',
+    executorEnabled: false,
+  })
+
+  const planned = appendJobEvent(created, 'planned', 'Job plan recorded for auto execution.', 'robot', {
+    result: 'Job plan recorded. Auto execution was evaluated.',
+    executor: {
+      ...created.executor,
+      name: 'none',
+      enabled: false,
+    },
+  })
+
+  const failureReason = config.availability.missingEnvVars.length > 0
+    ? `Auto execution blocked. Missing credentials: ${config.availability.missingEnvVars.join(', ')}`
+    : 'Auto execution is intentionally disabled in this build.'
+
+  return appendJobEvent(planned, 'failed', failureReason, 'system', {
+    failureReason,
+    result: 'Auto execution is disabled in the safe demo build.',
+    executor: {
+      ...planned.executor,
+      name: 'none',
+      enabled: false,
+      error: failureReason,
+    },
+  })
+}
+
+function buildStateWithFreshRobot(state: RobotRuntimeState, config: WorkerConfig): RobotRuntimeState {
+  return {
+    ...state,
+    mode: config.mode,
+    safety: config.safety,
+    availability: buildAvailability(config),
+    robot: buildRobotIdentity({
+      mode: config.mode,
+      safety: config.safety,
+      availability: buildAvailability(config),
+      jobs: state.jobs,
+      name: state.robot.name,
+    }),
+    jobs: sortJobsByNewest(state.jobs),
+  }
+}
+
+export async function readRuntimeSnapshot(config: WorkerConfig): Promise<TreasurySnapshot> {
   const publicClient = createPublicClient({
     chain: arcTestnet,
     transport: http(config.rpcUrl, {
@@ -128,97 +335,48 @@ export async function readRuntimeSnapshot(config: WorkerConfig): Promise<Executi
   }
 }
 
-function buildRunRecord(params: {
-  id: string
-  config: WorkerConfig
-  snapshot: ExecutionSnapshot
-  candidate: ExecutionCandidate
-  status: ExecutionStatus
-  triggerSource: ExecutionRunRecord['triggerSource']
-  executorName: ExecutionRunRecord['executor']['name']
-  executorEnabled: boolean
-  note?: string
-  txHash?: string
-  txUrl?: string
-  blockers?: string[]
-  safety: ExecutionRunRecord['safety']
-}): ExecutionRunRecord {
-  const now = new Date().toISOString()
-
-  return {
-    id: params.id,
-    mode: params.config.mode,
-    kind: params.candidate.kind,
-    status: params.status,
-    policyAddress: params.snapshot.policyAddress,
-    treasuryAddress: params.snapshot.treasuryAddress,
-    amountUsdc: params.candidate.amountUsdc,
-    balanceUsdc: params.snapshot.treasuryBalanceUsdc,
-    minThresholdUsdc: params.snapshot.policy.minThreshold,
-    targetBalanceUsdc: params.snapshot.policy.targetBalance,
-    destinationAddress: params.candidate.destinationAddress,
-    destinationLabel: params.candidate.destinationLabel,
-    recipients: params.candidate.recipients ?? [],
-    reason: params.candidate.reason,
-    reasonCodes: params.candidate.reasonCodes,
-    triggerSource: params.triggerSource,
-    createdAt: now,
-    lastTriggerTime: now,
-    updatedAt: now,
-    approvedAt: undefined,
-    rejectedAt: undefined,
-    submittedAt: params.status === 'submitted' ? now : undefined,
-    confirmedAt: params.status === 'confirmed' ? now : undefined,
-    simulatedAt: params.status === 'simulated' ? now : undefined,
-    failedAt: params.status === 'failed' ? now : undefined,
-    executor: {
-      name: params.executorName,
-      enabled: params.executorEnabled,
-      txHash: params.txHash,
-      txUrl: params.txUrl,
-      error: params.status === 'failed' ? params.note : undefined,
-    },
-    safety: params.safety,
-    logs: buildRunLogs(params.candidate, params.status, params.note),
-  }
-}
-
-export class ExecutionEngine {
+export class RobotEngine {
   constructor(
     private readonly config: WorkerConfig,
-    private readonly store: ExecutionStore,
+    private readonly store: RobotStore,
   ) {}
 
   static async create(config: WorkerConfig) {
     const store = await createRuntimeStore(config.statePath)
-    return new ExecutionEngine(config, store)
+    return new RobotEngine(config, store)
   }
 
-  async getState(): Promise<ExecutionRuntimeState> {
+  private decorateState(state: RobotRuntimeState): RobotRuntimeState {
+    return buildStateWithFreshRobot(state, this.config)
+  }
+
+  async getState(): Promise<RobotRuntimeState> {
     const state = await this.store.read()
-    return {
-      ...state,
-      mode: this.config.mode,
-      safety: this.config.safety,
-      availability: buildAvailability(this.config),
-    }
+    return this.decorateState(state)
   }
 
-  async refreshSnapshot(triggerSource: ExecutionRunRecord['triggerSource'] = 'schedule') {
+  async getJob(jobId: string) {
+    const state = await this.getState()
+    return jobById(state.jobs, jobId) ?? null
+  }
+
+  async refreshSnapshot(triggerSource: TreasuryJobTrigger = 'schedule') {
     const currentState = await this.getState()
     const snapshot = await readRuntimeSnapshot(this.config)
     const now = new Date()
     const availability = buildAvailability(this.config)
 
-    const plan = selectExecutionPlan({
+    const plan = selectTreasuryJobPlan({
       now,
       snapshot,
       safety: this.config.safety,
       availability,
-      latestRuns: currentState.latestRuns,
+      jobs: currentState.jobs,
+      triggerSource,
+      mode: this.config.mode,
     })
 
-    const nextState: ExecutionRuntimeState = {
+    const nextState: RobotRuntimeState = {
       ...currentState,
       snapshot,
       mode: this.config.mode,
@@ -229,183 +387,190 @@ export class ExecutionEngine {
     }
 
     if (!plan.candidate) {
-      await this.store.write({
-        ...nextState,
-        latestRuns: sortRunsByNewest(currentState.latestRuns),
-      })
-
-      return nextState
+      const persisted = this.decorateState(nextState)
+      await this.store.write(persisted)
+      return persisted
     }
 
     const candidate = plan.candidate
-    const safety = {
-      blocked: Boolean(plan.blockers.length > 0),
-      blockers: plan.blockers,
-      dailyRemainingUsdc: plan.safety.dailyRemainingUsdc,
-      cooldownRemainingMinutes: plan.safety.cooldownRemainingMinutes,
-    }
+    const nextJob =
+      this.config.mode === 'dry-run'
+        ? buildDryRunJob(this.config, snapshot, candidate, triggerSource)
+        : this.config.mode === 'manual-approve'
+          ? buildManualApprovalJob(this.config, snapshot, candidate, triggerSource)
+          : buildAutoFailureJob(this.config, snapshot, candidate, triggerSource)
 
-    if (this.config.mode === 'dry-run') {
-      const run = buildRunRecord({
-        id: crypto.randomUUID(),
-        config: this.config,
-        snapshot,
-        candidate,
-        status: 'simulated',
-        triggerSource,
-        executorName: 'local',
-        executorEnabled: false,
-        note: 'Dry run only. No transaction was submitted.',
-        blockers: plan.blockers,
-        safety,
-      })
-
-      const updatedState = {
-        ...nextState,
-        latestRuns: sortRunsByNewest([run, ...currentState.latestRuns]),
-      }
-
-      await this.store.write(updatedState)
-      return updatedState
-    }
-
-    if (this.config.mode === 'manual-approve') {
-      const run = buildRunRecord({
-        id: crypto.randomUUID(),
-        config: this.config,
-        snapshot,
-        candidate,
-        status: 'awaiting-approval',
-        triggerSource,
-        executorName: 'local',
-        executorEnabled: true,
-        note: 'Run is awaiting manual approval.',
-        blockers: plan.blockers,
-        safety,
-      })
-
-      const updatedState = {
-        ...nextState,
-        latestRuns: sortRunsByNewest([run, ...currentState.latestRuns]),
-      }
-
-      await this.store.write(updatedState)
-      return updatedState
-    }
-
-    const failedRun = buildRunRecord({
-      id: crypto.randomUUID(),
-      config: this.config,
-      snapshot,
-      candidate,
-      status: 'failed',
-      triggerSource,
-      executorName: 'none',
-      executorEnabled: false,
-      note: this.config.circle.circleExecutorAvailable
-        ? 'Auto execution is intentionally disabled in this build.'
-        : `Auto execution blocked. Missing credentials: ${this.config.circle.missingEnvVars.join(', ')}`,
-      blockers: this.config.circle.circleExecutorAvailable ? ['AUTO_EXECUTION_DISABLED'] : ['AUTO_CREDENTIALS_MISSING', ...this.config.circle.missingEnvVars],
-      safety,
-    })
-
-    const updatedState = {
+    const updatedState: RobotRuntimeState = {
       ...nextState,
-      lastError: failedRun.executor.error,
-      latestRuns: sortRunsByNewest([failedRun, ...currentState.latestRuns]),
+      jobs: sortJobsByNewest([nextJob, ...currentState.jobs]),
+      lastError: nextJob.failureReason,
+      robot: buildRobotIdentity({
+        mode: this.config.mode,
+        safety: this.config.safety,
+        availability,
+        jobs: [nextJob, ...currentState.jobs],
+        name: currentState.robot.name,
+      }),
     }
 
-    await this.store.write(updatedState)
-    return updatedState
+    const persisted = this.decorateState(updatedState)
+    await this.store.write(persisted)
+    return persisted
   }
 
-  async approveRun(runId: string) {
+  async approveJob(jobId: string) {
     return this.store.update(async (state) => {
-      const existing = runById(state.latestRuns, runId)
+      const existing = jobById(state.jobs, jobId)
 
       if (!existing) {
-        throw new Error(`Run not found: ${runId}`)
+        throw new Error(`Job not found: ${jobId}`)
       }
 
       if (existing.status !== 'awaiting-approval') {
-        throw new Error(`Run ${runId} is not awaiting approval`)
+        throw new Error(`Job ${jobId} is not awaiting approval`)
       }
 
-      const localResult = await submitLocalExecution(existing)
-      const submittedAt = new Date().toISOString()
+      const approved = appendJobEvent(existing, 'approved', 'Operator approved the treasury job.', 'operator', {
+        approvalRequired: false,
+        approvalReason: 'Approved by operator.',
+      })
 
-      const submitted = touchRun(existing, {
-        status: 'submitted',
-        approvedAt: submittedAt,
-        submittedAt,
-        executor: {
-          ...existing.executor,
-          name: 'local',
-          enabled: true,
+      const localResult = await submitLocalExecution(approved)
+      const submitted = appendJobEvent(
+        approved,
+        'submitted',
+        'Local test executor submitted the approved job.',
+        'executor',
+        {
           txHash: localResult.txHash,
           txUrl: localResult.txUrl,
+          executor: {
+            ...approved.executor,
+            name: 'local',
+            enabled: true,
+            txHash: localResult.txHash,
+            txUrl: localResult.txUrl,
+          },
+          result: 'Submitted to the local test executor.',
+          approvalRequired: false,
         },
-        logs: [...existing.logs, 'Manual approval received. Local test executor submitted the run.', ...localResult.logs],
-      })
+      )
 
-      const confirmedAt = new Date().toISOString()
-      const confirmed = touchRun(submitted, {
-        status: 'confirmed',
-        confirmedAt,
-        logs: [...submitted.logs, 'Local test executor confirmed the run.'],
-      })
+      const confirmed = appendJobEvent(
+        submitted,
+        'confirmed',
+        'Local test executor confirmed the job.',
+        'executor',
+        {
+          result: 'Confirmed by the local test executor.',
+        },
+      )
+
+      const jobs = sortJobsByNewest(replaceJob(state.jobs, confirmed))
 
       return {
         ...state,
-        latestRuns: sortRunsByNewest(replaceRun(state.latestRuns, confirmed)),
-        lastTickAt: confirmedAt,
+        jobs,
+        lastTickAt: confirmed.updatedAt,
+        lastError: undefined,
+        robot: buildRobotIdentity({
+          mode: state.mode,
+          safety: state.safety,
+          availability: state.availability,
+          jobs,
+          name: state.robot.name,
+        }),
       }
     })
   }
 
-  async rejectRun(runId: string) {
+  async rejectJob(jobId: string) {
     return this.store.update(async (state) => {
-      const existing = runById(state.latestRuns, runId)
+      const existing = jobById(state.jobs, jobId)
 
       if (!existing) {
-        throw new Error(`Run not found: ${runId}`)
+        throw new Error(`Job not found: ${jobId}`)
       }
 
       if (existing.status !== 'awaiting-approval') {
-        throw new Error(`Run ${runId} is not awaiting approval`)
+        throw new Error(`Job ${jobId} is not awaiting approval`)
       }
 
-      const rejectedAt = new Date().toISOString()
-      const rejected = touchRun(existing, {
-        status: 'rejected',
-        rejectedAt,
-        logs: [...existing.logs, 'Manual rejection received. Run will not be submitted.'],
+      const rejected = appendJobEvent(existing, 'rejected', 'Manual rejection received. The job will not be submitted.', 'operator', {
+        failureReason: 'Rejected by operator.',
+        approvalRequired: false,
       })
+
+      const jobs = sortJobsByNewest(replaceJob(state.jobs, rejected))
 
       return {
         ...state,
-        latestRuns: sortRunsByNewest(replaceRun(state.latestRuns, rejected)),
-        lastTickAt: rejectedAt,
+        jobs,
+        lastTickAt: rejected.updatedAt,
+        lastError: undefined,
+        robot: buildRobotIdentity({
+          mode: state.mode,
+          safety: state.safety,
+          availability: state.availability,
+          jobs,
+          name: state.robot.name,
+        }),
+      }
+    })
+  }
+
+  async cancelJob(jobId: string) {
+    return this.store.update(async (state) => {
+      const existing = jobById(state.jobs, jobId)
+
+      if (!existing) {
+        throw new Error(`Job not found: ${jobId}`)
+      }
+
+      if (existing.status === 'submitted' || existing.status === 'confirmed' || existing.status === 'failed') {
+        throw new Error(`Job ${jobId} can no longer be cancelled`)
+      }
+
+      const cancelled = appendJobEvent(existing, 'cancelled', 'Manual cancellation received. The job will not continue.', 'operator', {
+        result: 'Cancelled by operator.',
+        approvalRequired: false,
+      })
+
+      const jobs = sortJobsByNewest(replaceJob(state.jobs, cancelled))
+
+      return {
+        ...state,
+        jobs,
+        lastTickAt: cancelled.updatedAt,
+        lastError: undefined,
+        robot: buildRobotIdentity({
+          mode: state.mode,
+          safety: state.safety,
+          availability: state.availability,
+          jobs,
+          name: state.robot.name,
+        }),
       }
     })
   }
 }
 
 async function createRuntimeStore(statePath: string) {
-  const { createExecutionStore } = await import('./store')
-  const store = createExecutionStore(statePath)
+  const store = createRobotStore(statePath)
   const current = await store.read()
 
-  if (!current.version) {
-    await store.write(createDefaultExecutionState())
+  if (current.version !== 2) {
+    await store.write(createDefaultRobotStateSnapshot())
   }
 
   return store
 }
 
-export async function createExecutionEngineFromEnv(env = process.env) {
+export async function createRobotEngineFromEnv(env = process.env) {
   const config = resolveWorkerConfig(env)
-  const engine = await ExecutionEngine.create(config)
+  const engine = await RobotEngine.create(config)
 
   return { engine, config }
 }
+
+export { RobotEngine as ExecutionEngine, createRobotEngineFromEnv as createExecutionEngineFromEnv }

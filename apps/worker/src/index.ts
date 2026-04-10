@@ -1,11 +1,11 @@
-import { createExecutionEngineFromEnv } from './engine'
-import { createExecutionServer } from './server'
+import { createRobotEngineFromEnv } from './engine'
+import { createRobotServer } from './server'
 
 async function main() {
-  const { engine, config } = await createExecutionEngineFromEnv()
+  const { engine, config } = await createRobotEngineFromEnv()
   const port = Number(process.env.EXECUTION_API_PORT ?? 8787)
 
-  const server = createExecutionServer(engine, config)
+  const server = createRobotServer(engine, config)
 
   await new Promise<void>((resolve) => {
     server.listen(port, resolve)

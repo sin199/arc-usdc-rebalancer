@@ -12,6 +12,7 @@
     "./activity": "./src/activity.ts",
     "./erc20": "./src/erc20.ts",
     "./execution": "./src/execution.ts",
+    "./robot": "./src/robot.ts",
     "./policy": "./src/policy.ts",
     "./treasury-policy-contract": "./src/treasury-policy-contract.ts"
   }
