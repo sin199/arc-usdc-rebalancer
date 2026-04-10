@@ -1,31 +1,40 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useAccount, useBalance, useConnect, useDisconnect, useSwitchChain } from 'wagmi'
+import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  useAccount,
+  useBalance,
+  useConnect,
+  useDisconnect,
+  usePublicClient,
+  useReadContract,
+  useSwitchChain,
+  useWriteContract,
+} from 'wagmi'
 import {
   Activity,
   ArrowRightLeft,
-  CheckCircle2,
   Copy,
   ExternalLink,
+  FileText,
   RefreshCcw,
-  ShieldCheck,
+  Send,
   Wallet,
 } from 'lucide-react'
 import {
   ACTIVITY_LOG_STORAGE_KEY,
   arcTestnetChainId,
   arcTestnetExplorerUrl,
-  arcTestnetRpcUrl,
   arcUsdcAddress,
   DEFAULT_TREASURY_POLICY,
   evaluatePolicy,
   formatUsdc,
-  TREASURY_POLICY_STORAGE_KEY,
-  truncateAddress,
+  treasuryPolicyContractAbi,
+  treasuryPolicyUpdatedEvent,
   type ActivityEntry,
   type TreasuryPolicy,
-  validatePolicy,
+  truncateAddress,
 } from '@arc-usdc-rebalancer/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,7 +44,25 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { SiteHeader } from '@/components/site-header'
 import { readJson, writeJson } from '@/lib/storage'
+import {
+  arcTestnetRpcUrl,
+  formatTreasuryPolicyAmount,
+  formatTreasuryPolicyFromUnits,
+  parseTreasuryPolicyToUnits,
+  treasuryPolicyAddressConfig,
+} from '@/lib/treasury-policy'
 import { arcTestnet } from '@/lib/wagmi'
+
+type TreasuryPolicyUpdatedLog = {
+  args: {
+    owner: `0x${string}`
+    minThreshold: bigint
+    targetBalance: bigint
+    maxRebalanceAmount: bigint
+  }
+  blockNumber?: bigint
+  transactionHash?: `0x${string}`
+}
 
 function statusTone(status: 'below_min' | 'healthy' | 'above_target') {
   if (status === 'healthy') {
@@ -52,11 +79,33 @@ function formatTimestamp(value: string) {
   }).format(new Date(value))
 }
 
+function policiesEqual(left: TreasuryPolicy, right: TreasuryPolicy) {
+  return (
+    left.minThreshold === right.minThreshold &&
+    left.targetBalance === right.targetBalance &&
+    left.maxRebalanceAmount === right.maxRebalanceAmount
+  )
+}
+
+function formatTx(value?: string) {
+  if (!value) {
+    return '--'
+  }
+
+  return truncateAddress(value, 10, 8)
+}
+
 export function TreasuryDashboard() {
   const { address, chainId, isConnected } = useAccount()
   const { connectors, connectAsync, isPending: isConnecting } = useConnect()
   const { disconnect } = useDisconnect()
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain()
+  const publicClient = usePublicClient({ chainId: arcTestnet.id })
+  const { writeContractAsync, isPending: isWriting } = useWriteContract()
+  const contractAddress = treasuryPolicyAddressConfig.address
+  const walletOnArc = isConnected && chainId === arcTestnet.id
+  const walletSummary = isConnected && address ? truncateAddress(address) : 'No wallet connected'
+
   const balanceQuery = useBalance({
     address,
     chainId: arcTestnet.id,
@@ -65,14 +114,68 @@ export function TreasuryDashboard() {
     },
   })
 
-  const [policy, setPolicy] = useState<TreasuryPolicy>(DEFAULT_TREASURY_POLICY)
-  const [savedPolicy, setSavedPolicy] = useState<TreasuryPolicy>(DEFAULT_TREASURY_POLICY)
+  const policyQuery = useReadContract({
+    abi: treasuryPolicyContractAbi,
+    address: contractAddress,
+    chainId: arcTestnet.id,
+    functionName: 'getPolicy',
+    query: {
+      enabled: Boolean(contractAddress),
+    },
+  })
+
+  const ownerQuery = useReadContract({
+    abi: treasuryPolicyContractAbi,
+    address: contractAddress,
+    chainId: arcTestnet.id,
+    functionName: 'owner',
+    query: {
+      enabled: Boolean(contractAddress),
+    },
+  })
+
+  const latestPolicyEventQuery = useQuery<TreasuryPolicyUpdatedLog | null>({
+    queryKey: ['treasury-policy-latest-event', contractAddress],
+    queryFn: async () => {
+      if (!publicClient || !contractAddress) {
+        return null
+      }
+
+      const logs = await publicClient.getLogs({
+        address: contractAddress,
+        event: treasuryPolicyUpdatedEvent,
+        fromBlock: 0n,
+        toBlock: 'latest',
+      })
+
+      return (logs.at(-1) ?? null) as TreasuryPolicyUpdatedLog | null
+    },
+    enabled: Boolean(publicClient && contractAddress),
+    refetchInterval: 15_000,
+    staleTime: 5_000,
+  })
+
+  const [draftPolicy, setDraftPolicy] = useState<TreasuryPolicy>(DEFAULT_TREASURY_POLICY)
   const [activity, setActivity] = useState<ActivityEntry[]>([])
-  const [simulationMessage, setSimulationMessage] = useState<string>('Connect a wallet to simulate a rebalance.')
+  const [simulationMessage, setSimulationMessage] = useState<string>(
+    'Connect the owner wallet to submit the onchain policy update.',
+  )
   const [lastValidationError, setLastValidationError] = useState<string | null>(null)
+  const [submissionInFlight, setSubmissionInFlight] = useState(false)
+  const chainPolicyInitializedRef = useRef(false)
+
+  const chainPolicy = policyQuery.data ? formatTreasuryPolicyFromUnits(policyQuery.data) : null
+  const ownerAddress = ownerQuery.data
+  const connectedWalletIsOwner =
+    address !== undefined &&
+    ownerAddress !== undefined &&
+    address.toLowerCase() === ownerAddress.toLowerCase()
+
+  const currentPolicy = chainPolicy ?? draftPolicy
+  const evaluation = isConnected ? evaluatePolicy(Number(balanceQuery.data?.formatted ?? 0), currentPolicy) : null
+  const hasUnsavedChanges = Boolean(chainPolicy) && !policiesEqual(draftPolicy, chainPolicy as TreasuryPolicy)
 
   useEffect(() => {
-    const storedPolicy = readJson<TreasuryPolicy>(TREASURY_POLICY_STORAGE_KEY, DEFAULT_TREASURY_POLICY)
     const storedActivity = readJson<ActivityEntry[]>(ACTIVITY_LOG_STORAGE_KEY, [])
     const initialActivity =
       storedActivity.length > 0
@@ -81,24 +184,37 @@ export function TreasuryDashboard() {
             {
               id: crypto.randomUUID(),
               title: 'Dashboard ready',
-              detail: 'Local policy persistence is active and ready for Arc Testnet wallet connection.',
+              detail:
+                treasuryPolicyAddressConfig.status === 'configured'
+                  ? 'TreasuryPolicy address loaded and ready for Arc Testnet reads.'
+                  : 'Set TREASURY_POLICY_ADDRESS to load the deployed TreasuryPolicy contract.',
               createdAt: new Date().toISOString(),
-              tone: 'neutral',
+              tone: treasuryPolicyAddressConfig.status === 'configured' ? 'success' : 'warning',
             } satisfies ActivityEntry,
           ]
 
-    setPolicy(storedPolicy)
-    setSavedPolicy(storedPolicy)
     setActivity(initialActivity)
     writeJson(ACTIVITY_LOG_STORAGE_KEY, initialActivity)
   }, [])
 
-  const balanceValue = Number(balanceQuery.data?.formatted ?? 0)
-  const evaluation = isConnected ? evaluatePolicy(balanceValue, policy) : null
-  const hasUnsavedChanges =
-    policy.minThreshold !== savedPolicy.minThreshold ||
-    policy.targetBalance !== savedPolicy.targetBalance ||
-    policy.maxRebalanceAmount !== savedPolicy.maxRebalanceAmount
+  useEffect(() => {
+    if (!chainPolicy || chainPolicyInitializedRef.current) {
+      return
+    }
+
+    chainPolicyInitializedRef.current = true
+    setDraftPolicy(chainPolicy)
+  }, [chainPolicy])
+
+  useEffect(() => {
+    if (!chainPolicy) {
+      setSimulationMessage(
+        treasuryPolicyAddressConfig.status === 'configured'
+          ? 'Load the deployed policy to simulate against live Arc Testnet state.'
+          : 'Set the deployed TreasuryPolicy address to enable live policy reads and owner writes.',
+      )
+    }
+  }, [chainPolicy])
 
   function pushActivity(entry: Omit<ActivityEntry, 'id' | 'createdAt'>) {
     const nextEntry: ActivityEntry = {
@@ -120,7 +236,7 @@ export function TreasuryDashboard() {
     if (!injectedConnector) {
       pushActivity({
         title: 'No injected wallet found',
-        detail: 'Install a browser wallet such as MetaMask or Rabby, then refresh the page.',
+        detail: 'Install an injected wallet such as MetaMask or Rabby, then refresh the page.',
         tone: 'warning',
       })
       return
@@ -130,10 +246,10 @@ export function TreasuryDashboard() {
       await connectAsync({ connector: injectedConnector })
       pushActivity({
         title: 'Wallet connected',
-        detail: `Connected through ${injectedConnector.name} and ready to check Arc Testnet.`,
+        detail: `Connected through ${injectedConnector.name} and ready for Arc Testnet.`,
         tone: 'success',
       })
-      setSimulationMessage('Wallet connected. Run a policy check or simulate a rebalance.')
+      setSimulationMessage('Wallet connected. Review the onchain policy or submit the draft from the owner wallet.')
     } catch {
       pushActivity({
         title: 'Wallet connection failed',
@@ -145,7 +261,7 @@ export function TreasuryDashboard() {
 
   function handleDisconnect() {
     disconnect()
-    setSimulationMessage('Wallet disconnected. Reconnect to resume balance checks.')
+    setSimulationMessage('Wallet disconnected. Reconnect to resume policy checks and contract updates.')
     pushActivity({
       title: 'Wallet disconnected',
       detail: 'The dashboard cleared the active wallet connection.',
@@ -191,27 +307,125 @@ export function TreasuryDashboard() {
     }
   }
 
-  function handleSavePolicy() {
-    const validationError = validatePolicy(policy)
+  async function handleRefreshChainPolicy() {
+    if (!contractAddress) {
+      setLastValidationError('Set TREASURY_POLICY_ADDRESS before loading the deployed policy.')
+      pushActivity({
+        title: 'Policy refresh blocked',
+        detail: 'The deployed TreasuryPolicy address is missing or invalid.',
+        tone: 'warning',
+      })
+      return
+    }
+
+    const result = await policyQuery.refetch()
+    if (result.data) {
+      const nextPolicy = formatTreasuryPolicyFromUnits(result.data)
+      setDraftPolicy(nextPolicy)
+      setLastValidationError(null)
+      pushActivity({
+        title: 'Policy loaded from chain',
+        detail: `Min ${formatUsdc(nextPolicy.minThreshold)} | Target ${formatUsdc(nextPolicy.targetBalance)} | Max ${formatUsdc(nextPolicy.maxRebalanceAmount)}`,
+        tone: 'success',
+      })
+    }
+
+    await latestPolicyEventQuery.refetch()
+  }
+
+  async function handleSubmitPolicy() {
+    if (!isConnected) {
+      setSimulationMessage('Connect the owner wallet before submitting a policy update.')
+      return
+    }
+
+    if (!walletOnArc) {
+      setSimulationMessage('Switch the wallet to Arc Testnet before submitting the policy update.')
+      return
+    }
+
+    if (!contractAddress) {
+      setSimulationMessage('Set TREASURY_POLICY_ADDRESS before submitting a policy update.')
+      setLastValidationError('Deployed TreasuryPolicy address is missing or invalid.')
+      return
+    }
+
+    if (!connectedWalletIsOwner) {
+      setSimulationMessage('Only the contract owner wallet can submit policy updates.')
+      pushActivity({
+        title: 'Policy update blocked',
+        detail: 'The connected wallet does not match the onchain owner.',
+        tone: 'warning',
+      })
+      return
+    }
+
+    const validationError = formatValidationError(draftPolicy)
     setLastValidationError(validationError)
 
     if (validationError) {
       pushActivity({
-        title: 'Policy save blocked',
+        title: 'Policy update blocked',
         detail: validationError,
         tone: 'warning',
       })
       return
     }
 
-    setSavedPolicy(policy)
-    writeJson(TREASURY_POLICY_STORAGE_KEY, policy)
-    pushActivity({
-      title: 'Policy saved locally',
-      detail: `Min ${formatUsdc(policy.minThreshold)} | Target ${formatUsdc(policy.targetBalance)} | Max rebalance ${formatUsdc(policy.maxRebalanceAmount)}`,
-      tone: 'success',
-    })
-    setLastValidationError(null)
+    try {
+      if (!publicClient) {
+        throw new Error('Arc Testnet public client is unavailable.')
+      }
+
+      setSubmissionInFlight(true)
+      const txHash = await writeContractAsync({
+        abi: treasuryPolicyContractAbi,
+        address: contractAddress,
+        chainId: arcTestnet.id,
+        functionName: 'setPolicy',
+        args: parseTreasuryPolicyToUnits(draftPolicy),
+      })
+
+      setSimulationMessage(
+        `Policy update submitted to TreasuryPolicy. Waiting for confirmation on Arc Testnet. Tx ${formatTx(txHash)}.`,
+      )
+      pushActivity({
+        title: 'Policy update submitted',
+        detail: `TreasuryPolicy transaction sent. Tx ${formatTx(txHash)}.`,
+        tone: 'neutral',
+      })
+
+      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const nextPolicy = draftPolicy
+
+      setSimulationMessage(
+        `Policy update confirmed in block ${receipt.blockNumber?.toString() ?? 'unknown'}. The dashboard is now aligned with the latest onchain policy.`,
+      )
+      pushActivity({
+        title: 'Policy update confirmed',
+        detail: `Confirmed in block ${receipt.blockNumber?.toString() ?? 'unknown'}.`,
+        tone: 'success',
+      })
+      setLastValidationError(null)
+
+      await Promise.all([
+        policyQuery.refetch(),
+        ownerQuery.refetch(),
+        latestPolicyEventQuery.refetch(),
+      ])
+
+      setDraftPolicy(nextPolicy)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+      setSimulationMessage(`Policy update failed: ${message}`)
+      pushActivity({
+        title: 'Policy update failed',
+        detail: message,
+        tone: 'warning',
+      })
+    } finally {
+      setSubmissionInFlight(false)
+    }
   }
 
   function handleSimulateRebalance() {
@@ -220,11 +434,12 @@ export function TreasuryDashboard() {
       return
     }
 
-    const result = evaluatePolicy(balanceValue, policy)
+    const result = evaluatePolicy(Number(balanceQuery.data?.formatted ?? 0), currentPolicy)
+    const policySource = chainPolicy ? 'onchain policy' : 'draft policy'
     const summary =
       result.action === 'hold'
-        ? 'No rebalance required.'
-        : `${result.message} Contract call will later be routed to TreasuryPolicy on Arc Testnet.`
+        ? `No rebalance required. Simulation used the ${policySource}.`
+        : `${result.message} Simulation used the ${policySource}.`
 
     setSimulationMessage(summary)
     pushActivity({
@@ -235,22 +450,30 @@ export function TreasuryDashboard() {
   }
 
   const currentStatus = isConnected ? evaluation?.status ?? 'healthy' : null
-  const walletSummary = isConnected && address ? truncateAddress(address) : 'No wallet connected'
-  const policyLabel =
-    currentStatus === 'below_min'
-      ? 'Below threshold'
-      : currentStatus === 'above_target'
-        ? 'Above target'
-        : currentStatus === 'healthy'
-          ? 'Within policy'
-          : 'Awaiting wallet'
+  const policySyncBadge =
+    chainPolicy && policiesEqual(draftPolicy, chainPolicy) ? 'Synced with chain' : chainPolicy ? 'Draft differs' : 'Draft only'
+  const policySyncVariant = chainPolicy ? (policiesEqual(draftPolicy, chainPolicy) ? 'success' : 'warning') : 'outline'
+  const policyCardTitle = chainPolicy ? 'Current policy from chain' : 'Current policy unavailable'
+  const policyCardDescription =
+    treasuryPolicyAddressConfig.status === 'configured'
+      ? 'Read the deployed TreasuryPolicy contract on Arc Testnet.'
+      : 'Set TREASURY_POLICY_ADDRESS to read the deployed TreasuryPolicy contract.'
+  const contractAddressLabel =
+    treasuryPolicyAddressConfig.status === 'configured'
+      ? truncateAddress(contractAddress ?? '')
+      : treasuryPolicyAddressConfig.status === 'invalid'
+        ? 'Invalid contract address'
+        : 'Contract address missing'
+  const ownerLabel = ownerAddress ? truncateAddress(ownerAddress) : 'Loading owner'
+  const latestEvent = latestPolicyEventQuery.data
+  const latestEventLabel = latestEvent ? `Block ${latestEvent.blockNumber?.toString() ?? 'unknown'}` : 'No update event yet'
 
   return (
     <main className="min-h-screen pb-16">
       <SiteHeader
         eyebrow="Treasury dashboard"
         title="Arc USDC Rebalancer"
-        description="Monitor Arc Testnet USDC, save policy locally, and simulate treasury rebalances."
+        description="Read the deployed TreasuryPolicy, submit owner-signed updates, and simulate rebalance status against Arc Testnet."
         ctaHref="/"
         ctaLabel="Back to landing"
       />
@@ -260,72 +483,161 @@ export function TreasuryDashboard() {
           <Card>
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
-                <CardDescription>Wallet</CardDescription>
+                <CardDescription>Connected wallet</CardDescription>
                 <CardTitle className="mt-1 text-lg">{walletSummary}</CardTitle>
               </div>
               <Wallet className="h-5 w-5 text-primary" />
             </CardHeader>
-            <CardContent className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant={isConnected ? 'success' : 'outline'}>{isConnected ? 'Connected' : 'Disconnected'}</Badge>
-              {isConnected ? 'Ready for Arc Testnet actions.' : 'Connect a browser wallet to continue.'}
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={isConnected ? 'success' : 'outline'}>{isConnected ? 'Connected' : 'Disconnected'}</Badge>
+                <Badge variant={walletOnArc ? 'success' : 'warning'}>
+                  {isConnected ? (walletOnArc ? 'Arc Testnet' : 'Switch needed') : 'No wallet'}
+                </Badge>
+                <Badge variant={connectedWalletIsOwner ? 'success' : ownerAddress ? 'warning' : 'outline'}>
+                  {ownerAddress ? (connectedWalletIsOwner ? 'Owner wallet' : 'Owner required') : 'Owner loading'}
+                </Badge>
+              </div>
+              <div>{isConnected ? `Active account ${address}` : 'Connect an injected wallet to continue.'}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
-                <CardDescription>Network</CardDescription>
-                <CardTitle className="mt-1 text-lg">Arc Testnet</CardTitle>
+                <CardDescription>{policyCardTitle}</CardDescription>
+                <CardTitle className="mt-1 text-lg">{policySyncBadge}</CardTitle>
               </div>
-              <ShieldCheck className="h-5 w-5 text-primary" />
+              <FileText className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center gap-2">
-                <Badge variant={isConnected && chainId === arcTestnet.id ? 'success' : 'warning'}>
-                  {isConnected && chainId === arcTestnet.id ? 'Detected' : 'Switch needed'}
-                </Badge>
-                <span className="text-sm text-muted-foreground">Chain ID {arcTestnetChainId}</span>
+              <div className="grid gap-3 text-sm sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Min</div>
+                  <div className="mt-2 text-foreground">
+                    {chainPolicy ? `${formatUsdc(chainPolicy.minThreshold)} USDC` : '—'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target</div>
+                  <div className="mt-2 text-foreground">
+                    {chainPolicy ? `${formatUsdc(chainPolicy.targetBalance)} USDC` : '—'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max</div>
+                  <div className="mt-2 text-foreground">
+                    {chainPolicy ? `${formatUsdc(chainPolicy.maxRebalanceAmount)} USDC` : '—'}
+                  </div>
+                </div>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-                onClick={() => void handleSwitchChain()}
-                disabled={!isConnected || isSwitching}
-              >
-                <RefreshCcw className="h-4 w-4" />
-                {isSwitching ? 'Switching…' : 'Switch to Arc Testnet'}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant={policySyncVariant}>{policySyncBadge}</Badge>
+                <span>Contract {contractAddressLabel}</span>
+                <span>Owner {ownerLabel}</span>
+              </div>
+              <div className="text-sm text-muted-foreground">{policyCardDescription}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
-                <CardDescription>USDC balance</CardDescription>
+                <CardDescription>Latest PolicyUpdated event</CardDescription>
+                <CardTitle className="mt-1 text-lg">{latestEventLabel}</CardTitle>
+              </div>
+              <Activity className="h-5 w-5 text-primary" />
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              {latestEvent ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="success">Latest</Badge>
+                    <Badge variant="outline">Owner {truncateAddress(latestEvent.args.owner)}</Badge>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Min</div>
+                      <div className="mt-2 text-foreground">
+                        {formatUsdc(formatTreasuryPolicyAmount(latestEvent.args.minThreshold))} USDC
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target</div>
+                      <div className="mt-2 text-foreground">
+                        {formatUsdc(formatTreasuryPolicyAmount(latestEvent.args.targetBalance))} USDC
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max</div>
+                      <div className="mt-2 text-foreground">
+                        {formatUsdc(formatTreasuryPolicyAmount(latestEvent.args.maxRebalanceAmount))} USDC
+                      </div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Transaction</div>
+                    <div className="mt-2 break-all text-foreground">{formatTx(latestEvent.transactionHash)}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      Block {latestEvent.blockNumber?.toString() ?? 'unknown'}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
+                  No `PolicyUpdated` event has been observed yet. The latest event will appear after the first owner
+                  update on Arc Testnet.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex-row items-start justify-between space-y-0">
+              <div>
+                <CardDescription>Simulated rebalance status</CardDescription>
                 <CardTitle className="mt-1 text-lg">
-                  {isConnected ? `${formatUsdc(balanceValue)} USDC` : 'Connect wallet'}
+                  {currentStatus ? currentStatus.replace('_', ' ') : 'Awaiting wallet'}
                 </CardTitle>
               </div>
               <ArrowRightLeft className="h-5 w-5 text-primary" />
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Native Arc USDC balance for the connected address.
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex-row items-start justify-between space-y-0">
-              <div>
-                <CardDescription>Policy state</CardDescription>
-                <CardTitle className="mt-1 text-lg">{policyLabel}</CardTitle>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Balance</div>
+                  <div className="mt-2 text-foreground">
+                    {isConnected ? `${formatUsdc(Number(balanceQuery.data?.formatted ?? 0))} USDC` : 'Connect wallet'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Action</div>
+                  <div className="mt-2 text-foreground">{evaluation?.action ?? 'hold'}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Amount</div>
+                  <div className="mt-2 text-foreground">{evaluation ? `${formatUsdc(evaluation.amount)} USDC` : '--'}</div>
+                </div>
               </div>
-              <CheckCircle2 className="h-5 w-5 text-primary" />
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <div>Min {formatUsdc(policy.minThreshold)} USDC</div>
-              <div>Target {formatUsdc(policy.targetBalance)} USDC</div>
-              <div>Max rebalance {formatUsdc(policy.maxRebalanceAmount)} USDC</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={evaluation?.status === 'healthy' ? 'success' : 'warning'}>
+                  {evaluation?.status ?? 'Awaiting wallet'}
+                </Badge>
+                {evaluation?.reasonCodes.map((reasonCode) => (
+                  <Badge key={reasonCode} variant="outline">
+                    {reasonCode}
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="outline" onClick={() => void handleSimulateRebalance()} disabled={!isConnected}>
+                  <ArrowRightLeft className="h-4 w-4" />
+                  Simulate rebalance
+                </Button>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
+                {simulationMessage}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -335,7 +647,7 @@ export function TreasuryDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Wallet controls</CardTitle>
-                <CardDescription>Connect, switch network, and copy the active wallet address.</CardDescription>
+                <CardDescription>Connect, switch the wallet, and inspect the Arc Testnet deployment details.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-3">
@@ -355,6 +667,15 @@ export function TreasuryDashboard() {
                       </Button>
                     </>
                   )}
+
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleSwitchChain()}
+                    disabled={!isConnected || isSwitching}
+                  >
+                    <RefreshCcw className="h-4 w-4" />
+                    {isSwitching ? 'Switching…' : 'Switch to Arc Testnet'}
+                  </Button>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -384,8 +705,8 @@ export function TreasuryDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Treasury policy</CardTitle>
-                <CardDescription>Set the local treasury policy before you wire onchain persistence.</CardDescription>
+                <CardTitle>Policy update</CardTitle>
+                <CardDescription>Load the deployed policy, edit the draft, and submit from the owner wallet.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -394,9 +715,9 @@ export function TreasuryDashboard() {
                     <Input
                       id="minThreshold"
                       inputMode="decimal"
-                      value={policy.minThreshold}
+                      value={draftPolicy.minThreshold}
                       onChange={(event) =>
-                        setPolicy((current) => ({
+                        setDraftPolicy((current) => ({
                           ...current,
                           minThreshold: Number(event.target.value) || 0,
                         }))
@@ -409,9 +730,9 @@ export function TreasuryDashboard() {
                     <Input
                       id="targetBalance"
                       inputMode="decimal"
-                      value={policy.targetBalance}
+                      value={draftPolicy.targetBalance}
                       onChange={(event) =>
-                        setPolicy((current) => ({
+                        setDraftPolicy((current) => ({
                           ...current,
                           targetBalance: Number(event.target.value) || 0,
                         }))
@@ -424,9 +745,9 @@ export function TreasuryDashboard() {
                     <Input
                       id="maxRebalanceAmount"
                       inputMode="decimal"
-                      value={policy.maxRebalanceAmount}
+                      value={draftPolicy.maxRebalanceAmount}
                       onChange={(event) =>
-                        setPolicy((current) => ({
+                        setDraftPolicy((current) => ({
                           ...current,
                           maxRebalanceAmount: Number(event.target.value) || 0,
                         }))
@@ -437,10 +758,36 @@ export function TreasuryDashboard() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button onClick={handleSavePolicy}>Save policy locally</Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleRefreshChainPolicy()}
+                    disabled={!contractAddress || policyQuery.isFetching}
+                  >
+                    <RefreshCcw className="h-4 w-4" />
+                    {policyQuery.isFetching ? 'Loading…' : 'Load current policy'}
+                  </Button>
+                  <Button
+                    onClick={() => void handleSubmitPolicy()}
+                    disabled={
+                      !isConnected ||
+                      !walletOnArc ||
+                      !contractAddress ||
+                      !connectedWalletIsOwner ||
+                      isWriting ||
+                      submissionInFlight
+                    }
+                  >
+                    <Send className="h-4 w-4" />
+                    {isWriting || submissionInFlight ? 'Submitting…' : 'Submit policy update'}
+                  </Button>
                   <Badge variant={hasUnsavedChanges ? 'warning' : 'success'}>
-                    {hasUnsavedChanges ? 'Unsaved changes' : 'Policy saved'}
+                    {hasUnsavedChanges ? 'Draft differs from chain' : 'Draft synced'}
                   </Badge>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
+                  Only the owner wallet can call `setPolicy` on Arc Testnet. The deployed contract address comes from
+                  the frontend env config.
                 </div>
 
                 <Separator />
@@ -448,8 +795,10 @@ export function TreasuryDashboard() {
                 <div className="text-sm text-muted-foreground">
                   {lastValidationError ? (
                     <span className="text-amber-300">{lastValidationError}</span>
+                  ) : contractAddress ? (
+                    'Draft values are validated locally before the owner wallet sends the transaction.'
                   ) : (
-                    'Policy values are stored in browser local storage until contract sync is added.'
+                    'Set TREASURY_POLICY_ADDRESS before attempting any onchain policy update.'
                   )}
                 </div>
               </CardContent>
@@ -457,75 +806,27 @@ export function TreasuryDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Rebalance simulation</CardTitle>
-                <CardDescription>Use the current policy and balance to preview a treasury action.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current balance</div>
-                    <div className="mt-2 text-lg font-semibold text-foreground">
-                      {isConnected ? `${formatUsdc(balanceValue)} USDC` : 'Connect wallet'}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Action</div>
-                    <div className="mt-2 text-lg font-semibold text-foreground">{evaluation?.action ?? 'Hold'}</div>
-                  </div>
-                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Amount</div>
-                    <div className="mt-2 text-lg font-semibold text-foreground">
-                      {evaluation ? `${formatUsdc(evaluation.amount)} USDC` : '--'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button onClick={handleSimulateRebalance} disabled={!isConnected}>
-                    <ArrowRightLeft className="h-4 w-4" />
-                    Simulate rebalance
-                  </Button>
-                  <Badge variant={evaluation?.status === 'healthy' ? 'success' : 'warning'}>
-                    {evaluation?.status ?? 'Awaiting wallet'}
-                  </Badge>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
-                  {simulationMessage}
-                </div>
-
-                {evaluation ? (
-                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
-                    <div className="font-medium text-foreground">Reason codes</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {evaluation.reasonCodes.map((reasonCode) => (
-                        <Badge key={reasonCode} variant="outline">
-                          {reasonCode}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Contract readiness</CardTitle>
-                <CardDescription>Prepared for TreasuryPolicy on Arc Testnet.</CardDescription>
+                <CardTitle>Deployment notes</CardTitle>
+                <CardDescription>Keep the repo testnet-only and wire the deploy/runtime env values explicitly.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Owner-gated</div>
-                  <div className="mt-2 text-sm text-foreground">TreasuryPolicy accepts updates only from the owner.</div>
+                  <div className="mt-2 text-sm text-foreground">
+                    The contract accepts updates only from the connected owner wallet.
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Onchain mirror</div>
-                  <div className="mt-2 text-sm text-foreground">Local policy mirrors the future contract call shape.</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Arc only</div>
+                  <div className="mt-2 text-sm text-foreground">
+                    The dashboard reads and writes the Arc Testnet deployment only.
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Deploy script</div>
-                  <div className="mt-2 text-sm text-foreground">Foundry deploy script seeds policy values after broadcast.</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Env driven</div>
+                  <div className="mt-2 text-sm text-foreground">
+                    RPC URL and contract address come from the shell or `.env.local`.
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -538,12 +839,12 @@ export function TreasuryDashboard() {
                   <Activity className="h-5 w-5 text-primary" />
                   <CardTitle>Activity log</CardTitle>
                 </div>
-                <CardDescription>Recent wallet, policy, and simulation events.</CardDescription>
+                <CardDescription>Recent wallet, contract, and simulation events.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {activity.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-5 text-sm text-muted-foreground">
-                    No activity yet. Connect a wallet or save policy to begin.
+                    No activity yet. Connect a wallet or load the onchain policy to begin.
                   </div>
                 ) : (
                   activity.map((item) => (
@@ -568,18 +869,19 @@ export function TreasuryDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Deployment notes</CardTitle>
-                <CardDescription>Keep the app simple for local use and Vercel deployment.</CardDescription>
+                <CardTitle>Quick checks</CardTitle>
+                <CardDescription>What the dashboard needs before a policy update can land on Arc Testnet.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  Use the repository root for local work and set the Vercel project root directory to <span className="text-foreground">apps/web</span>.
+                  Connect the owner wallet and switch it to Arc Testnet before submitting.
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  Arc Testnet balance reads use the chain RPC directly, so no extra wallet env vars are required for the MVP.
+                  Set <span className="text-foreground">TREASURY_POLICY_ADDRESS</span> so the frontend can read and write
+                  the deployed contract.
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  The Foundry package stays independent and can be compiled or deployed separately.
+                  Use the Foundry deployment script to broadcast the contract and seed the initial policy values.
                 </div>
               </CardContent>
             </Card>
@@ -588,4 +890,20 @@ export function TreasuryDashboard() {
       </section>
     </main>
   )
+}
+
+function formatValidationError(policy: TreasuryPolicy): string | null {
+  if (!Number.isFinite(policy.minThreshold) || policy.minThreshold < 0) {
+    return 'Minimum threshold must be 0 or higher.'
+  }
+
+  if (!Number.isFinite(policy.targetBalance) || policy.targetBalance < policy.minThreshold) {
+    return 'Target balance must be at least the minimum threshold.'
+  }
+
+  if (!Number.isFinite(policy.maxRebalanceAmount) || policy.maxRebalanceAmount < 0) {
+    return 'Max rebalance amount must be 0 or higher.'
+  }
+
+  return null
 }

@@ -10,6 +10,13 @@ contract TreasuryPolicyTest {
     TreasuryPolicy private policy;
     address private other = address(0xBEEF);
 
+    event PolicyUpdated(
+        address indexed owner,
+        uint256 minThreshold,
+        uint256 targetBalance,
+        uint256 maxRebalanceAmount
+    );
+
     function setUp() public {
         policy = new TreasuryPolicy();
     }
@@ -45,5 +52,12 @@ contract TreasuryPolicyTest {
         require(minThreshold == 250, "min threshold mismatch");
         require(targetBalance == 900, "target balance mismatch");
         require(maxRebalanceAmount == 300, "max rebalance mismatch");
+    }
+
+    function testSetPolicyEmitsPolicyUpdated() public {
+        VM.expectEmit(true, true, true, true);
+        emit PolicyUpdated(address(this), 125, 550, 250);
+
+        policy.setPolicy(125, 550, 250);
     }
 }
