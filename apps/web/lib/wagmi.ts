@@ -3,9 +3,9 @@ import { createConfig, injected } from 'wagmi'
 import {
   arcTestnetChainId,
   arcTestnetExplorerUrl,
-  arcTestnetRpcUrl,
   arcUsdcDecimals,
 } from '@arc-usdc-rebalancer/shared'
+import { arcTestnetRpcUrl } from './treasury-policy'
 
 export const arcTestnet = defineChain({
   id: arcTestnetChainId,
