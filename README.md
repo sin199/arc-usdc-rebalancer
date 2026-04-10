@@ -33,6 +33,7 @@ It is not a trading bot. It helps a user:
 - Chain ID: `5042002`
 - RPC: `https://rpc.testnet.arc.network`
 - Explorer: `https://testnet.arcscan.app`
+- Deployed `TreasuryPolicy`: `0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6`
 - Native currency: `USDC`
 - Native USDC decimals: `18`
 - USDC token address used by the app: `0x3600000000000000000000000000000000000000`
@@ -43,6 +44,13 @@ Install dependencies from the repository root:
 
 ```bash
 pnpm install
+```
+
+Create `apps/web/.env.local` with the frontend runtime env vars:
+
+```bash
+ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
+TREASURY_POLICY_ADDRESS=0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6
 ```
 
 Run the frontend:
@@ -78,6 +86,10 @@ Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 - `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address from the Arc Testnet deployment
 
 The frontend treats the contract address as required for onchain policy reads and writes.
+For this deployment, set:
+
+- `ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network`
+- `TREASURY_POLICY_ADDRESS=0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6`
 
 ## Exact Commands
 
@@ -116,19 +128,18 @@ After deployment, copy the contract address from the Forge output into `apps/web
 pnpm --filter @arc-usdc-rebalancer/web dev
 ```
 
-## Manual Arc Testnet Checklist
+## Arc Testnet Demo Checklist
 
-1. Deploy `TreasuryPolicy` to Arc Testnet with the Foundry script.
-2. Put the deployed contract address into `apps/web/.env.local`.
-3. Start the frontend and open `/dashboard`.
+1. Ensure `apps/web/.env.local` contains `ARC_TESTNET_RPC_URL` and `TREASURY_POLICY_ADDRESS`.
+2. Start the frontend and open `/dashboard`.
+3. Confirm the dashboard shows the deployed `TreasuryPolicy` address and current chain policy.
 4. Connect the owner wallet that deployed the contract.
 5. Confirm the wallet badge shows the connected address and owner status.
-6. Confirm the dashboard reads the current policy from chain.
-7. Confirm the latest `PolicyUpdated` event appears after deployment or after a policy change.
-8. Edit the policy values and submit the update from the owner wallet.
-9. Confirm the transaction is accepted on Arc Testnet and the latest event refreshes.
-10. Confirm the simulated rebalance status updates when the connected balance or policy changes.
-11. Try the same update flow with a non-owner wallet and confirm the submit action is blocked.
+6. Confirm the latest `PolicyUpdated` event is visible after deployment or a policy update.
+7. Edit the policy values and submit the update from the owner wallet.
+8. Confirm the transaction is accepted on Arc Testnet and the latest event refreshes.
+9. Confirm the simulated rebalance status updates when the connected balance or policy changes.
+10. Try the same update flow with a non-owner wallet and confirm the submit action is blocked.
 
 ## GitHub And Vercel Notes
 
