@@ -2,26 +2,25 @@ import { existsSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { isAddress, type Address } from 'viem'
-import { arcTestnetRpcUrl as defaultArcTestnetRpcUrl, type ExecutionMode, type ExecutionRecipient, type ExecutionSafetyConfig } from '@arc-usdc-rebalancer/shared'
-
-export type WorkerCredentialsState = {
-  circleExecutorAvailable: boolean
-  bridgeProviderAvailable: boolean
-  autoEnabled: boolean
-  missingEnvVars: string[]
-}
+import {
+  arcTestnetRpcUrl as defaultArcTestnetRpcUrl,
+  type RobotAvailability,
+  type RobotExecutionMode,
+  type RobotSafetyConfig,
+  type TreasuryJobRecipient,
+} from '@arc-usdc-rebalancer/shared'
 
 export type WorkerConfig = {
-  mode: ExecutionMode
+  mode: RobotExecutionMode
   rpcUrl: string
   policyAddress: Address
   treasuryAddress: Address
   statePath: string
   pollIntervalMs: number
   balanceOverrideUsdc?: number
-  safety: ExecutionSafetyConfig
-  payoutRecipients: ExecutionRecipient[]
-  circle: WorkerCredentialsState
+  safety: RobotSafetyConfig
+  payoutRecipients: TreasuryJobRecipient[]
+  availability: RobotAvailability
 }
 
 function parseBoolean(value: string | undefined, fallback: boolean) {
@@ -63,7 +62,7 @@ function parseAddressList(value: string | undefined): Address[] {
     .filter((entry) => entry.length > 0 && isAddress(entry)) as Address[]
 }
 
-function parseRecipients(value: string | undefined): ExecutionRecipient[] {
+function parseRecipients(value: string | undefined): TreasuryJobRecipient[] {
   if (!value || value.trim() === '') {
     return []
   }
@@ -84,7 +83,7 @@ function parseRecipients(value: string | undefined): ExecutionRecipient[] {
           return null
         }
 
-        const recipient: ExecutionRecipient = {
+        const recipient: TreasuryJobRecipient = {
           address,
           amountUsdc: amount,
         }
@@ -96,7 +95,7 @@ function parseRecipients(value: string | undefined): ExecutionRecipient[] {
 
         return recipient
       })
-      .filter((entry): entry is ExecutionRecipient => entry !== null)
+      .filter((entry): entry is TreasuryJobRecipient => entry !== null)
   } catch {
     return []
   }
@@ -130,7 +129,7 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
     circleApiKey && circleEntitySecret && circleWalletAddress && circleWalletBlockchain,
   )
 
-  const mode = (env.EXECUTION_MODE?.trim() || 'dry-run') as ExecutionMode
+  const mode = (env.EXECUTION_MODE?.trim() || 'dry-run') as RobotExecutionMode
   const statePath = env.EXECUTION_STATE_PATH?.trim() || './data/execution-state.json'
   const pollIntervalMs = parseNumber(env.EXECUTION_POLL_INTERVAL_MS, 60_000)
   const balanceOverrideValue = env.EXECUTION_BALANCE_OVERRIDE_USDC?.trim()
@@ -163,7 +162,7 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
     )
   }
 
-  const safety: ExecutionSafetyConfig = {
+  const safety: RobotSafetyConfig = {
     globalPaused: parseBoolean(env.EXECUTION_GLOBAL_PAUSE, false),
     policyPaused: parseBoolean(env.EXECUTION_POLICY_PAUSED, false),
     emergencyStop: parseBoolean(env.EXECUTION_EMERGENCY_STOP, false),
@@ -187,7 +186,7 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
     balanceOverrideUsdc: Number.isFinite(balanceOverrideUsdc) ? balanceOverrideUsdc : undefined,
     safety,
     payoutRecipients,
-    circle: {
+    availability: {
       circleExecutorAvailable,
       bridgeProviderAvailable,
       autoEnabled: circleExecutorAvailable && mode === 'auto',

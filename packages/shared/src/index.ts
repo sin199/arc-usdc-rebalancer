@@ -1,6 +1,7 @@
 export * from './activity'
 export * from './arc'
 export * from './erc20'
+export * from './robot'
 export * from './execution'
 export * from './policy'
 export * from './treasury-policy-contract'

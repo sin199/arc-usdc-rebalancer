@@ -1,37 +1,77 @@
-# Arc USDC Rebalancer v3
+# Arc Treasury Job Robot
 
-Arc USDC Rebalancer v3 is a testnet-only stablecoin treasury execution module for Arc Testnet.
-It is not an alpha bot. It is built to stay safe by default:
+Arc Treasury Job Robot is a testnet-only stablecoin treasury operations robot for Arc Testnet.
+It is not a chat bot. It is not a speculative trading bot. It is a task-driven robot that creates,
+tracks, approves, executes, and reports treasury jobs with safe defaults.
 
-- `dry-run` is the default execution mode
-- `manual-approve` creates plans but waits for an explicit dashboard approval
-- `auto` stays disabled unless the required credentials exist
-- real execution is gated by safety controls, allowlists, and cooldown limits
+The robot defaults to `dry-run` mode and stays explicit about approval gates, safety checks, and
+execution state. Real execution is not enabled by default.
 
-The repo contains:
+## What Changed From The Old Model
 
-- a Next.js frontend for treasury policy visibility and execution approval
-- a server-side worker that polls Arc Testnet state on a schedule
-- shared execution helpers for plan generation and safety evaluation
-- Foundry contracts for the deployed `TreasuryPolicy`
+The earlier project centered on execution runs. v3 refactors that into a first-class treasury job system:
 
-## Stack
+- jobs are the main abstraction
+- the worker plans jobs from live policy and treasury state
+- the dashboard centers robot status, job center, approvals, and execution timeline
+- approvals are job-based instead of run-based
+- the API now exposes `/api/robot/status` and `/api/jobs`
 
-- Next.js
-- TypeScript
-- Tailwind CSS
-- shadcn/ui-style primitives
-- wagmi
-- viem
-- Node worker service
-- Solidity
-- Foundry
+## Supported Job Types
+
+- `rebalance`
+- `wallet-top-up`
+- `payout-batch`
+- `treasury-sweep`
+- `bridge-top-up` - clean adapter stub, disabled in the safe demo build
+- `invoice-settlement` - clean adapter stub for future workflow integration
+
+## Job Lifecycle
+
+Jobs move through these statuses:
+
+- `created`
+- `planned`
+- `awaiting-approval`
+- `approved`
+- `rejected`
+- `submitted`
+- `confirmed`
+- `failed`
+- `cancelled`
+
+Typical flows:
+
+- `dry-run`: `created` -> `planned`
+- `manual-approve`: `created` -> `planned` -> `awaiting-approval` -> `approved` -> `submitted` -> `confirmed`
+- blocked or unsupported execution: `created` -> `planned` -> `failed`
+
+## Execution Modes
+
+- `dry-run` - default mode. Plans are recorded, but nothing is submitted.
+- `manual-approve` - jobs are planned and then wait for an explicit dashboard approval.
+- `auto` - credential-gated mode. It remains disabled unless the required executor credentials are available and the build allows it.
+
+## Safety Model
+
+The robot refuses to execute when safety checks fail. The main controls are:
+
+- global pause
+- per-policy pause
+- emergency stop / kill switch
+- max execution amount
+- daily notional cap
+- cooldown period
+- destination allowlist
+
+Bridge top-up and Circle-based execution stay optional and disabled in the demo build unless their
+credentials and setup are provided.
 
 ## Repository Layout
 
-- `apps/web` - Next.js frontend
-- `apps/worker` - scheduled execution worker and JSON state API
-- `packages/shared` - shared Arc, policy, ERC20, and execution helpers
+- `apps/web` - Next.js frontend and robot dashboard
+- `apps/worker` - scheduled robot service and JSON state API
+- `packages/shared` - shared Arc, policy, ERC20, and robot/job helpers
 - `packages/contracts` - Solidity contract and Foundry scripts
 
 ## Arc Testnet Details
@@ -43,11 +83,11 @@ The repo contains:
 - Native USDC decimals: `18`
 - USDC token address used by the app: `0x3600000000000000000000000000000000000000`
 
-## Demo Setup
+## Demo Environment
 
-Use these exact values for the safe v3 demo path:
+Use these exact values for the safe demo path.
 
-### Web app
+### Web
 
 ```bash
 ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
@@ -77,156 +117,73 @@ EXECUTION_PAYOUT_BATCHES_JSON=
 EXECUTION_BRIDGE_TOP_UP_ENABLED=false
 ```
 
-- Leave the `CIRCLE_*` variables unset so `auto` stays credential-gated and disabled.
-- Leave the bridge variables unset so bridge execution stays disabled.
-- Use `EXECUTION_BALANCE_OVERRIDE_USDC=10` to force a deterministic dry-run plan during the demo.
-
-## Execution Modes
-
-- `dry-run` - evaluate policy, build a plan, and record a simulated run
-- `manual-approve` - build a plan, store it as awaiting approval, and require a dashboard action before submission
-- `auto` - reserved for credential-gated automation; stays disabled when the required executor credentials are missing
-
-## Safety Model
-
-The worker enforces these controls before it generates or submits runs:
-
-- global pause
-- per-policy pause
-- emergency stop / kill switch
-- max execution amount
-- daily notional cap
-- cooldown period
-- destination allowlist
-
-The worker also keeps execution testnet-only and records:
-
-- latest runs
-- statuses
-- trigger timestamps
-- human-readable logs
-
-## Local Setup
-
-Install dependencies from the repository root:
-
-```bash
-pnpm install
-```
-
-Start the worker:
-
-```bash
-pnpm worker:dev
-```
-
-Start the frontend:
-
-```bash
-pnpm dev
-```
-
-Open:
-
-- `http://localhost:3000`
-- `http://localhost:3000/dashboard`
-
-## Environment Variables
-
-### Frontend runtime
-
-Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
-
-- `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint used by the frontend
-- `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address
-- `NEXT_PUBLIC_EXECUTION_API_URL` - worker API base URL, for example `http://127.0.0.1:8787`
-
-### Worker runtime
-
-Copy `apps/worker/.env.example` to `apps/worker/.env` and set:
-
-- `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint used by the worker
-- `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address
-- `TREASURY_EXECUTION_ADDRESS` - Arc Testnet treasury wallet the worker polls
-- `EXECUTION_MODE` - `dry-run`, `manual-approve`, or `auto`
-- `EXECUTION_STATE_PATH` - JSON file used to persist runs and status
-- `EXECUTION_POLL_INTERVAL_MS` - schedule interval in milliseconds
-- `EXECUTION_BALANCE_OVERRIDE_USDC` - optional local test override for deterministic verification
-- `EXECUTION_GLOBAL_PAUSE` - pause all execution
-- `EXECUTION_POLICY_PAUSED` - pause the current policy
-- `EXECUTION_EMERGENCY_STOP` - kill switch
-- `EXECUTION_MAX_EXECUTION_AMOUNT_USDC` - max amount per run
-- `EXECUTION_DAILY_NOTIONAL_CAP_USDC` - max notional per day
-- `EXECUTION_COOLDOWN_MINUTES` - minimum gap between runs
-- `EXECUTION_DESTINATION_ALLOWLIST` - comma-separated allowlisted destination addresses
-- `EXECUTION_REBALANCE_DESTINATION_ADDRESS` - optional explicit destination for rebalance plans
-- `EXECUTION_PAYOUT_BATCHES_JSON` - optional payout batch array as JSON
-- `EXECUTION_BRIDGE_TOP_UP_ENABLED` - enable bridge top-up planning when bridge config exists
-
-### Optional Circle executor credentials
-
-`auto` mode is disabled unless these exist:
+Optional, future-only variables:
 
 - `CIRCLE_API_KEY`
 - `CIRCLE_ENTITY_SECRET`
 - `CIRCLE_WALLET_ADDRESS`
 - `CIRCLE_WALLET_BLOCKCHAIN`
-
-### Optional bridge planning credentials
-
-Bridge top-up planning stays disabled unless these exist:
-
 - `BRIDGE_SOURCE_CHAIN`
 - `BRIDGE_SOURCE_WALLET_ADDRESS`
 - `BRIDGE_DESTINATION_CHAIN`
 - `BRIDGE_DESTINATION_WALLET_ADDRESS`
 
-## Commands
+## Local Run Steps
 
-### Contracts build
+1. Install dependencies from the repository root.
+
+   ```bash
+   pnpm install
+   ```
+
+2. Start the worker.
+
+   ```bash
+   pnpm worker:dev
+   ```
+
+3. Start the frontend.
+
+   ```bash
+   pnpm dev
+   ```
+
+4. Open the dashboard at `http://localhost:3000/dashboard`.
+
+## Demo Flow
+
+1. Start the worker with the demo env block above.
+2. Start the frontend with the demo env block above.
+3. Open `/dashboard` and confirm the robot status, safety controls, and job center load.
+4. Click `Evaluate now` to have the worker read the live policy and create a job.
+5. Use the pending approval controls when the worker is in `manual-approve` mode.
+6. Keep `auto` off unless the credential-gated executor path is intentionally added later.
+
+## API Surface
+
+- `GET /api/robot/status`
+- `GET /api/jobs`
+- `GET /api/jobs/:id`
+- `POST /api/jobs`
+- `POST /api/jobs/:id/approve`
+- `POST /api/jobs/:id/reject`
+- `POST /api/jobs/:id/cancel`
+
+## Validation Commands
 
 ```bash
 pnpm contracts:build
-```
-
-### Contracts test
-
-```bash
 pnpm contracts:test
-```
-
-### Frontend build
-
-```bash
+pnpm worker:build
+pnpm worker:test
+pnpm worker:typecheck
+pnpm typecheck
 pnpm build
 ```
-
-### Worker build
-
-```bash
-pnpm worker:build
-```
-
-### Worker test
-
-```bash
-pnpm worker:test
-```
-
-## Local Verification Flow
-
-1. Start the worker with the demo env block above.
-2. Start the frontend with the demo env block above and open `/dashboard`.
-3. Confirm the execution module shows `dry-run`, the safety controls, and the latest runs.
-4. Confirm the worker reads the live Arc Testnet `TreasuryPolicy` contract.
-5. Switch the worker to `manual-approve`.
-6. Confirm the dashboard shows a run awaiting approval.
-7. Approve or reject the run from the dashboard and verify the status updates.
-8. Keep `auto` off unless the Circle credentials exist.
 
 ## Notes
 
 - The app stays testnet-only.
-- The worker persists execution runs to a local JSON file by default.
-- Real execution is disabled unless the required credentials exist and the mode explicitly requests `auto`.
-- Bridge execution remains optional and is left as a credential-gated extension.
+- The worker persists robot state and jobs to a local JSON file by default.
+- Real execution is disabled unless the build and credentials intentionally enable it.
+- Bridge execution remains an optional adapter and does not block the rest of the robot.

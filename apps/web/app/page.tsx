@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, ShieldCheck, Wallet, Waves } from 'lucide-react'
+import { ArrowRight, CheckSquare, ShieldCheck, Workflow } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,19 +10,19 @@ import { arcTestnetRpcUrl } from '@/lib/treasury-policy'
 
 const features = [
   {
-    icon: Wallet,
-    title: 'Wallet first',
-    description: 'Connect an injected wallet, read your address, and inspect the Arc USDC balance.',
+    icon: Workflow,
+    title: 'Robot identity',
+    description: 'A simple treasury robot identity with supported job types, current mode, and status.',
+  },
+  {
+    icon: CheckSquare,
+    title: 'Job center',
+    description: 'Jobs are created from live Arc Testnet policy reads, then tracked through approvals and execution.',
   },
   {
     icon: ShieldCheck,
-    title: 'Onchain policy',
-    description: 'Read the deployed TreasuryPolicy contract, watch PolicyUpdated events, and submit owner-only updates.',
-  },
-  {
-    icon: Waves,
-    title: 'Execution module',
-    description: 'Dry-run by default, manual approval when requested, and auto mode gated on credentials.',
+    title: 'Safety model',
+    description: 'Safe defaults, explicit approval gates, allowlists, cooldowns, and testnet-only execution.',
   },
 ]
 
@@ -31,26 +31,25 @@ export default function HomePage() {
     <main className="min-h-screen">
       <SiteHeader
         eyebrow="Arc Testnet"
-        title="Arc USDC Rebalancer v3"
-        description="A testnet-only treasury execution module with safe defaults and explicit approval gates."
+        title="Arc Treasury Job Robot"
+        description="A testnet-only treasury operations robot with job-first execution and safe defaults."
         ctaHref="/dashboard"
-        ctaLabel="Open dashboard"
+        ctaLabel="Open robot dashboard"
       />
 
       <section className="mx-auto grid w-full max-w-6xl gap-8 px-4 pb-16 pt-8 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
         <div className="space-y-8">
           <div className="space-y-5">
             <Badge variant="success" className="w-fit">
-              Built for Arc Testnet treasury operations
+              Built for stablecoin treasury operations
             </Badge>
             <div className="space-y-4">
               <h2 className="max-w-2xl font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-                A stablecoin treasury execution module for Arc Testnet, not an alpha bot.
+                A treasury job robot for Arc Testnet, not a chatbot and not a speculative bot.
               </h2>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Set a minimum threshold, a target balance, and a max rebalance amount. The dashboard reads the
-                deployed TreasuryPolicy contract, simulates policy-driven execution on Arc Testnet, and only enables
-                real execution when the worker credentials and mode allow it.
+                The robot reads the deployed TreasuryPolicy contract, plans treasury jobs from live state, tracks
+                manual approvals, and stays safe by default in dry-run mode unless operators explicitly switch modes.
               </p>
             </div>
           </div>
@@ -63,7 +62,7 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <a href={`https://docs.arc.network`} target="_blank" rel="noreferrer">
+              <a href="https://docs.arc.network" target="_blank" rel="noreferrer">
                 Read Arc docs
               </a>
             </Button>
@@ -95,7 +94,7 @@ export default function HomePage() {
                 Network snapshot
               </Badge>
               <CardTitle>Arc Testnet</CardTitle>
-              <CardDescription>Chain ID {arcTestnetChainId} with native USDC and deterministic finality.</CardDescription>
+              <CardDescription>Chain ID {arcTestnetChainId} with native USDC and deterministic execution.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -107,9 +106,9 @@ export default function HomePage() {
                 <div className="mt-1 break-all">{arcTestnetExplorerUrl}</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="font-medium text-foreground">Onchain policy</div>
+                <div className="font-medium text-foreground">Robot console</div>
                 <div className="mt-1">
-                  Treasury settings now come from the deployed TreasuryPolicy contract when the frontend address is set.
+                  Open the dashboard to inspect the robot status, job center, approval queue, and execution timeline.
                 </div>
               </div>
             </CardContent>
