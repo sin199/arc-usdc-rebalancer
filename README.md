@@ -1,15 +1,15 @@
 # Arc USDC Rebalancer
 
-Arc USDC Rebalancer is a beginner-friendly treasury dashboard for Arc Testnet.
+Arc USDC Rebalancer is a testnet-only treasury dashboard for Arc Testnet.
 It is not a trading bot. It helps a user:
 
 - connect a wallet
 - detect Arc Testnet
-- read the wallet's USDC balance
-- save a treasury policy locally
-- simulate a rebalance
-- review a small activity log
-- prepare for a future TreasuryPolicy contract integration
+- read the connected wallet's USDC balance
+- read the deployed `TreasuryPolicy` contract
+- submit policy updates from the owner wallet
+- review the latest `PolicyUpdated` event
+- simulate a rebalance against the current policy
 
 ## Stack
 
@@ -48,7 +48,7 @@ pnpm install
 Run the frontend:
 
 ```bash
-pnpm dev
+pnpm --filter @arc-usdc-rebalancer/web dev
 ```
 
 Open:
@@ -56,104 +56,89 @@ Open:
 - `http://localhost:3000`
 - `http://localhost:3000/dashboard`
 
-## Frontend Commands
-
-```bash
-pnpm --filter @arc-usdc-rebalancer/web lint
-pnpm --filter @arc-usdc-rebalancer/web typecheck
-pnpm --filter @arc-usdc-rebalancer/web build
-pnpm --filter @arc-usdc-rebalancer/web start
-```
-
-## Contract Commands
-
-The contract package uses Foundry.
-
-Install Foundry if needed:
-
-```bash
-curl -L https://foundry.paradigm.xyz | bash
-source "$HOME/.zshenv"
-foundryup
-```
-
-Build and test the contract package:
-
-```bash
-export PATH="$HOME/.foundry/bin:$PATH"
-cd packages/contracts
-forge build
-forge test
-```
-
 ## Environment Variables
 
-Frontend:
+The second PR uses explicit env-driven deployment and runtime config.
 
-- No environment variables are required for the MVP.
+### Contract deployment
 
-Contracts:
+Copy `packages/contracts/.env.example` to `packages/contracts/.env` and set:
 
 - `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint
-- `PRIVATE_KEY` - deployer private key for the Arc Testnet account
+- `PRIVATE_KEY` - deployer private key for the Arc Testnet owner wallet
 - `MIN_THRESHOLD_USDC` - policy minimum threshold in whole USDC
 - `TARGET_BALANCE_USDC` - policy target balance in whole USDC
 - `MAX_REBALANCE_AMOUNT_USDC` - maximum rebalance amount in whole USDC
 
-A sample file is available at `packages/contracts/.env.example`.
+### Frontend runtime
 
-Load the values before deploying:
+Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
+
+- `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint used by the frontend
+- `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address from the Arc Testnet deployment
+
+The frontend treats the contract address as required for onchain policy reads and writes.
+
+## Exact Commands
+
+### Forge build
+
+```bash
+cd packages/contracts
+forge build
+```
+
+### Forge test
+
+```bash
+cd packages/contracts
+forge test
+```
+
+### Deployment
 
 ```bash
 cd packages/contracts
 set -a
 source .env
 set +a
-```
-
-## Deploy to Arc Testnet
-
-Compile first:
-
-```bash
-export PATH="$HOME/.foundry/bin:$PATH"
-cd packages/contracts
-forge build
-```
-
-Deploy the contract and seed the initial policy:
-
-```bash
-export PATH="$HOME/.foundry/bin:$PATH"
-cd packages/contracts
 forge script script/DeployTreasuryPolicy.s.sol:DeployTreasuryPolicy \
   --rpc-url "$ARC_TESTNET_RPC_URL" \
-  --broadcast
+  --broadcast \
+  --private-key "$PRIVATE_KEY"
 ```
 
-The deploy script reads `PRIVATE_KEY` and the policy values from the environment.
+After deployment, copy the contract address from the Forge output into `apps/web/.env.local` as `TREASURY_POLICY_ADDRESS`.
 
-## How To Test The App
+### Frontend run
 
-1. Open the dashboard at `/dashboard`.
-2. Connect an injected wallet such as MetaMask or Rabby.
-3. Switch the wallet to Arc Testnet if prompted.
-4. Confirm the wallet address and USDC balance display correctly.
-5. Edit the treasury policy fields and save locally.
-6. Click `Simulate rebalance` to preview the treasury action.
-7. Review the activity log for saved policy and simulation events.
+```bash
+pnpm --filter @arc-usdc-rebalancer/web dev
+```
 
-If the wallet has no Arc Testnet funds, the balance card will still load but will show `0` until the account is funded.
+## Manual Arc Testnet Checklist
+
+1. Deploy `TreasuryPolicy` to Arc Testnet with the Foundry script.
+2. Put the deployed contract address into `apps/web/.env.local`.
+3. Start the frontend and open `/dashboard`.
+4. Connect the owner wallet that deployed the contract.
+5. Confirm the wallet badge shows the connected address and owner status.
+6. Confirm the dashboard reads the current policy from chain.
+7. Confirm the latest `PolicyUpdated` event appears after deployment or after a policy change.
+8. Edit the policy values and submit the update from the owner wallet.
+9. Confirm the transaction is accepted on Arc Testnet and the latest event refreshes.
+10. Confirm the simulated rebalance status updates when the connected balance or policy changes.
+11. Try the same update flow with a non-owner wallet and confirm the submit action is blocked.
 
 ## GitHub And Vercel Notes
 
 - Commit and push the repo as a normal GitHub project.
 - In Vercel, set the project root directory to `apps/web`.
-- Vercel does not need extra frontend env vars for this MVP.
+- Set the Arc runtime env values in Vercel for the frontend deployment.
 - The contract package is separate and can be deployed independently from the frontend.
 
 ## Notes
 
-- The dashboard stores policy and activity locally first.
-- Onchain integration is intentionally left for the next step.
-- The app uses Arc Testnet chain detection, not speculative market logic.
+- The dashboard reads and writes the deployed contract on Arc Testnet only.
+- The app does not claim privacy features or advanced automation.
+- The simulation panel is a local preview of policy-driven treasury behavior, not an execution engine.
