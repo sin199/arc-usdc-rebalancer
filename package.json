@@ -1,0 +1,20 @@
+{
+  "name": "arc-usdc-rebalancer",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "dev": "pnpm --filter @arc-usdc-rebalancer/web dev",
+    "build": "pnpm --filter @arc-usdc-rebalancer/web build",
+    "start": "pnpm --filter @arc-usdc-rebalancer/web start",
+    "lint": "pnpm --filter @arc-usdc-rebalancer/web lint",
+    "typecheck": "pnpm --filter @arc-usdc-rebalancer/web typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "contracts:build": "cd packages/contracts && forge build",
+    "contracts:test": "cd packages/contracts && forge test",
+    "contracts:deploy": "cd packages/contracts && forge script script/DeployTreasuryPolicy.s.sol:DeployTreasuryPolicy --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0"
+  }
+}
