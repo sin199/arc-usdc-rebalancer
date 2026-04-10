@@ -33,3 +33,16 @@ polymarket_bot/rust_bot/target/
 **/__pycache__/
 *.pyc
 *.log
+
+# Node / web app
+node_modules/
+dist/
+coverage/
+.next/
+out/
+
+# Foundry
+packages/contracts/cache/
+packages/contracts/out/
+packages/contracts/broadcast/
+packages/contracts/lib/
