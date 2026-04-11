@@ -1,4 +1,4 @@
-import { createPublicClient, defineChain, formatUnits, http } from 'viem'
+import { createPublicClient, defineChain, formatUnits, http, isAddress, type Address } from 'viem'
 import {
   arcTestnetChainId,
   arcTestnetExplorerUrl,
@@ -8,9 +8,11 @@ import {
   createInitialJobLogs,
   describeApprovalRequirement,
   erc20Abi,
+  formatUsdc,
   formatTreasuryJobType,
   makeJobTimelineEvent,
   selectTreasuryJobPlan,
+  sumRobotNotionalForDay,
   summarizeTreasuryJobCandidate,
   treasuryPolicyContractAbi,
   type RobotAvailability,
@@ -61,6 +63,14 @@ type LocalExecutionResult = {
   logs: string[]
 }
 
+type CreateJobRequest = {
+  type: TreasuryJobCandidate['type']
+  amountUsdc: number
+  destinationAddress: Address
+  executionMode: RobotExecutionMode
+  notes?: string
+}
+
 function formatNumber(value: bigint) {
   return Number(formatUnits(value, arcUsdcDecimals))
 }
@@ -86,6 +96,188 @@ async function submitLocalExecution(job: TreasuryJobRecord): Promise<LocalExecut
   }
 }
 
+function createFallbackSnapshot(config: WorkerConfig): TreasurySnapshot {
+  return {
+    policyAddress: config.policyAddress,
+    treasuryAddress: config.treasuryAddress,
+    policy: {
+      minThreshold: config.balanceOverrideUsdc ?? 0,
+      targetBalance: config.balanceOverrideUsdc ?? 0,
+      maxRebalanceAmount: config.safety.maxExecutionAmountUsdc,
+    },
+    treasuryBalanceUsdc: config.balanceOverrideUsdc ?? 0,
+    balanceSource: config.balanceOverrideUsdc !== undefined ? 'override' : 'chain',
+    balanceUpdatedAt: new Date().toISOString(),
+    payoutRecipients: [],
+  }
+}
+
+function jobDestinationLabel(type: TreasuryJobCandidate['type']) {
+  switch (type) {
+    case 'wallet-top-up':
+      return 'Treasury wallet'
+    case 'payout-batch':
+      return 'Payout recipient'
+    case 'treasury-sweep':
+      return 'Sweep destination'
+    case 'rebalance':
+      return 'Rebalance destination'
+    case 'bridge-top-up':
+      return 'Bridge destination'
+    case 'invoice-settlement':
+      return 'Invoice destination'
+  }
+}
+
+function createJobSummary(request: CreateJobRequest) {
+  const amount = formatUsdc(request.amountUsdc)
+  const destination = request.destinationAddress
+
+  switch (request.type) {
+    case 'rebalance':
+      return `Plan a rebalance of ${amount} USDC toward ${destination}.`
+    case 'wallet-top-up':
+      return `Plan a wallet top-up of ${amount} USDC into ${destination}.`
+    case 'payout-batch':
+      return `Plan a payout batch totaling ${amount} USDC for ${destination}.`
+    case 'treasury-sweep':
+      return `Plan a treasury sweep of ${amount} USDC toward ${destination}.`
+    case 'bridge-top-up':
+      return `Plan a bridge top-up of ${amount} USDC toward ${destination}.`
+    case 'invoice-settlement':
+      return `Plan an invoice settlement of ${amount} USDC for ${destination}.`
+  }
+}
+
+function createJobRiskChecks(
+  state: RobotRuntimeState,
+  request: CreateJobRequest,
+  config: WorkerConfig,
+  snapshot: TreasurySnapshot,
+): TreasuryJobCandidate['riskChecks'] {
+  const dailySpent = sumRobotNotionalForDay(state.jobs, new Date())
+  const dailyRemaining = Math.max(0, state.safety.dailyNotionalCapUsdc - dailySpent)
+  const amountWithinMax = request.amountUsdc <= state.safety.maxExecutionAmountUsdc
+  const amountWithinDaily = request.amountUsdc <= dailyRemaining
+  const allowlist = state.safety.destinationAllowlist
+  const destinationAllowed =
+    allowlist.length === 0 || allowlist.some((allowed) => allowed.toLowerCase() === request.destinationAddress.toLowerCase())
+  const autoEnabled = config.availability.autoEnabled
+
+  return [
+    {
+      code: 'JOB_TYPE',
+      label: 'Job type',
+      level: 'pass',
+      detail: `Creating a ${formatTreasuryJobType(request.type).toLowerCase()} job from the dashboard.`,
+    },
+    {
+      code: 'AMOUNT_LIMIT',
+      label: 'Amount limit',
+      level: amountWithinMax ? 'pass' : 'block',
+      detail: amountWithinMax
+        ? `Amount is within the per-job cap of ${formatUsdc(state.safety.maxExecutionAmountUsdc)} USDC.`
+        : `Amount exceeds the per-job cap of ${formatUsdc(state.safety.maxExecutionAmountUsdc)} USDC.`,
+    },
+    {
+      code: 'DAILY_CAP',
+      label: 'Daily cap',
+      level: amountWithinDaily ? 'pass' : 'block',
+      detail: amountWithinDaily
+        ? `Remaining daily capacity is ${formatUsdc(dailyRemaining)} USDC.`
+        : `Daily capacity is exhausted for the current day.`,
+    },
+    {
+      code: 'DESTINATION_ALLOWLIST',
+      label: 'Destination allowlist',
+      level: destinationAllowed ? 'pass' : 'block',
+      detail: destinationAllowed
+        ? allowlist.length === 0
+          ? 'No destination allowlist is configured.'
+          : 'Destination is on the allowlist.'
+        : `Destination ${request.destinationAddress} is not on the allowlist.`,
+    },
+    {
+      code: 'EXECUTION_MODE',
+      label: 'Execution mode',
+      level:
+        request.executionMode === 'auto'
+          ? autoEnabled
+            ? 'pass'
+            : 'block'
+          : request.executionMode === 'manual-approve'
+            ? 'warn'
+            : 'warn',
+      detail:
+        request.executionMode === 'auto'
+          ? autoEnabled
+            ? 'Auto execution is enabled for this robot.'
+            : 'Auto execution is not available in this environment.'
+          : request.executionMode === 'manual-approve'
+            ? 'Manual approval is required before the job can be submitted.'
+            : 'Dry-run mode records the job without submitting a transaction.',
+    },
+    {
+      code: 'SNAPSHOT_SOURCE',
+      label: 'Snapshot source',
+      level: snapshot.balanceSource === 'chain' || snapshot.balanceSource === 'override' ? 'pass' : 'warn',
+      detail:
+        snapshot.balanceSource === 'override'
+          ? 'Current policy snapshot uses an override balance.'
+          : 'Current policy snapshot was read from chain state.',
+    },
+  ]
+}
+
+function buildCreateJobCandidate(request: CreateJobRequest, snapshot: TreasurySnapshot): TreasuryJobCandidate {
+  const destinationLabel = jobDestinationLabel(request.type)
+  const rationale = request.notes?.trim() || 'Created manually from the dashboard.'
+  const recipients =
+    request.type === 'payout-batch'
+      ? [
+          {
+            address: request.destinationAddress,
+            amountUsdc: request.amountUsdc,
+            label: destinationLabel,
+          },
+        ]
+      : undefined
+
+  const candidate: TreasuryJobCandidate = {
+    type: request.type,
+    amountUsdc: request.amountUsdc,
+    requestedAction: {
+      summary: createJobSummary(request),
+      triggerSource: 'manual',
+      rationale,
+    },
+    parameters: {
+      amountUsdc: request.amountUsdc,
+      currentBalanceUsdc: snapshot.treasuryBalanceUsdc,
+      minThresholdUsdc: snapshot.policy.minThreshold,
+      targetBalanceUsdc: snapshot.policy.targetBalance,
+      destinationAddress: request.destinationAddress,
+      destinationLabel,
+      direction:
+        request.type === 'wallet-top-up'
+          ? 'top-up'
+          : request.type === 'treasury-sweep'
+            ? 'sweep'
+            : undefined,
+      recipients,
+      memo: request.notes?.trim() || undefined,
+    },
+    riskChecks: [],
+    reason: rationale,
+    reasonCodes: ['MANUAL_ENTRY'],
+    destinationAddress: request.destinationAddress,
+    destinationLabel,
+    recipients,
+  }
+
+  return candidate
+}
+
 function appendJobEvent(
   job: TreasuryJobRecord,
   status: TreasuryJobStatus,
@@ -107,6 +299,7 @@ function buildJobRecord(params: {
   snapshot: TreasurySnapshot
   candidate: TreasuryJobCandidate
   triggerSource: TreasuryJobTrigger
+  executionMode?: RobotExecutionMode
   status: TreasuryJobStatus
   executorName: TreasuryJobRecord['executor']['name']
   executorEnabled: boolean
@@ -118,11 +311,11 @@ function buildJobRecord(params: {
 }): TreasuryJobRecord {
   const now = new Date().toISOString()
   const summary = summarizeTreasuryJobCandidate(params.candidate)
-  const createdMessage = `Robot created a ${formatTreasuryJobType(params.candidate.type).toLowerCase()} job from the live Arc Testnet snapshot.`
   const logs = createInitialJobLogs(summary, 'created')
   if (params.note) {
     logs.push(params.note)
   }
+  const executionMode = params.executionMode ?? params.config.mode
 
   return {
     id: params.id,
@@ -131,10 +324,10 @@ function buildJobRecord(params: {
     requestedAction: params.candidate.requestedAction,
     parameters: params.candidate.parameters,
     riskChecks: params.candidate.riskChecks,
-    executionMode: params.config.mode,
+    executionMode,
     status: params.status,
-    approvalRequired: params.config.mode === 'manual-approve',
-    approvalReason: describeApprovalRequirement(params.config.mode),
+    approvalRequired: executionMode === 'manual-approve',
+    approvalReason: describeApprovalRequirement(executionMode),
     createdAt: now,
     updatedAt: now,
     policyAddress: params.snapshot.policyAddress,
@@ -161,7 +354,7 @@ function buildJobRecord(params: {
         status: 'created',
         at: now,
         actor: 'robot',
-        message: createdMessage,
+        message: `Created ${summary}`,
       },
     ],
   }
@@ -358,6 +551,100 @@ export class RobotEngine {
   async getJob(jobId: string) {
     const state = await this.getState()
     return jobById(state.jobs, jobId) ?? null
+  }
+
+  async createJob(request: CreateJobRequest) {
+    return this.store.update(async (state) => {
+      const freshState = buildStateWithFreshRobot(state, this.config)
+      const snapshot = freshState.snapshot ?? createFallbackSnapshot(this.config)
+      const candidate = buildCreateJobCandidate(request, snapshot)
+      candidate.riskChecks = createJobRiskChecks(freshState, request, this.config, snapshot)
+
+      const baseJob = buildJobRecord({
+        id: crypto.randomUUID(),
+        config: this.config,
+        snapshot,
+        candidate,
+        triggerSource: 'manual',
+        executionMode: request.executionMode,
+        status: 'created',
+        executorName: request.executionMode === 'dry-run' ? 'none' : 'local',
+        executorEnabled: request.executionMode !== 'dry-run',
+        note: request.notes?.trim() ? `Operator note: ${request.notes.trim()}` : undefined,
+      })
+
+      let finalJob = appendJobEvent(baseJob, 'planned', 'Operator created the job from the dashboard.', 'operator', {
+        result:
+          request.executionMode === 'dry-run'
+            ? 'Dry-run plan recorded. No transaction was submitted.'
+            : request.executionMode === 'manual-approve'
+              ? 'Job plan recorded. Awaiting operator approval.'
+              : 'Auto execution was evaluated.',
+      })
+
+      if (request.executionMode === 'manual-approve') {
+        finalJob = appendJobEvent(finalJob, 'awaiting-approval', 'Manual approval is required before submission.', 'operator', {
+          approvalRequired: true,
+          approvalReason: 'Manual approval is required before the job can be submitted.',
+        })
+      } else if (request.executionMode === 'auto') {
+        if (this.config.availability.autoEnabled) {
+          const localResult = await submitLocalExecution(finalJob)
+
+          finalJob = appendJobEvent(
+            finalJob,
+            'submitted',
+            'Local test executor submitted the created job.',
+            'executor',
+            {
+              txHash: localResult.txHash,
+              txUrl: localResult.txUrl,
+              executor: {
+                ...finalJob.executor,
+                name: 'local',
+                enabled: true,
+                txHash: localResult.txHash,
+                txUrl: localResult.txUrl,
+              },
+              result: 'Submitted to the local test executor.',
+              approvalRequired: false,
+            },
+          )
+
+          finalJob = appendJobEvent(finalJob, 'confirmed', 'Local test executor confirmed the job.', 'executor', {
+            result: 'Confirmed by the local test executor.',
+          })
+        } else {
+          finalJob = appendJobEvent(finalJob, 'failed', 'Auto execution is unavailable in this environment.', 'system', {
+            failureReason: 'Auto execution is unavailable in this environment.',
+            result: 'Auto execution was not performed.',
+            executor: {
+              ...finalJob.executor,
+              name: 'none',
+              enabled: false,
+              error: 'Auto execution is unavailable in this environment.',
+            },
+          })
+        }
+      }
+
+      const jobs = sortJobsByNewest([finalJob, ...freshState.jobs]).slice(0, 50)
+
+      return {
+        ...freshState,
+        snapshot,
+        lastTickAt: finalJob.updatedAt,
+        lastError: finalJob.failureReason,
+        jobs,
+        robot: buildRobotIdentity({
+          mode: this.config.mode,
+          safety: this.config.safety,
+          availability: buildAvailability(this.config),
+          jobs,
+          name: freshState.robot.name,
+        }),
+      }
+    })
   }
 
   async refreshSnapshot(triggerSource: TreasuryJobTrigger = 'schedule') {

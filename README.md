@@ -117,6 +117,23 @@ EXECUTION_PAYOUT_BATCHES_JSON=
 EXECUTION_BRIDGE_TOP_UP_ENABLED=false
 ```
 
+## Public Demo
+
+When pointing the deployed frontend at the live public worker, use:
+
+```bash
+NEXT_PUBLIC_EXECUTION_API_URL=https://wine-bacterial-only-drives.trycloudflare.com
+```
+
+The public demo worker should remain in safe mode:
+
+- `EXECUTION_MODE=manual-approve`
+- Circle executor disabled
+- bridge execution disabled
+- `EXECUTION_GLOBAL_PAUSE=false`
+- `EXECUTION_POLICY_PAUSED=false`
+- `EXECUTION_EMERGENCY_STOP=false`
+
 Optional, future-only variables:
 
 - `CIRCLE_API_KEY`
