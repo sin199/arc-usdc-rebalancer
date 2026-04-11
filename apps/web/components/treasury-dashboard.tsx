@@ -22,10 +22,21 @@ import {
   type RobotRuntimeState,
   type TreasuryJobRecord,
 } from '@arc-usdc-rebalancer/shared'
+import { CreateJobDialog } from '@/components/create-job-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { robotApiBaseUrl, approveJob, cancelJob, fetchJobById, fetchJobs, fetchRobotStatus, rejectJob, tickRobotWorker } from '@/lib/execution-api'
+import {
+  robotApiBaseUrl,
+  approveJob,
+  cancelJob,
+  fetchJobById,
+  fetchJobs,
+  fetchRobotStatus,
+  rejectJob,
+  tickRobotWorker,
+  type CreateJobRequest,
+} from '@/lib/execution-api'
 
 function formatTimestamp(value?: string) {
   if (!value) {
@@ -154,6 +165,21 @@ function timelineActorLabel(actor: TreasuryJobRecord['timeline'][number]['actor'
 export function TreasuryDashboard() {
   const queryClient = useQueryClient()
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
+  const [createJobOpen, setCreateJobOpen] = useState(false)
+  const [createJobType, setCreateJobType] = useState<CreateJobRequest['jobType']>('rebalance')
+  const [jobFlash, setJobFlash] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!jobFlash) {
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      setJobFlash(null)
+    }, 6_000)
+
+    return () => window.clearTimeout(timeout)
+  }, [jobFlash])
 
   const statusQuery = useQuery({
     queryKey: ['robot-status', robotApiBaseUrl],
@@ -279,6 +305,24 @@ export function TreasuryDashboard() {
 
   const jobApiReady = Boolean(robotApiBaseUrl)
 
+  function openCreateJob(jobType: CreateJobRequest['jobType'] = createJobType) {
+    setCreateJobType(jobType)
+    setCreateJobOpen(true)
+  }
+
+  function handleCreatedJob(job: TreasuryJobRecord) {
+    setSelectedJobId(job.id)
+
+    const statusMessage =
+      job.status === 'awaiting-approval'
+        ? 'It is waiting in Pending Approvals.'
+        : job.status === 'failed'
+          ? 'It failed during auto execution.'
+          : 'It appears in Job Center and Execution Timeline.'
+
+    setJobFlash(`Created ${formatTreasuryJobType(job.type).toLowerCase()} job. ${statusMessage}`)
+  }
+
   return (
     <main className="min-h-screen">
       <section className="mx-auto w-full max-w-7xl px-4 pb-6 pt-8 sm:px-6 lg:px-8">
@@ -298,28 +342,87 @@ export function TreasuryDashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {state ? (
-                <>
-                  <Badge variant={modeVariant(state.mode)}>{formatRobotMode(state.mode)}</Badge>
-                  <Badge variant={robotStatusVariant(state.robot.currentStatus)}>
-                    {formatRobotStatus(state.robot.currentStatus)}
-                  </Badge>
-                  <Badge variant="outline">Chain {arcTestnetChainId}</Badge>
-                </>
-              ) : (
-                <Badge variant="warning">Robot API not connected</Badge>
-              )}
-              <Button
-                variant="outline"
-                onClick={() => void tickMutation.mutateAsync()}
-                disabled={!jobApiReady || tickMutation.isPending}
-              >
-                <RefreshCcw className="h-4 w-4" />
-                {tickMutation.isPending ? 'Evaluating…' : 'Evaluate now'}
-              </Button>
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                {state ? (
+                  <>
+                    <Badge variant={modeVariant(state.mode)}>{formatRobotMode(state.mode)}</Badge>
+                    <Badge variant={robotStatusVariant(state.robot.currentStatus)}>
+                      {formatRobotStatus(state.robot.currentStatus)}
+                    </Badge>
+                    <Badge variant="outline">Chain {arcTestnetChainId}</Badge>
+                  </>
+                ) : (
+                  <Badge variant="warning">Robot API not connected</Badge>
+                )}
+                <Button
+                  type="button"
+                  onClick={() => openCreateJob()}
+                  disabled={!jobApiReady}
+                >
+                  <SquarePen className="h-4 w-4" />
+                  Create Job
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void tickMutation.mutateAsync()}
+                  disabled={!jobApiReady || tickMutation.isPending}
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  {tickMutation.isPending ? 'Evaluating…' : 'Evaluate now'}
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Quick actions</div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openCreateJob('rebalance')}
+                    disabled={!jobApiReady}
+                  >
+                    Rebalance
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openCreateJob('wallet-top-up')}
+                    disabled={!jobApiReady}
+                  >
+                    Wallet Top-up
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openCreateJob('payout-batch')}
+                    disabled={!jobApiReady}
+                  >
+                    Payout Batch
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openCreateJob('treasury-sweep')}
+                    disabled={!jobApiReady}
+                  >
+                    Treasury Sweep
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
+
+          {jobFlash ? (
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+              {jobFlash}
+            </div>
+          ) : null}
 
           {!jobApiReady ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
@@ -425,7 +528,7 @@ export function TreasuryDashboard() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <CardTitle>Job Center</CardTitle>
-                        <CardDescription>Latest job records created by the robot on its scheduled checks.</CardDescription>
+                        <CardDescription>Latest job records created by the robot or through the dashboard.</CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{jobs.length} jobs</Badge>
@@ -436,7 +539,16 @@ export function TreasuryDashboard() {
                   <CardContent className="space-y-4">
                     {latestJobs.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
-                        No jobs yet. Click evaluate to make the robot read the live policy and produce a new plan.
+                        <div>No jobs yet. Use Create Job or one of the quick actions to start the job center.</div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <Button type="button" onClick={() => openCreateJob()}>
+                            <SquarePen className="h-4 w-4" />
+                            Create Job
+                          </Button>
+                          <Button type="button" variant="outline" onClick={() => openCreateJob('rebalance')}>
+                            Rebalance
+                          </Button>
+                        </div>
                       </div>
                     ) : (
                       latestJobs.map((job) => (
@@ -675,10 +787,14 @@ export function TreasuryDashboard() {
                           <Badge variant="outline">Trigger {selectedJob.triggerSource}</Badge>
                         </div>
 
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="grid gap-3 md:grid-cols-3">
                           <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                             <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Requested action</div>
                             <div className="mt-2 text-foreground">{selectedJob.requestedAction.summary}</div>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                            <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Notes / rationale</div>
+                            <div className="mt-2 text-foreground">{selectedJob.requestedAction.rationale}</div>
                           </div>
                           <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                             <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Approval reason</div>
@@ -842,6 +958,14 @@ export function TreasuryDashboard() {
           )}
         </div>
       </section>
+
+      <CreateJobDialog
+        open={createJobOpen}
+        initialJobType={createJobType}
+        state={state ?? null}
+        onOpenChange={setCreateJobOpen}
+        onCreated={handleCreatedJob}
+      />
     </main>
   )
 }

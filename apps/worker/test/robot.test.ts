@@ -153,3 +153,67 @@ test('robot API exposes jobs and lifecycle routes', async () => {
     await api.close()
   }
 })
+
+test('job creation route persists dashboard jobs and approval flow still works', async () => {
+  const api = await startRobotApi({
+    EXECUTION_MODE: 'manual-approve',
+    EXECUTION_BALANCE_OVERRIDE_USDC: '50',
+  })
+
+  try {
+    const createResponse = await fetch(`${api.baseUrl}/api/jobs/create`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jobType: 'rebalance',
+        amountUsdc: 12.5,
+        destinationAddress: '0x0000000000000000000000000000000000000005',
+        executionMode: 'manual-approve',
+        notes: 'Create job from the dashboard form.',
+      }),
+    })
+
+    assert.equal(createResponse.status, 201)
+
+    const createdState = (await createResponse.json()) as { jobs: TreasuryJobRecord[] }
+    const createdJob = createdState.jobs[0]
+
+    assert.ok(createdJob)
+    assert.equal(createdJob.type, 'rebalance')
+    assert.equal(createdJob.status, 'awaiting-approval')
+    assert.equal(createdJob.executionMode, 'manual-approve')
+    assert.equal(createdJob.parameters.destinationAddress, '0x0000000000000000000000000000000000000005')
+    assert.ok(createdJob.requestedAction.rationale.includes('dashboard form'))
+    assert.ok(createdJob.timeline.some((entry) => entry.status === 'created'))
+    assert.ok(createdJob.timeline.some((entry) => entry.status === 'awaiting-approval'))
+
+    const jobsResponse = await fetch(`${api.baseUrl}/api/jobs`)
+    assert.equal(jobsResponse.ok, true)
+    const jobs = (await jobsResponse.json()) as TreasuryJobRecord[]
+    assert.equal(jobs[0]?.id, createdJob.id)
+
+    const detailResponse = await fetch(`${api.baseUrl}/api/jobs/${encodeURIComponent(createdJob.id)}`)
+    assert.equal(detailResponse.ok, true)
+    const detail = (await detailResponse.json()) as TreasuryJobRecord
+    assert.equal(detail.id, createdJob.id)
+
+    const approveResponse = await fetch(`${api.baseUrl}/api/jobs/${encodeURIComponent(createdJob.id)}/approve`, {
+      method: 'POST',
+    })
+    assert.equal(approveResponse.ok, true)
+    const approvedState = (await approveResponse.json()) as { jobs: TreasuryJobRecord[] }
+    assert.equal(approvedState.jobs[0]?.status, 'confirmed')
+    assert.ok(approvedState.jobs[0]?.timeline.some((entry) => entry.status === 'submitted'))
+    assert.ok(approvedState.jobs[0]?.timeline.some((entry) => entry.status === 'confirmed'))
+
+    const statusResponse = await fetch(`${api.baseUrl}/api/robot/status`)
+    assert.equal(statusResponse.ok, true)
+    const status = (await statusResponse.json()) as { robot: { currentMode: string; currentStatus: string } }
+    assert.equal(status.robot.currentMode, 'manual-approve')
+    assert.equal(status.robot.currentStatus, 'ready')
+  } finally {
+    await api.close()
+  }
+})

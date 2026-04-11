@@ -1,8 +1,19 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import { isAddress, type Address } from 'viem'
 import type { RobotEngine } from './engine'
 import type { WorkerConfig } from './config'
 
 type JsonBody = Record<string, unknown>
+type CreateJobRequest = {
+  type: 'rebalance' | 'wallet-top-up' | 'payout-batch' | 'treasury-sweep'
+  amountUsdc: number
+  destinationAddress: Address
+  executionMode: 'dry-run' | 'manual-approve' | 'auto'
+  notes?: string
+}
+
+const createJobTypes = new Set<CreateJobRequest['type']>(['rebalance', 'wallet-top-up', 'payout-batch', 'treasury-sweep'])
+const createJobExecutionModes = new Set<CreateJobRequest['executionMode']>(['dry-run', 'manual-approve', 'auto'])
 
 function setCorsHeaders(response: ServerResponse) {
   response.setHeader('Access-Control-Allow-Origin', '*')
@@ -28,6 +39,56 @@ async function readJsonBody(request: IncomingMessage): Promise<JsonBody> {
   }
 
   return JSON.parse(raw) as JsonBody
+}
+
+function parseCreateJobRequest(body: JsonBody):
+  | { ok: true; request: CreateJobRequest }
+  | { ok: false; statusCode: number; payload: { error: string; fieldErrors: Record<string, string> } } {
+  const fieldErrors: Record<string, string> = {}
+
+  const type = typeof body.jobType === 'string' ? body.jobType.trim() : ''
+  if (!createJobTypes.has(type as CreateJobRequest['type'])) {
+    fieldErrors.jobType = 'Select one of the supported treasury job types.'
+  }
+
+  const executionMode = typeof body.executionMode === 'string' ? body.executionMode.trim() : ''
+  if (!createJobExecutionModes.has(executionMode as CreateJobRequest['executionMode'])) {
+    fieldErrors.executionMode = 'Select a valid execution mode.'
+  }
+
+  const amount = typeof body.amountUsdc === 'number' ? body.amountUsdc : Number(body.amountUsdc)
+  if (!Number.isFinite(amount) || amount <= 0) {
+    fieldErrors.amountUsdc = 'Enter an amount greater than 0.'
+  }
+
+  const destinationAddress = typeof body.destinationAddress === 'string' ? body.destinationAddress.trim() : ''
+  if (!isAddress(destinationAddress)) {
+    fieldErrors.destinationAddress = 'Enter a valid 0x address.'
+  }
+
+  const notes = typeof body.notes === 'string' ? body.notes.trim() : ''
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      ok: false,
+      statusCode: 400,
+      payload: {
+        error: 'Validation failed',
+        fieldErrors,
+      },
+    }
+  }
+
+  return {
+    ok: true,
+    request: {
+      type: type as CreateJobRequest['type'],
+      amountUsdc: amount,
+      destinationAddress: destinationAddress as Address,
+      executionMode: executionMode as CreateJobRequest['executionMode'],
+      ...(notes ? { notes } : {}),
+    },
+  }
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown) {
@@ -74,6 +135,20 @@ export function createRobotServer(engine: RobotEngine, config: WorkerConfig) {
       if (request.method === 'GET' && route === '/api/jobs') {
         const state = await engine.getState()
         sendJson(response, 200, state.jobs)
+        return
+      }
+
+      if (request.method === 'POST' && route === '/api/jobs/create') {
+        const body = await readJsonBody(request)
+        const parsed = parseCreateJobRequest(body)
+
+        if (!parsed.ok) {
+          sendJson(response, parsed.statusCode, parsed.payload)
+          return
+        }
+
+        const nextState = await engine.createJob(parsed.request)
+        sendJson(response, 201, nextState)
         return
       }
 
