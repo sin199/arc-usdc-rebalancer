@@ -163,6 +163,30 @@ function timelineActorLabel(actor: TreasuryJobRecord['timeline'][number]['actor'
   }
 }
 
+const developmentSignals = [
+  {
+    title: 'Runtime convergence',
+    status: 'Active',
+    detail: 'Dashboard actions and status reads now run through the same built-in deployment API surface.',
+  },
+  {
+    title: 'Approval UX pass',
+    status: 'Queued',
+    detail: 'Pending approvals, logs, and timeline language are being tightened for operator handoff.',
+  },
+  {
+    title: 'Execution telemetry',
+    status: 'Planned',
+    detail: 'More granular success and failure traces will be exposed next so job investigations are faster.',
+  },
+]
+
+const knownEdges = [
+  'Auto execution remains intentionally gated until treasury credentials are explicitly configured.',
+  'Current balances and thresholds still reflect small testnet values while execution safety rails are exercised.',
+  'Explorer deep links appear only after a job reaches submission or confirmation.',
+]
+
 export function TreasuryDashboard() {
   const queryClient = useQueryClient()
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
@@ -301,6 +325,7 @@ export function TreasuryDashboard() {
   const pendingApprovals = jobs.filter((job) => job.status === 'awaiting-approval')
   const latestJobs = jobs.slice(0, 6)
   const supportedJobTypes = state?.robot.supportedJobTypes ?? []
+  const activeWarnings = state?.availability.missingEnvVars?.length ?? 0
 
   const jobApiReady = true
 
@@ -423,6 +448,42 @@ export function TreasuryDashboard() {
             </div>
           ) : null}
 
+          <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+            <div className="rounded-[1.75rem] border border-cyan-400/15 bg-cyan-400/5 p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-cyan-400/20 bg-cyan-400/10 text-cyan-200">
+                  Development channel
+                </Badge>
+                <Badge variant="outline">Operator console v0.3</Badge>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current sprint</div>
+                  <div className="mt-2 text-sm text-foreground">Stabilize in-app execution and make the runtime feel observable.</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Open blockers</div>
+                  <div className="mt-2 text-sm text-foreground">{activeWarnings} credential gate{activeWarnings === 1 ? '' : 's'} still blocking auto mode.</div>
+                </div>
+                <div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Next upgrade</div>
+                  <div className="mt-2 text-sm text-foreground">Richer operator notes, audit breadcrumbs, and cleaner approval handoff states.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[1.75rem] border border-white/10 bg-background/35 p-5">
+              <div className="text-xs uppercase tracking-[0.22em] text-muted-foreground">Known edges</div>
+              <div className="mt-3 grid gap-2">
+                {knownEdges.map((item) => (
+                  <div key={item} className="rounded-2xl border border-white/10 bg-card/70 px-4 py-3 text-sm text-muted-foreground">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {!hasConfiguredRobotApiBaseUrl ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
               Using the built-in robot API for this deployment. Set{' '}
@@ -444,8 +505,13 @@ export function TreasuryDashboard() {
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Robot Status</CardTitle>
-                    <CardDescription>Identity, mode, status, and live Arc Testnet snapshot.</CardDescription>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <CardTitle>Robot Status</CardTitle>
+                        <CardDescription>Identity, mode, status, and live Arc Testnet snapshot.</CardDescription>
+                      </div>
+                      <Badge variant="outline">Live runtime surface</Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4 text-sm text-muted-foreground">
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -537,6 +603,7 @@ export function TreasuryDashboard() {
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{jobs.length} jobs</Badge>
                         <Badge variant="outline">{pendingApprovals.length} pending approvals</Badge>
+                        <Badge variant="outline">{activeWarnings} env gates</Badge>
                       </div>
                     </div>
                   </CardHeader>
@@ -592,8 +659,13 @@ export function TreasuryDashboard() {
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Execution Timeline</CardTitle>
-                    <CardDescription>Chronological job lifecycle events from the robot’s internal log.</CardDescription>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <CardTitle>Execution Timeline</CardTitle>
+                        <CardDescription>Chronological job lifecycle events from the robot’s internal log.</CardDescription>
+                      </div>
+                      <Badge variant="warning">Iteration-heavy area</Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {timelineEntries.length === 0 ? (
@@ -761,6 +833,29 @@ export function TreasuryDashboard() {
                         </div>
                       ))
                     )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <CardTitle>Development Board</CardTitle>
+                        <CardDescription>Visible workstreams and rough edges that are still being tightened.</CardDescription>
+                      </div>
+                      <Badge variant="outline">Public build notes</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-sm text-muted-foreground">
+                    {developmentSignals.map((item) => (
+                      <div key={item.title} className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-medium text-foreground">{item.title}</div>
+                          <Badge variant="outline">{item.status}</Badge>
+                        </div>
+                        <div className="mt-2">{item.detail}</div>
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
 

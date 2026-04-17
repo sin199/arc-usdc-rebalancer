@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, CheckSquare, ShieldCheck, Workflow } from 'lucide-react'
+import { ArrowRight, CheckSquare, Clock3, ShieldCheck, Sparkles, Workflow, Wrench } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,12 +12,12 @@ const features = [
   {
     icon: Workflow,
     title: 'Robot identity',
-    description: 'A simple treasury robot identity with supported job types, current mode, and status.',
+    description: 'The runtime now exposes mode, status, live snapshot data, and a clearer operator-facing surface.',
   },
   {
     icon: CheckSquare,
     title: 'Job center',
-    description: 'Jobs are created from live Arc Testnet policy reads, then tracked through approvals and execution.',
+    description: 'Jobs are created from live Arc Testnet policy reads, then tracked through approvals, logs, and execution.',
   },
   {
     icon: ShieldCheck,
@@ -26,30 +26,57 @@ const features = [
   },
 ]
 
+const workstreams = [
+  {
+    icon: Sparkles,
+    title: 'Operator console refresh',
+    status: 'Shipping now',
+    detail: 'Tightening status readouts, empty states, and environment-aware banners so the dashboard feels alive.',
+  },
+  {
+    icon: Wrench,
+    title: 'Execution engine hardening',
+    status: 'In progress',
+    detail: 'Unifying the worker runtime with built-in deployment APIs to remove brittle external tunnel dependencies.',
+  },
+  {
+    icon: Clock3,
+    title: 'Review queue + audit trail',
+    status: 'Next up',
+    detail: 'Expanding approval history, logs, and lifecycle markers so each treasury action is reviewable.',
+  },
+]
+
+const changelog = [
+  'Built-in deployment API is now the default path for dashboard reads and job actions.',
+  'Vercel production and preview envs were cleaned up to remove the stale external worker URL.',
+  'Dashboard error states were narrowed so live runtime issues are easier to spot during iteration.',
+]
+
 export default function HomePage() {
   return (
     <main className="min-h-screen">
       <SiteHeader
-        eyebrow="Arc Testnet"
+        eyebrow="Dev Preview"
         title="Arc Treasury Job Robot"
-        description="A testnet-only treasury operations robot with job-first execution and safe defaults."
+        description="An actively iterating treasury operations console for Arc Testnet."
         ctaHref="/dashboard"
-        ctaLabel="Open robot dashboard"
+        ctaLabel="Open live dashboard"
       />
 
       <section className="mx-auto grid w-full max-w-6xl gap-8 px-4 pb-16 pt-8 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
         <div className="space-y-8">
           <div className="space-y-5">
-            <Badge variant="success" className="w-fit">
-              Built for stablecoin treasury operations
+            <Badge variant="warning" className="w-fit">
+              Alpha surface · shipping in public
             </Badge>
             <div className="space-y-4">
               <h2 className="max-w-2xl font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-                A treasury job robot for Arc Testnet, not a chatbot and not a speculative bot.
+                A treasury robot console that now looks and behaves like a product still under active construction.
               </h2>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                The robot reads the deployed TreasuryPolicy contract, plans treasury jobs from live state, tracks
-                manual approvals, and stays safe by default in dry-run mode unless operators explicitly switch modes.
+                The current release is focused on operator clarity: live job creation, embedded execution APIs,
+                sharper status surfaces, and a clearer roadmap for what the robot can do next on Arc Testnet.
               </p>
             </div>
           </div>
@@ -69,6 +96,56 @@ export default function HomePage() {
           </div>
 
           <Separator />
+
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <Card className="border-primary/15 bg-card/85">
+              <CardHeader>
+                <Badge variant="outline" className="w-fit border-primary/25 bg-primary/10 text-primary">
+                  Active workstreams
+                </Badge>
+                <CardTitle>What is being built right now</CardTitle>
+                <CardDescription>This repo is being run like an internal product, not parked like a static demo.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {workstreams.map((item) => (
+                  <div key={item.title} className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-foreground">{item.title}</div>
+                          <div className="text-sm text-muted-foreground">{item.detail}</div>
+                        </div>
+                      </div>
+                      <Badge variant="outline">{item.status}</Badge>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <Badge variant="warning" className="w-fit">
+                  Release notes
+                </Badge>
+                <CardTitle>Recent changes</CardTitle>
+                <CardDescription>Short-form notes that make the project feel operated and updated.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-muted-foreground">
+                {changelog.map((item, index) => (
+                  <div key={item} className="flex gap-3 rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                      {index + 1}
+                    </div>
+                    <div>{item}</div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             {features.map((feature) => (
@@ -91,12 +168,16 @@ export default function HomePage() {
           <Card className="border-primary/20 bg-card/90">
             <CardHeader>
               <Badge variant="outline" className="w-fit border-primary/25 bg-primary/10 text-primary">
-                Network snapshot
+                Development snapshot
               </Badge>
-              <CardTitle>Arc Testnet</CardTitle>
-              <CardDescription>Chain ID {arcTestnetChainId} with native USDC and deterministic execution.</CardDescription>
+              <CardTitle>Arc Testnet / Build train</CardTitle>
+              <CardDescription>Chain ID {arcTestnetChainId}, live policy reads, and an operator surface evolving in public.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="font-medium text-foreground">Build channel</div>
+                <div className="mt-1">`codex/arc-treasury-job-robot` · production-linked dev preview</div>
+              </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="font-medium text-foreground">RPC endpoint</div>
                 <div className="mt-1 break-all">{arcTestnetRpcUrl}</div>
@@ -106,9 +187,9 @@ export default function HomePage() {
                 <div className="mt-1 break-all">{arcTestnetExplorerUrl}</div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="font-medium text-foreground">Robot console</div>
+                <div className="font-medium text-foreground">Current focus</div>
                 <div className="mt-1">
-                  Open the dashboard to inspect the robot status, job center, approval queue, and execution timeline.
+                  Open the dashboard to inspect the runtime, create jobs, and track the parts of the operator workflow that are still being sharpened.
                 </div>
               </div>
             </CardContent>

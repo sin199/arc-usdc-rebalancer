@@ -14,7 +14,7 @@ export function SiteHeader({ eyebrow, title, description, ctaHref, ctaLabel }: S
   return (
     <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sm font-semibold text-primary">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-sm font-semibold text-primary shadow-[0_0_40px_-16px_rgba(16,185,129,0.55)]">
           AU
         </div>
         <div>
