@@ -2,7 +2,7 @@ import path from 'node:path'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@arc-usdc-rebalancer/shared'],
+  transpilePackages: ['@arc-usdc-rebalancer/shared', '@arc-usdc-rebalancer/worker'],
   outputFileTracingRoot: path.join(process.cwd(), '../..'),
   env: {
     ARC_TESTNET_RPC_URL: process.env.ARC_TESTNET_RPC_URL,

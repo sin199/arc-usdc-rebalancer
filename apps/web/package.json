@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@arc-usdc-rebalancer/shared": "workspace:*",
+    "@arc-usdc-rebalancer/worker": "workspace:*",
     "@radix-ui/react-slot": "^1.0.0",
     "@tanstack/react-query": "^5.0.0",
     "class-variance-authority": "^0.7.0",

@@ -27,6 +27,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
+  hasConfiguredRobotApiBaseUrl,
   robotApiBaseUrl,
   approveJob,
   cancelJob,
@@ -185,7 +186,6 @@ export function TreasuryDashboard() {
     queryKey: ['robot-status', robotApiBaseUrl],
     queryFn: fetchRobotStatus,
     refetchInterval: 15_000,
-    enabled: Boolean(robotApiBaseUrl),
     staleTime: 5_000,
   })
 
@@ -193,7 +193,6 @@ export function TreasuryDashboard() {
     queryKey: ['robot-jobs', robotApiBaseUrl],
     queryFn: fetchJobs,
     refetchInterval: 15_000,
-    enabled: Boolean(robotApiBaseUrl),
     staleTime: 5_000,
   })
 
@@ -201,7 +200,7 @@ export function TreasuryDashboard() {
     queryKey: ['robot-job', robotApiBaseUrl, selectedJobId],
     queryFn: () => (selectedJobId ? fetchJobById(selectedJobId) : null),
     refetchInterval: selectedJobId ? 15_000 : false,
-    enabled: Boolean(robotApiBaseUrl && selectedJobId),
+    enabled: Boolean(selectedJobId),
     staleTime: 5_000,
   })
 
@@ -303,7 +302,7 @@ export function TreasuryDashboard() {
   const latestJobs = jobs.slice(0, 6)
   const supportedJobTypes = state?.robot.supportedJobTypes ?? []
 
-  const jobApiReady = Boolean(robotApiBaseUrl)
+  const jobApiReady = true
 
   function openCreateJob(jobType: CreateJobRequest['jobType'] = createJobType) {
     setCreateJobType(jobType)
@@ -424,12 +423,15 @@ export function TreasuryDashboard() {
             </div>
           ) : null}
 
-          {!jobApiReady ? (
+          {!hasConfiguredRobotApiBaseUrl ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
-              Set <span className="text-foreground">NEXT_PUBLIC_EXECUTION_API_URL</span> to point the dashboard at the
-              public robot API.
+              Using the built-in robot API for this deployment. Set{' '}
+              <span className="text-foreground">NEXT_PUBLIC_EXECUTION_API_URL</span> only when pointing the dashboard at
+              an external worker.
             </div>
-          ) : statusQuery.isLoading || jobsQuery.isLoading ? (
+          ) : null}
+
+          {statusQuery.isLoading || jobsQuery.isLoading ? (
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
               Loading robot status and job history…
             </div>
@@ -506,7 +508,9 @@ export function TreasuryDashboard() {
                         </div>
                         <div>
                           <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">API endpoint</div>
-                          <div className="mt-2 break-all text-foreground">{robotApiBaseUrl || 'Not configured'}</div>
+                          <div className="mt-2 break-all text-foreground">
+                            {robotApiBaseUrl || 'Built-in deployment API (/api)'}
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -1,14 +1,13 @@
 import type { RobotExecutionMode, RobotRuntimeState, TreasuryJobRecord, TreasuryJobType } from '@arc-usdc-rebalancer/shared'
 
-export const robotApiBaseUrl = process.env.NEXT_PUBLIC_EXECUTION_API_URL?.trim().replace(/\/$/, '') || ''
+const configuredRobotApiBaseUrl = process.env.NEXT_PUBLIC_EXECUTION_API_URL?.trim().replace(/\/$/, '') || ''
+
+export const robotApiBaseUrl = configuredRobotApiBaseUrl
 export const executionApiBaseUrl = robotApiBaseUrl
+export const hasConfiguredRobotApiBaseUrl = Boolean(configuredRobotApiBaseUrl)
 
 async function requestRobotApi<T>(path: string, init?: RequestInit): Promise<T | null> {
-  if (!robotApiBaseUrl) {
-    return null
-  }
-
-  const response = await fetch(`${robotApiBaseUrl}${path}`, {
+  const response = await fetch(`${configuredRobotApiBaseUrl}${path}`, {
     cache: 'no-store',
     ...init,
     headers: {
