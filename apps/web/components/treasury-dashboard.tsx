@@ -187,6 +187,12 @@ const knownEdges = [
   'Explorer deep links appear only after a job reaches submission or confirmation.',
 ]
 
+const engineeringFeed = [
+  'Dashboard runtime is now self-hosted inside the deployment instead of depending on a temporary external tunnel.',
+  'Operator-facing copy is being rewritten to make safe-mode constraints explicit before funds ever move.',
+  'The next UI pass will focus on approval history, executor telemetry, and more legible audit breadcrumbs.',
+]
+
 export function TreasuryDashboard() {
   const queryClient = useQueryClient()
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
@@ -833,6 +839,28 @@ export function TreasuryDashboard() {
                         </div>
                       ))
                     )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <CardTitle>Engineering Feed</CardTitle>
+                        <CardDescription>Short-form notes that make the console feel actively maintained.</CardDescription>
+                      </div>
+                      <Badge variant="outline">Now shipping</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm text-muted-foreground">
+                    {engineeringFeed.map((item, index) => (
+                      <div key={item} className="flex gap-3 rounded-2xl border border-white/10 bg-background/50 p-4">
+                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+                          {index + 1}
+                        </div>
+                        <div>{item}</div>
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
 

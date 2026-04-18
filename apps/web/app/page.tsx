@@ -53,6 +53,21 @@ const changelog = [
   'Dashboard error states were narrowed so live runtime issues are easier to spot during iteration.',
 ]
 
+const projectPulse = [
+  {
+    label: 'Milestone',
+    value: 'v0.3 operator console',
+  },
+  {
+    label: 'Focus',
+    value: 'Runtime clarity over automation breadth',
+  },
+  {
+    label: 'Next milestone',
+    value: 'Review queue + execution telemetry',
+  },
+]
+
 export default function HomePage() {
   return (
     <main className="min-h-screen">
@@ -192,6 +207,24 @@ export default function HomePage() {
                   Open the dashboard to inspect the runtime, create jobs, and track the parts of the operator workflow that are still being sharpened.
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/10 bg-background/40">
+            <CardHeader>
+              <Badge variant="outline" className="w-fit">
+                Project pulse
+              </Badge>
+              <CardTitle>Release train status</CardTitle>
+              <CardDescription>Small signals that make the site read like a product someone is actively steering.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-muted-foreground">
+              {projectPulse.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-white/10 bg-card/70 p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.label}</div>
+                  <div className="mt-2 text-foreground">{item.value}</div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>
