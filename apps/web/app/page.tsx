@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowRight, ShieldCheck, Wallet, Waves } from 'lucide-react'
+import { ArrowRight, Bot, ShieldCheck, Wallet, Waves } from 'lucide-react'
 import { SiteHeader } from '@/components/site-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { arcTestnetChainId, arcTestnetExplorerUrl } from '@arc-usdc-rebalancer/shared'
 import { arcTestnetRpcUrl } from '@/lib/treasury-policy'
+import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
 
 const features = [
   {
@@ -23,6 +24,11 @@ const features = [
     icon: Waves,
     title: 'Arc ready',
     description: 'The app is wired for Arc Testnet chain detection and explicit deployment/runtime env config.',
+  },
+  {
+    icon: Bot,
+    title: 'Agent identity',
+    description: `Arc agent ${arcAgentId.toString()} is registered onchain and surfaced in the dashboard.`,
   },
 ]
 
@@ -42,6 +48,9 @@ export default function HomePage() {
           <div className="space-y-5">
             <Badge variant="success" className="w-fit">
               Built for Arc Testnet treasury operations
+            </Badge>
+            <Badge variant="outline" className="w-fit border-primary/25 bg-primary/10 text-primary">
+              Arc agent {arcAgentId.toString()} · {arcAgentValidationTag}
             </Badge>
             <div className="space-y-4">
               <h2 className="max-w-2xl font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
@@ -71,7 +80,7 @@ export default function HomePage() {
 
           <Separator />
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {features.map((feature) => (
               <Card key={feature.title} className="h-full">
                 <CardHeader>

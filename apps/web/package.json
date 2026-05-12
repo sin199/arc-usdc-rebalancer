@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "circle:bootstrap": "node ./scripts/bootstrap-circle-control-plane.mjs",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "10.3.0",
     "@arc-usdc-rebalancer/shared": "workspace:*",
     "@radix-ui/react-slot": "^1.0.0",
     "@tanstack/react-query": "^5.0.0",
