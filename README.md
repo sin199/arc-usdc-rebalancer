@@ -1,206 +1,157 @@
-# Arc Treasury Job Robot
+# Arc USDC Rebalancer
 
-Arc Treasury Job Robot is a testnet-only stablecoin treasury operations robot for Arc Testnet.
-It is not a chat bot. It is not a speculative trading bot. It is a task-driven robot that creates,
-tracks, approves, executes, and reports treasury jobs with safe defaults.
+Public Arc Testnet treasury demo with a live agent, Circle wallets/Gateway readiness, and operator-gated execution.
 
-The robot defaults to `dry-run` mode and stays explicit about approval gates, safety checks, and
-execution state. Real execution is not enabled by default.
+Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
+Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
 
-## What Changed From The Old Model
+## What this repo shows
 
-The earlier project centered on execution runs. v3 refactors that into a first-class treasury job system:
+- A public demo mode that visitors can use without a wallet.
+- A live operator mode for signed Arc Testnet actions.
+- A treasury policy and executor flow on Arc Testnet.
+- An Arc agent identity and brief surfaced inside the dashboard.
+- Circle developer-controlled wallet and Gateway readiness for USDC routing.
+- A single dashboard that ties the agent, policy, wallet layer, and execution rail together.
 
-- jobs are the main abstraction
-- the worker plans jobs from live policy and treasury state
-- the dashboard centers robot status, job center, approvals, and execution timeline
-- approvals are job-based instead of run-based
-- the API now exposes `/api/robot/status` and `/api/jobs`
+## Why this exists
 
-## Supported Job Types
+The repo is built to show a concrete Arc-native workflow:
 
-- `rebalance`
-- `wallet-top-up`
-- `payout-batch`
-- `treasury-sweep`
-- `bridge-top-up` - clean adapter stub, disabled in the safe demo build
-- `invoice-settlement` - clean adapter stub for future workflow integration
+1. Read the live TreasuryPolicy state on Arc Testnet.
+2. Preview and simulate treasury scenarios in public demo mode.
+3. Surface agent identity and a brief that recommends the next action.
+4. Switch to live operator mode only when a signed onchain action is needed.
+5. Keep Circle wallets and Gateway visible as part of the same USDC stack.
 
-## Job Lifecycle
+## Arc surface
 
-Jobs move through these statuses:
+The dashboard currently exposes these Arc-specific surfaces:
 
-- `created`
-- `planned`
-- `awaiting-approval`
-- `approved`
-- `rejected`
-- `submitted`
-- `confirmed`
-- `failed`
-- `cancelled`
+- Arc Testnet chain state and RPC
+- TreasuryPolicy reads and owner-gated updates
+- TreasuryExecutor for USDC movement
+- Arc agent identity, validation, and operational brief
+- Circle control plane for wallets and Gateway
+- Public demo mode for unauthenticated visitors
+- Live operator mode for signed execution
 
-Typical flows:
+## Architecture
 
-- `dry-run`: `created` -> `planned`
-- `manual-approve`: `created` -> `planned` -> `awaiting-approval` -> `approved` -> `submitted` -> `confirmed`
-- blocked or unsupported execution: `created` -> `planned` -> `failed`
+```mermaid
+flowchart LR
+  Visitor["Visitor"] --> UI["Arc USDC Rebalancer"]
+  UI --> Demo["Public demo mode"]
+  UI --> Agent["Arc agent identity + brief"]
+  UI --> Policy["TreasuryPolicy"]
+  UI --> Executor["TreasuryExecutor"]
+  UI --> Circle["Circle wallets + Gateway"]
+  UI --> Live["Live operator mode"]
+  Live --> Policy
+  Live --> Executor
+  Circle --> Executor
+  Policy --> Arc["Arc Testnet"]
+  Executor --> Arc
+```
 
-## Execution Modes
+## Repo layout
 
-- `dry-run` - default mode. Plans are recorded, but nothing is submitted.
-- `manual-approve` - jobs are planned and then wait for an explicit dashboard approval.
-- `auto` - credential-gated mode. It remains disabled unless the required executor credentials are available and the build allows it.
+- `apps/web` - Next.js dashboard and API routes.
+- `packages/contracts` - Solidity contracts and Foundry scripts.
+- `packages/shared` - Arc, Circle, policy, and execution helpers.
 
-## Safety Model
+## Quick start
 
-The robot refuses to execute when safety checks fail. The main controls are:
+Install dependencies from the repository root:
 
-- global pause
-- per-policy pause
-- emergency stop / kill switch
-- max execution amount
-- daily notional cap
-- cooldown period
-- destination allowlist
+```bash
+pnpm install
+```
 
-Bridge top-up and Circle-based execution stay optional and disabled in the demo build unless their
-credentials and setup are provided.
+Run the frontend:
 
-## Repository Layout
+```bash
+pnpm --filter @arc-usdc-rebalancer/web dev
+```
 
-- `apps/web` - Next.js frontend and robot dashboard
-- `apps/worker` - scheduled robot service and JSON state API
-- `packages/shared` - shared Arc, policy, ERC20, and robot/job helpers
-- `packages/contracts` - Solidity contract and Foundry scripts
+Open:
 
-## Arc Testnet Details
+- `http://localhost:3000`
+- `http://localhost:3000/dashboard`
+
+## Arc Testnet details
 
 - Chain ID: `5042002`
 - RPC: `https://rpc.testnet.arc.network`
 - Explorer: `https://testnet.arcscan.app`
 - Native currency: `USDC`
-- Native USDC decimals: `18`
 - USDC token address used by the app: `0x3600000000000000000000000000000000000000`
 
-## Demo Environment
+## Environment variables
 
-Use these exact values for the safe demo path.
+### Frontend runtime
 
-### Web
+Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 
-```bash
-ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
-TREASURY_POLICY_ADDRESS=0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6
-NEXT_PUBLIC_EXECUTION_API_URL=http://127.0.0.1:8787
-```
+- `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint used by the frontend
+- `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address
+- `TREASURY_EXECUTOR_ADDRESS` - deployed `TreasuryExecutor` contract address
+- `NEXT_PUBLIC_EXECUTION_API_URL` - optional legacy robot API base for the job center surface
+- `NEXT_PUBLIC_CIRCLE_WALLET_SET_ID` - optional wallet set to surface in the dashboard
+- `CIRCLE_API_KEY` - Circle developer API key for server-side wallet operations
+- `CIRCLE_ENTITY_SECRET` - Circle entity secret for dev-controlled wallet creation and signing
+- `CIRCLE_WALLET_SET_ID` - optional Circle wallet set to reuse for live wallet listing
+- `CIRCLE_WALLET_SET_NAME` - wallet set name used when the dashboard creates a new set
+- `CIRCLE_WALLET_NAME` - wallet name used when the dashboard creates a new wallet
+- `CIRCLE_WALLET_BLOCKCHAIN` - target blockchain for the created wallet, default `ARC-TESTNET`
+- `CIRCLE_WALLET_ACCOUNT_TYPE` - `EOA` or `SCA`
+- `CIRCLE_GATEWAY_API_BASE` - Gateway API base, default testnet endpoint
+- `CIRCLE_GATEWAY_SOURCE_DOMAIN` - Gateway source domain, default `26` for Arc Testnet
+- `CIRCLE_GATEWAY_DESTINATION_DOMAIN` - Gateway destination domain, default `6` for Base Sepolia
+- `OWNER_PRIVATE_KEY` - Arc Testnet agent owner wallet key used by the activation route
+- `VALIDATOR_PRIVATE_KEY` - Arc Testnet validator wallet key used by the activation route
 
-### Worker
+### Contract deployment
 
-```bash
-ARC_TESTNET_RPC_URL=https://rpc.testnet.arc.network
-TREASURY_POLICY_ADDRESS=0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6
-TREASURY_EXECUTION_ADDRESS=0x0000000000000000000000000000000000000004
-EXECUTION_MODE=dry-run
-EXECUTION_STATE_PATH=./data/execution-state.json
-EXECUTION_BALANCE_OVERRIDE_USDC=10
-EXECUTION_POLL_INTERVAL_MS=60000
-EXECUTION_GLOBAL_PAUSE=false
-EXECUTION_POLICY_PAUSED=false
-EXECUTION_EMERGENCY_STOP=false
-EXECUTION_MAX_EXECUTION_AMOUNT_USDC=1000
-EXECUTION_DAILY_NOTIONAL_CAP_USDC=5000
-EXECUTION_COOLDOWN_MINUTES=30
-EXECUTION_DESTINATION_ALLOWLIST=
-EXECUTION_REBALANCE_DESTINATION_ADDRESS=
-EXECUTION_PAYOUT_BATCHES_JSON=
-EXECUTION_BRIDGE_TOP_UP_ENABLED=false
-```
+Copy `packages/contracts/.env.example` to `packages/contracts/.env` and set:
 
-## Public Demo
+- `ARC_TESTNET_RPC_URL`
+- `PRIVATE_KEY`
+- `MIN_THRESHOLD_USDC`
+- `TARGET_BALANCE_USDC`
+- `MAX_REBALANCE_AMOUNT_USDC`
 
-When pointing the deployed frontend at the live public worker, use:
+## Circle bootstrap
 
-```bash
-NEXT_PUBLIC_EXECUTION_API_URL=https://wine-bacterial-only-drives.trycloudflare.com
-```
-
-The public demo worker should remain in safe mode:
-
-- `EXECUTION_MODE=manual-approve`
-- Circle executor disabled
-- bridge execution disabled
-- `EXECUTION_GLOBAL_PAUSE=false`
-- `EXECUTION_POLICY_PAUSED=false`
-- `EXECUTION_EMERGENCY_STOP=false`
-
-Optional, future-only variables:
-
-- `CIRCLE_API_KEY`
-- `CIRCLE_ENTITY_SECRET`
-- `CIRCLE_WALLET_ADDRESS`
-- `CIRCLE_WALLET_BLOCKCHAIN`
-- `BRIDGE_SOURCE_CHAIN`
-- `BRIDGE_SOURCE_WALLET_ADDRESS`
-- `BRIDGE_DESTINATION_CHAIN`
-- `BRIDGE_DESTINATION_WALLET_ADDRESS`
-
-## Local Run Steps
-
-1. Install dependencies from the repository root.
-
-   ```bash
-   pnpm install
-   ```
-
-2. Start the worker.
-
-   ```bash
-   pnpm worker:dev
-   ```
-
-3. Start the frontend.
-
-   ```bash
-   pnpm dev
-   ```
-
-4. Open the dashboard at `http://localhost:3000/dashboard`.
-
-## Demo Flow
-
-1. Start the worker with the demo env block above.
-2. Start the frontend with the demo env block above.
-3. Open `/dashboard` and confirm the robot status, safety controls, and job center load.
-4. Click `Evaluate now` to have the worker read the live policy and create a job.
-5. Use the pending approval controls when the worker is in `manual-approve` mode.
-6. Keep `auto` off unless the credential-gated executor path is intentionally added later.
-
-## API Surface
-
-- `GET /api/robot/status`
-- `GET /api/jobs`
-- `GET /api/jobs/:id`
-- `POST /api/jobs`
-- `POST /api/jobs/:id/approve`
-- `POST /api/jobs/:id/reject`
-- `POST /api/jobs/:id/cancel`
-
-## Validation Commands
+If you need to create a fresh Circle developer secret and wallet set, run:
 
 ```bash
-pnpm contracts:build
-pnpm contracts:test
-pnpm worker:build
-pnpm worker:test
-pnpm worker:typecheck
-pnpm typecheck
-pnpm build
+pnpm circle:bootstrap
 ```
+
+The command generates a new entity secret, registers it with Circle, creates an Arc Testnet wallet set, and provisions one developer-controlled wallet.
+
+## Deployment
+
+Frontend deployment is Vercel-based and should use `apps/web` as the project root.
+
+The contract package is separate and can be deployed independently from the frontend.
+
+## Review path
+
+If you are reviewing this repo as an Arc builder project, start here:
+
+1. Open the live demo at [web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard).
+2. Check the public demo mode and the live operator mode split.
+3. Inspect the Arc agent panel and the brief output.
+4. Review the Circle line for wallet and Gateway readiness.
+5. Read the `TreasuryPolicy` and `TreasuryExecutor` sections.
 
 ## Notes
 
-- The app stays testnet-only.
-- The worker persists robot state and jobs to a local JSON file by default.
-- Real execution is disabled unless the build and credentials intentionally enable it.
-- Bridge execution remains an optional adapter and does not block the rest of the robot.
+- The dashboard reads and writes the deployed contract on Arc Testnet only.
+- Public visitors can explore the demo without a wallet.
+- Live signing stays gated behind the operator wallet.
+- The Circle line is the live control plane for wallets and Gateway, not a separate product.
+- The Arc agent panel surfaces the onchain identity and validation state tied to this website.
+- The brief panel turns the current state into a single recommended action.

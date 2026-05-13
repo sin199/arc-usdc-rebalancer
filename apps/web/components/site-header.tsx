@@ -12,7 +12,7 @@ type SiteHeaderProps = {
 
 export function SiteHeader({ eyebrow, title, description, ctaHref, ctaLabel }: SiteHeaderProps) {
   return (
-    <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
+    <header className="mx-auto flex w-full max-w-screen-2xl items-center justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sm font-semibold text-primary">
           AU

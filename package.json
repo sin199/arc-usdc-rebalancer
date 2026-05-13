@@ -14,9 +14,11 @@
     "worker:test": "pnpm --filter @arc-usdc-rebalancer/worker test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "circle:bootstrap": "pnpm --filter @arc-usdc-rebalancer/web circle:bootstrap",
     "contracts:build": "cd packages/contracts && forge build",
     "contracts:test": "cd packages/contracts && forge test",
-    "contracts:deploy": "cd packages/contracts && forge script script/DeployTreasuryPolicy.s.sol:DeployTreasuryPolicy --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY"
+    "contracts:deploy": "cd packages/contracts && forge script script/DeployTreasuryPolicy.s.sol:DeployTreasuryPolicy --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY",
+    "contracts:deploy-executor": "cd packages/contracts && forge script script/DeployTreasuryExecutor.s.sol:DeployTreasuryExecutor --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY"
   },
   "devDependencies": {
     "prettier": "^3.0.0"

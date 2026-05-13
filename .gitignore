@@ -40,6 +40,7 @@ dist/
 coverage/
 .next/
 out/
+*.tsbuildinfo
 
 # Foundry
 packages/contracts/cache/
