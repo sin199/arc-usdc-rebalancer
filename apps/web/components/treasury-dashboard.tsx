@@ -16,6 +16,7 @@ import {
 import {
   Activity,
   ArrowRightLeft,
+  Bot,
   Copy,
   ExternalLink,
   ShieldCheck,
@@ -72,6 +73,7 @@ import { arcTestnet } from '@/lib/wagmi'
 import { parseUnits, type Address } from 'viem'
 import {
   arcAgentId,
+  arcAgentActivationReputationTag,
   arcAgentIdentityAbi,
   arcAgentIdentityRegistryAddress,
   arcAgentMetadataUri,
@@ -79,6 +81,7 @@ import {
   arcAgentValidationAbi,
   arcAgentValidationRegistryAddress,
   arcAgentValidationRequestHash,
+  arcAgentValidationStorageKey,
   arcAgentValidationTag,
   arcAgentValidatorAddress,
 } from '@/lib/arc-agent'
@@ -123,6 +126,10 @@ function formatTx(value?: string) {
   }
 
   return truncateAddress(value, 10, 8)
+}
+
+function activityBadgeVariant(tone: ActivityEntry['tone']) {
+  return tone === 'success' ? ('success' as const) : ('outline' as const)
 }
 
 type StablecoinRobotStatus = 'pass' | 'warn' | 'wait'
@@ -201,6 +208,110 @@ type CircleControlPlaneStatus = {
   }>
 }
 
+type ArcAgentActivationResult = {
+  agentId: string
+  owner: `0x${string}`
+  requestHash: `0x${string}`
+  requestURI: string
+  tokenURI: string
+  txHashes: {
+    reputation: `0x${string}`
+    validationRequest: `0x${string}`
+    validationResponse: `0x${string}`
+  }
+  validationStatus: {
+    agentId: string
+    lastUpdate: string
+    response: number
+    responseHash: `0x${string}`
+    tag: string
+    validatorAddress: `0x${string}`
+  }
+  validator: `0x${string}`
+}
+
+type ArcAgentBriefResult = {
+  agentId: string
+  generatedAt: string
+  requestHash: `0x${string}`
+  requestURI: string
+  owner: `0x${string}`
+  tokenURI: string
+  validator: `0x${string}`
+  validationStatus: {
+    agentId: string
+    lastUpdate: string
+    response: number
+    responseHash: `0x${string}`
+    tag: string
+    validatorAddress: `0x${string}`
+  }
+  treasury: {
+    contractAddress?: `0x${string}`
+    executorAddress?: `0x${string}`
+    balanceUsdc?: number | null
+    policy: {
+      minThreshold: number
+      targetBalance: number
+      maxRebalanceAmount: number
+    } | null
+    evaluation: {
+      status: 'below_min' | 'healthy' | 'above_target'
+      action: 'hold' | 'top_up' | 'trim'
+      amount: number
+      reasonCodes: string[]
+      message: string
+    } | null
+  }
+  circle: {
+    readiness: {
+      apiKeyConfigured: boolean
+      entitySecretConfigured: boolean
+      gatewayConfigured: boolean
+      walletBlockchainConfigured: boolean
+      walletSetConfigured: boolean
+    }
+    walletSetId?: string
+    notes: string[]
+    walletCount: number
+  }
+  recommendation: {
+    action:
+      | 'hold'
+      | 'top_up'
+      | 'trim'
+      | 'deploy_executor'
+      | 'configure_circle'
+      | 'create_circle_wallet'
+      | 'load_policy'
+    confidence: number
+    headline: string
+    detail: string
+    nextSteps: string[]
+  }
+}
+
+function formatArcAgentRecommendationAction(action: ArcAgentBriefResult['recommendation']['action']) {
+  switch (action) {
+    case 'hold':
+      return 'Hold'
+    case 'top_up':
+      return 'Top up'
+    case 'trim':
+      return 'Trim'
+    case 'deploy_executor':
+      return 'Deploy executor'
+    case 'configure_circle':
+      return 'Configure Circle'
+    case 'create_circle_wallet':
+      return 'Create wallet'
+    case 'load_policy':
+      return 'Load policy'
+    default:
+      return action
+  }
+}
+
 export function TreasuryDashboard() {
   const { address, chainId, isConnected } = useAccount()
   const { connectors, connectAsync, isPending: isConnecting } = useConnect()
@@ -276,16 +387,16 @@ export function TreasuryDashboard() {
   const [draftPolicy, setDraftPolicy] = useState<TreasuryPolicy>(DEFAULT_TREASURY_POLICY)
   const [activity, setActivity] = useState<ActivityEntry[]>([])
   const [simulationMessage, setSimulationMessage] = useState<string>(
-    'Connect the owner wallet to submit the onchain policy update.',
+    'Public demo mode is ready. Try the sample treasury scenarios or connect a wallet for live signing.',
   )
   const [stablecoinTestMessage, setStablecoinTestMessage] = useState<string>(
-    'Run the stablecoin robot test to inspect live USDC policy state.',
+    'Run the stablecoin robot test to inspect the public demo or live USDC policy state.',
   )
   const [stablecoinExecutionMessage, setStablecoinExecutionMessage] = useState<string>(
-    'Owner wallet execution will submit the current policy to chain.',
+    'Server signer execution will submit the current policy to chain.',
   )
   const [executorDeployMessage, setExecutorDeployMessage] = useState<string>(
-    'Deploy TreasuryExecutor from the owner wallet to enable live stablecoin execution.',
+    'Deploy TreasuryExecutor in live mode, or simulate it in public demo mode.',
   )
   const [circleStatusMessage, setCircleStatusMessage] = useState<string>(
     'Refresh the Circle control plane or create a dev wallet to start the live wallet and bridge flow.',
@@ -293,14 +404,39 @@ export function TreasuryDashboard() {
   const [circleCreateMessage, setCircleCreateMessage] = useState<string>(
     'Circle wallet creation will provision a dev-controlled wallet on Arc Testnet.',
   )
+  const [localArcAgentValidationRequestHash, setLocalArcAgentValidationRequestHash] = useState<
+    string | undefined
+  >()
+  const [arcAgentWakeMessage, setArcAgentWakeMessage] = useState<string>(
+    'Wake the agent to run a fresh reputation and validation round.',
+  )
+  const [arcAgentWakeInFlight, setArcAgentWakeInFlight] = useState(false)
+  const [lastArcAgentActivation, setLastArcAgentActivation] = useState<ArcAgentActivationResult | null>(null)
+  const [arcAgentBriefMessage, setArcAgentBriefMessage] = useState<string>(
+    'Run a brief to turn the agent state into a concrete operational step.',
+  )
+  const [arcAgentBriefInFlight, setArcAgentBriefInFlight] = useState(false)
+  const [lastArcAgentBrief, setLastArcAgentBrief] = useState<ArcAgentBriefResult | null>(null)
+  const [agentTakeoverMessage, setAgentTakeoverMessage] = useState<string>(
+    'Run the takeover cycle to let the agent refresh Circle, load policy, brief, and act from one place.',
+  )
+  const [agentTakeoverInFlight, setAgentTakeoverInFlight] = useState(false)
+  const [lastAgentTakeoverAt, setLastAgentTakeoverAt] = useState<string | null>(null)
   const [localCircleWalletSetId, setLocalCircleWalletSetId] = useState<string | undefined>()
   const [circleWalletCreationInFlight, setCircleWalletCreationInFlight] = useState(false)
   const [lastValidationError, setLastValidationError] = useState<string | null>(null)
   const [submissionInFlight, setSubmissionInFlight] = useState(false)
   const [executorDeploymentInFlight, setExecutorDeploymentInFlight] = useState(false)
+  const [demoPolicy, setDemoPolicy] = useState<TreasuryPolicy | null>(null)
+  const [demoTreasuryBalance, setDemoTreasuryBalance] = useState<number | null>(null)
   const chainPolicyInitializedRef = useRef(false)
   const configuredCircleWalletSetId = process.env.NEXT_PUBLIC_CIRCLE_WALLET_SET_ID?.trim() || undefined
   const circleWalletSetId = configuredCircleWalletSetId ?? localCircleWalletSetId
+  const activeArcAgentValidationRequestHash = (
+    localArcAgentValidationRequestHash?.startsWith('0x')
+      ? localArcAgentValidationRequestHash
+      : arcAgentValidationRequestHash
+  ) as `0x${string}`
 
   const circleStatusQuery = useQuery<CircleControlPlaneStatus>({
     queryKey: ['circle-control-plane', circleWalletSetId, address],
@@ -359,109 +495,112 @@ export function TreasuryDashboard() {
     address: arcAgentValidationRegistryAddress,
     chainId: arcTestnet.id,
     functionName: 'getValidationStatus',
-    args: [arcAgentValidationRequestHash],
+    args: [activeArcAgentValidationRequestHash],
     query: {
       refetchInterval: 30_000,
       staleTime: 10_000,
     },
   })
 
-  const chainPolicy = policyQuery.data ? formatTreasuryPolicyFromUnits(policyQuery.data) : null
+  const liveChainPolicy = policyQuery.data ? formatTreasuryPolicyFromUnits(policyQuery.data) : null
   const ownerAddress = ownerQuery.data
+  const ownerWalletBalance = walletBalanceQuery.data ? Number(walletBalanceQuery.data.formatted ?? 0) : null
   const connectedWalletIsOwner =
     address !== undefined &&
     ownerAddress !== undefined &&
     address.toLowerCase() === ownerAddress.toLowerCase()
+  const liveOperatorAvailable = Boolean(isConnected && walletOnArc && connectedWalletIsOwner)
+  const publicDemoMode = !liveOperatorAvailable
+  const chainPolicy = liveOperatorAvailable ? liveChainPolicy : demoPolicy ?? liveChainPolicy
 
   const currentPolicy = chainPolicy ?? draftPolicy
-  const treasuryBalance = Number(treasuryBalanceQuery.data?.formatted ?? 0)
-  const evaluation = isConnected ? evaluatePolicy(treasuryBalance, currentPolicy) : null
+  const publicDemoPreviewBalance = Math.max(0, currentPolicy.minThreshold - 25)
+  const treasuryBalance = liveOperatorAvailable
+    ? Number(treasuryBalanceQuery.data?.formatted ?? 0)
+    : demoTreasuryBalance ?? publicDemoPreviewBalance
+  const evaluation = evaluatePolicy(treasuryBalance, currentPolicy)
   const stablecoinExecutionFloor = 0.01
-  const stablecoinExecutionAmount =
+  const stablecoinExecutionRequestedAmount =
     evaluation && evaluation.amount > 0 ? evaluation.amount : stablecoinExecutionFloor
   const stablecoinExecutionAction: 'top_up' | 'trim' =
     evaluation?.action === 'trim' && evaluation.amount > 0 ? 'trim' : 'top_up'
+  const stablecoinExecutionAmount =
+    stablecoinExecutionAction === 'top_up' && liveOperatorAvailable && ownerWalletBalance !== null
+      ? Math.min(stablecoinExecutionRequestedAmount, ownerWalletBalance)
+      : stablecoinExecutionRequestedAmount
+  const stablecoinExecutionIsCapped =
+    stablecoinExecutionAction === 'top_up' &&
+    liveOperatorAvailable &&
+    ownerWalletBalance !== null &&
+    stablecoinExecutionRequestedAmount > ownerWalletBalance
   const hasUnsavedChanges = Boolean(chainPolicy) && !policiesEqual(draftPolicy, chainPolicy as TreasuryPolicy)
   const stablecoinBalance = treasuryBalance
-  const stablecoinRobotStatus: StablecoinRobotStatus = !isConnected
+  const stablecoinRobotStatus: StablecoinRobotStatus = !contractAddress && !publicDemoMode
     ? 'wait'
-    : !walletOnArc || !contractAddress || !chainPolicy || !executorAddress
-      ? 'warn'
-      : evaluation?.status === 'healthy'
-        ? 'pass'
-        : 'warn'
-  const stablecoinRobotConfidence = !isConnected
-    ? 0.18
-    : stablecoinRobotStatus === 'pass'
-      ? 0.96
-      : stablecoinRobotStatus === 'warn'
-        ? 0.72
-        : 0.25
-  const stablecoinRobotReasonCodes = !isConnected
-    ? ['CONNECT_WALLET']
-    : !walletOnArc
-      ? ['SWITCH_TO_ARC_TESTNET']
-      : !contractAddress
+    : evaluation?.status === 'healthy'
+      ? 'pass'
+      : 'warn'
+  const stablecoinRobotConfidence = stablecoinRobotStatus === 'pass' ? 0.96 : stablecoinRobotStatus === 'warn' ? 0.72 : 0.25
+  const stablecoinRobotReasonCodes = publicDemoMode
+    ? ['PUBLIC_DEMO_MODE', ...(evaluation?.reasonCodes ?? ['POLICY_READ_ONLY'])]
+    : !contractAddress
       ? ['MISSING_POLICY_ADDRESS']
       : !chainPolicy
         ? ['POLICY_LOADING']
-          : !executorAddress
-          ? ['MISSING_EXECUTOR_ADDRESS']
-        : [...(evaluation?.reasonCodes ?? ['POLICY_READ_ONLY'])]
+        : liveOperatorAvailable && !walletOnArc
+          ? ['SWITCH_TO_ARC_TESTNET']
+          : liveOperatorAvailable && !executorAddress
+            ? ['MISSING_EXECUTOR_ADDRESS']
+            : [...(evaluation?.reasonCodes ?? ['POLICY_READ_ONLY'])]
   const stablecoinRobotExecutionReady = Boolean(
-    isConnected &&
-      walletOnArc &&
-      contractAddress &&
-      chainPolicy &&
-      executorAddress &&
-      connectedWalletIsOwner &&
-      !submissionInFlight &&
-      formatValidationError(draftPolicy) === null,
+    !submissionInFlight &&
+      formatValidationError(draftPolicy) === null &&
+      (publicDemoMode || (contractAddress && chainPolicy && executorAddress && liveOperatorAvailable)),
   )
-  const stablecoinRobotExecutionReason = !isConnected
-    ? 'Connect the wallet first.'
-    : !walletOnArc
-      ? 'Switch the wallet to Arc Testnet.'
-      : !contractAddress
-      ? 'Set TREASURY_POLICY_ADDRESS before executing.'
-      : !chainPolicy
-        ? 'Load the deployed policy before executing.'
-        : !executorAddress
-          ? 'Set TREASURY_EXECUTOR_ADDRESS before executing.'
-          : !connectedWalletIsOwner
-            ? 'Only the contract owner can execute the policy update.'
-            : formatValidationError(draftPolicy) ?? 'Execution is temporarily blocked.'
+  const stablecoinRobotExecutionReason = !contractAddress && !publicDemoMode
+    ? 'Set TREASURY_POLICY_ADDRESS before executing live.'
+    : !chainPolicy
+      ? 'Load the deployed policy before executing live.'
+      : liveOperatorAvailable && !walletOnArc
+        ? 'Switch the wallet to Arc Testnet before live execution.'
+        : liveOperatorAvailable && !executorAddress
+          ? 'Set TREASURY_EXECUTOR_ADDRESS before live execution.'
+          : formatValidationError(draftPolicy) ?? (publicDemoMode ? 'Public demo mode is ready.' : 'Execution is temporarily blocked.')
   const stablecoinEvaluationMessage = evaluation?.message ?? 'Treasury balance is outside the healthy band.'
   const stablecoinRobotSummary =
     stablecoinRobotStatus === 'pass'
       ? 'USDC balance is inside the healthy policy band.'
       : stablecoinRobotStatus === 'warn'
         ? `Policy test indicates ${stablecoinEvaluationMessage.toLowerCase()}.`
-        : 'Connect a wallet to run the stablecoin policy test.'
+        : 'Public demo mode is ready to run the stablecoin policy test.'
   const stablecoinRobotChecks = [
     {
-      label: 'Wallet connected',
-      passed: isConnected,
-      detail: isConnected ? 'Wallet is connected to the dashboard.' : 'Connect an injected wallet to read live balance.',
+      label: 'Session mode',
+      passed: true,
+      detail: liveOperatorAvailable
+        ? 'Live operator mode is active with a wallet on Arc Testnet.'
+        : 'Public demo mode is active. Connect any wallet for live signing.',
     },
     {
       label: 'Arc Testnet',
-      passed: walletOnArc,
-      detail: walletOnArc ? 'Wallet is pointed at Arc Testnet.' : 'Switch the connected wallet to Arc Testnet.',
+      passed: publicDemoMode || walletOnArc,
+      detail: walletOnArc
+        ? 'Wallet is pointed at Arc Testnet.'
+        : 'Public demo mode can preview the policy without a wallet.',
     },
     {
       label: 'Policy loaded',
-      passed: Boolean(chainPolicy),
+      passed: Boolean(currentPolicy),
       detail: chainPolicy
         ? 'Deployed TreasuryPolicy values are available.'
-        : 'Set TREASURY_POLICY_ADDRESS to load the deployed policy.',
+        : 'Public demo mode is using the draft policy in this session.',
     },
     {
       label: 'Executor loaded',
-      passed: Boolean(executorAddress),
+      passed: publicDemoMode || Boolean(executorAddress),
       detail: executorAddress
         ? 'TreasuryExecutor is configured for USDC movements.'
-        : 'Set TREASURY_EXECUTOR_ADDRESS to enable onchain execution.',
+        : 'Public demo mode will simulate executor setup locally.',
     },
     {
       label: 'Treasury balance',
@@ -476,14 +615,18 @@ export function TreasuryDashboard() {
       passed: stablecoinExecutionAmount > 0,
       detail:
         evaluation && evaluation.amount > 0
-          ? `Execution amount ${formatUsdc(stablecoinExecutionAmount)} USDC will be submitted.`
-          : `Test floor ${formatUsdc(stablecoinExecutionFloor)} USDC will be submitted to exercise MetaMask.`,
+          ? stablecoinExecutionIsCapped
+            ? `Requested ${formatUsdc(stablecoinExecutionRequestedAmount)} USDC exceeds the live wallet balance of ${formatUsdc(ownerWalletBalance ?? 0)} USDC, so the execution amount is capped to ${formatUsdc(stablecoinExecutionAmount)} USDC.`
+            : `Execution amount ${formatUsdc(stablecoinExecutionAmount)} USDC will be submitted.`
+          : publicDemoMode
+            ? `Demo floor ${formatUsdc(stablecoinExecutionFloor)} USDC will be simulated locally.`
+            : `Test floor ${formatUsdc(stablecoinExecutionFloor)} USDC will be submitted to exercise MetaMask.`,
     },
   ]
 
-  const circleStackStatus: StablecoinRobotStatus = !isConnected
+  const circleStackStatus: StablecoinRobotStatus = !contractAddress
     ? 'wait'
-    : walletOnArc && connectedWalletIsOwner && chainPolicy && executorAddress
+    : chainPolicy && (publicDemoMode || (walletOnArc && executorAddress))
       ? 'pass'
       : 'warn'
   const circleStackStatusLabel =
@@ -501,33 +644,31 @@ export function TreasuryDashboard() {
     },
     {
       label: 'Arc Testnet',
-      passed: walletOnArc,
+      passed: publicDemoMode || walletOnArc,
       detail: walletOnArc
         ? `Wallet is on Arc Testnet (chain ${arcTestnetChainId}).`
-        : 'Switch the connected wallet to Arc Testnet.',
+        : 'Public demo mode can preview the Arc line without a connected wallet.',
     },
     {
-      label: 'Owner wallet',
-      passed: connectedWalletIsOwner,
-      detail: connectedWalletIsOwner
-        ? 'Connected wallet matches the TreasuryPolicy owner.'
-        : ownerAddress
-          ? 'Connect the owner wallet before executing the Circle line.'
-          : 'Owner address is still loading.',
+      label: 'Live operator',
+      passed: liveOperatorAvailable,
+      detail: liveOperatorAvailable
+        ? 'Connected wallet matches the TreasuryPolicy operator and is on Arc Testnet.'
+        : 'Public demo mode is active. Connect the live operator wallet only for live execution.',
     },
     {
       label: 'Treasury policy',
-      passed: Boolean(chainPolicy),
+      passed: Boolean(currentPolicy),
       detail: chainPolicy
         ? 'TreasuryPolicy is loaded from chain.'
-        : 'Load TreasuryPolicy to complete the Circle line.',
+        : 'Public demo mode is using the draft policy in this session.',
     },
     {
       label: 'Treasury executor',
-      passed: Boolean(executorAddress),
+      passed: publicDemoMode || Boolean(executorAddress),
       detail: executorAddress
         ? `TreasuryExecutor configured at ${truncateAddress(executorAddress)}.`
-        : 'Set TREASURY_EXECUTOR_ADDRESS to enable stablecoin moves.',
+        : 'Public demo mode will simulate treasury execution locally.',
     },
   ]
 
@@ -581,7 +722,7 @@ export function TreasuryDashboard() {
       setSimulationMessage(
         treasuryPolicyAddressConfig.status === 'configured'
           ? 'Load the deployed policy to simulate against live Arc Testnet state.'
-          : 'Set the deployed TreasuryPolicy address to enable live policy reads and owner writes.',
+          : 'Set the deployed TreasuryPolicy address to enable live policy reads and live operator writes.',
       )
     }
   }, [chainPolicy])
@@ -615,6 +756,21 @@ export function TreasuryDashboard() {
 
     window.localStorage.setItem(circleWalletSetLocalStorageKey, localCircleWalletSetId)
   }, [localCircleWalletSetId])
+
+  useEffect(() => {
+    const storedArcAgentValidationRequestHash = window.localStorage.getItem(arcAgentValidationStorageKey)
+    if (storedArcAgentValidationRequestHash?.startsWith('0x')) {
+      setLocalArcAgentValidationRequestHash(storedArcAgentValidationRequestHash)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!localArcAgentValidationRequestHash) {
+      return
+    }
+
+    window.localStorage.setItem(arcAgentValidationStorageKey, localArcAgentValidationRequestHash)
+  }, [localArcAgentValidationRequestHash])
 
   function pushActivity(entry: Omit<ActivityEntry, 'id' | 'createdAt'>) {
     const nextEntry: ActivityEntry = {
@@ -653,7 +809,7 @@ export function TreasuryDashboard() {
         detail: `Connected through ${injectedConnector.name} and ready for Arc Testnet.`,
         tone: 'success',
       })
-      setSimulationMessage('Wallet connected. Review the onchain policy or submit the draft from the owner wallet.')
+      setSimulationMessage('Wallet connected. Review the live policy or use public demo mode to explore the dashboard.')
       return connectedAddress ?? null
     } catch {
       pushActivity({
@@ -667,7 +823,7 @@ export function TreasuryDashboard() {
 
   function handleDisconnect() {
     disconnect()
-    setSimulationMessage('Wallet disconnected. Reconnect to resume policy checks and contract updates.')
+    setSimulationMessage('Wallet disconnected. Public demo mode stays available without a wallet.')
     pushActivity({
       title: 'Wallet disconnected',
       detail: 'The dashboard cleared the active wallet connection.',
@@ -715,6 +871,23 @@ export function TreasuryDashboard() {
     }
   }
 
+  function loadPublicDemoScenario(nextBalance: number, scenarioLabel: string) {
+    if (liveOperatorAvailable) {
+      return
+    }
+
+    setDemoTreasuryBalance(nextBalance)
+    const nextEvaluation = evaluatePolicy(nextBalance, currentPolicy)
+    setSimulationMessage(
+      `Public demo mode: ${scenarioLabel}. ${nextEvaluation.message} The preview now reflects ${formatUsdc(nextBalance)} USDC.`,
+    )
+    pushActivity({
+      title: 'Demo scenario loaded',
+      detail: `${scenarioLabel} · treasury preview set to ${formatUsdc(nextBalance)} USDC.`,
+      tone: nextEvaluation.status === 'healthy' ? 'success' : 'warning',
+    })
+  }
+
   async function handleRefreshChainPolicy() {
     if (!contractAddress) {
       setLastValidationError('Set TREASURY_POLICY_ADDRESS before loading the deployed policy.')
@@ -742,32 +915,6 @@ export function TreasuryDashboard() {
   }
 
   async function submitPolicyUpdate() {
-    if (!isConnected) {
-      setSimulationMessage('Connect the owner wallet before submitting a policy update.')
-      return false
-    }
-
-    if (!walletOnArc) {
-      setSimulationMessage('Switch the wallet to Arc Testnet before submitting the policy update.')
-      return false
-    }
-
-    if (!contractAddress) {
-      setSimulationMessage('Set TREASURY_POLICY_ADDRESS before submitting a policy update.')
-      setLastValidationError('Deployed TreasuryPolicy address is missing or invalid.')
-      return false
-    }
-
-    if (!connectedWalletIsOwner) {
-      setSimulationMessage('Only the contract owner wallet can submit policy updates.')
-      pushActivity({
-        title: 'Policy update blocked',
-        detail: 'The connected wallet does not match the onchain owner.',
-        tone: 'warning',
-      })
-      return false
-    }
-
     const validationError = formatValidationError(draftPolicy)
     setLastValidationError(validationError)
 
@@ -777,6 +924,23 @@ export function TreasuryDashboard() {
         detail: validationError,
         tone: 'warning',
       })
+      return false
+    }
+
+    if (!liveOperatorAvailable) {
+      setDemoPolicy(draftPolicy)
+      setSimulationMessage('Public demo mode: policy draft saved locally for this browser session.')
+      pushActivity({
+        title: 'Policy update simulated',
+        detail: 'Public demo mode accepted the draft locally. Connect the live operator wallet for a live chain update.',
+        tone: 'success',
+      })
+      return true
+    }
+
+    if (!contractAddress) {
+      setSimulationMessage('Set TREASURY_POLICY_ADDRESS before submitting a live policy update.')
+      setLastValidationError('Deployed TreasuryPolicy address is missing or invalid.')
       return false
     }
 
@@ -843,12 +1007,7 @@ export function TreasuryDashboard() {
   }
 
   function handleSimulateRebalance() {
-    if (!isConnected) {
-      setSimulationMessage('Connect a wallet before simulating a rebalance.')
-      return
-    }
-
-    const result = evaluatePolicy(Number(treasuryBalanceQuery.data?.formatted ?? 0), currentPolicy)
+    const result = evaluatePolicy(treasuryBalance, currentPolicy)
     const policySource = chainPolicy ? 'onchain policy' : 'draft policy'
     const summary =
       result.action === 'hold'
@@ -875,16 +1034,129 @@ export function TreasuryDashboard() {
     )
   }
 
-  async function handleExecuteStablecoinPolicy() {
+  async function handleExecuteStablecoinPolicy(): Promise<boolean> {
+    if (submissionInFlight) {
+      return false
+    }
+
+    const amountUnits = parseUnits(String(stablecoinExecutionAmount), arcUsdcDecimals)
+    if (amountUnits <= 0n || !evaluation) {
+      setStablecoinExecutionMessage('Execution skipped. No rebalance amount is required.')
+      return false
+    }
+
+    if (!liveOperatorAvailable) {
+      const nextTreasuryBalance =
+        stablecoinExecutionAction === 'top_up'
+          ? treasuryBalance + stablecoinExecutionAmount
+          : Math.max(0, treasuryBalance - stablecoinExecutionAmount)
+      setSubmissionInFlight(true)
+      try {
+        setDemoTreasuryBalance(nextTreasuryBalance)
+        setStablecoinExecutionMessage(
+          `Public demo mode: ${stablecoinExecutionAction === 'top_up' ? 'top-up' : 'trim'} simulated locally. No onchain transaction was sent.`,
+        )
+        pushActivity({
+          title: stablecoinExecutionAction === 'top_up' ? 'Stablecoin top-up simulated' : 'Stablecoin trim simulated',
+          detail: `Public demo mode adjusted the treasury preview by ${formatUsdc(stablecoinExecutionAmount)} USDC.`,
+          tone: 'success',
+        })
+        setStablecoinTestMessage(
+          `DEMO | ${stablecoinExecutionAction.toUpperCase()} simulated. Treasury ${formatUsdc(nextTreasuryBalance)} USDC.`,
+        )
+        return true
+      } finally {
+        setSubmissionInFlight(false)
+      }
+    }
+
+    try {
+      setSubmissionInFlight(true)
+      setStablecoinExecutionMessage(`Submitting ${formatUsdc(stablecoinExecutionAmount)} USDC via the server signer...`)
+
+      const response = await fetch('/api/treasury/execute', {
+        body: JSON.stringify({
+          action: stablecoinExecutionAction,
+          amountUsdc: stablecoinExecutionAmount,
+        }),
+        cache: 'no-store',
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      })
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        action?: 'top_up' | 'trim'
+        amountUsdc?: number
+        error?: string
+        mode?: 'server'
+        ownerAddress?: `0x${string}`
+        recipient?: `0x${string}`
+        summary?: string
+        txHashes?: {
+          approve?: `0x${string}`
+          execute?: `0x${string}`
+        }
+      }
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Treasury execution failed with ${response.status}.`)
+      }
+
+      const executedAction = payload.action ?? stablecoinExecutionAction
+      const executedAmount = payload.amountUsdc ?? stablecoinExecutionAmount
+      const executeHash = payload.txHashes?.execute
+      const nextTreasuryBalance =
+        executedAction === 'top_up'
+          ? stablecoinBalance + executedAmount
+          : Math.max(0, stablecoinBalance - executedAmount)
+
+      setStablecoinExecutionMessage(payload.summary ?? 'Execution confirmed via the server signer.')
+      pushActivity({
+        title: executedAction === 'top_up' ? 'Stablecoin top-up executed' : 'Stablecoin trim executed',
+        detail: `${payload.summary ?? `Live operator signer submitted ${formatUsdc(executedAmount)} USDC.`}${executeHash ? ` Tx ${formatTx(executeHash)}.` : ''}`,
+        tone: 'success',
+      })
+      await treasuryBalanceQuery.refetch()
+      await latestPolicyEventQuery.refetch()
+      setStablecoinTestMessage(
+        `EXECUTED | ${executedAction.toUpperCase()} confirmed. Treasury ${formatUsdc(nextTreasuryBalance)} USDC.`,
+      )
+      return true
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
+
+      if (liveOperatorAvailable) {
+        setStablecoinExecutionMessage(`Server signer unavailable, falling back to the live operator wallet: ${message}`)
+        const fallbackExecuted = await handleExecuteStablecoinPolicyViaWallet()
+        if (fallbackExecuted) {
+          return true
+        }
+      }
+
+      setStablecoinExecutionMessage(`Execution failed: ${message}`)
+      pushActivity({
+        title: 'Stablecoin execution failed',
+        detail: message,
+        tone: 'warning',
+      })
+      return false
+    } finally {
+      setSubmissionInFlight(false)
+    }
+  }
+
+  async function handleExecuteStablecoinPolicyViaWallet(): Promise<boolean> {
     let activeWalletAddress = address ?? null
     let activeExecutorAddress = executorAddress ?? null
 
     if (!activeWalletAddress) {
-      setStablecoinExecutionMessage('Connecting the owner wallet before execution...')
+      setStablecoinExecutionMessage('Connecting the live operator wallet before execution...')
       activeWalletAddress = await handleConnect()
       if (!activeWalletAddress) {
-        setStablecoinExecutionMessage('Execution blocked: connect the owner wallet first.')
-        return
+        setStablecoinExecutionMessage('Execution blocked: connect the live operator wallet first.')
+        return false
       }
     }
 
@@ -893,19 +1165,19 @@ export function TreasuryDashboard() {
       const switched = await handleSwitchChain()
       if (!switched) {
         setStablecoinExecutionMessage('Execution blocked: switch the wallet to Arc Testnet first.')
-        return
+        return false
       }
     }
 
     if (!ownerAddress || activeWalletAddress.toLowerCase() !== ownerAddress.toLowerCase()) {
-      const reason = 'Only the contract owner can execute the policy update.'
+      const reason = 'Only the live operator wallet can execute the policy update.'
       setStablecoinExecutionMessage(reason)
       pushActivity({
         title: 'Stablecoin execution blocked',
         detail: reason,
         tone: 'warning',
       })
-      return
+      return false
     }
 
     if (!activeExecutorAddress) {
@@ -915,19 +1187,19 @@ export function TreasuryDashboard() {
         : await handleDeployExecutor()
       if (!activeExecutorAddress) {
         setStablecoinExecutionMessage('Execution blocked: deploy TreasuryExecutor first.')
-        return
+        return false
       }
     }
 
     if (!publicClient || !activeExecutorAddress) {
       setStablecoinExecutionMessage('Execution failed. Treasury executor address or public client is unavailable.')
-      return
+      return false
     }
 
     const amountUnits = parseUnits(String(stablecoinExecutionAmount), arcUsdcDecimals)
     if (amountUnits <= 0n || !evaluation) {
       setStablecoinExecutionMessage('Execution skipped. No rebalance amount is required.')
-      return
+      return false
     }
 
     try {
@@ -984,11 +1256,11 @@ export function TreasuryDashboard() {
 
         pushActivity({
           title: 'Stablecoin trim executed',
-          detail: `TreasuryExecutor sent ${formatUsdc(stablecoinExecutionAmount)} USDC back to the owner wallet. Tx ${formatTx(trimHash)}.`,
+          detail: `TreasuryExecutor sent ${formatUsdc(stablecoinExecutionAmount)} USDC back to the live operator wallet. Tx ${formatTx(trimHash)}.`,
           tone: 'success',
         })
         setStablecoinExecutionMessage(
-          `Trim confirmed. ${formatUsdc(stablecoinExecutionAmount)} USDC moved back to the owner wallet.`,
+          `Trim confirmed. ${formatUsdc(stablecoinExecutionAmount)} USDC moved back to the live operator wallet.`,
         )
       }
 
@@ -1001,6 +1273,7 @@ export function TreasuryDashboard() {
       setStablecoinTestMessage(
         `EXECUTED | ${stablecoinExecutionAction.toUpperCase()} confirmed. Treasury ${formatUsdc(nextTreasuryBalance)} USDC.`,
       )
+      return true
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error'
       setStablecoinExecutionMessage(`Execution failed: ${message}`)
@@ -1009,6 +1282,7 @@ export function TreasuryDashboard() {
         detail: message,
         tone: 'warning',
       })
+      return false
     } finally {
       setSubmissionInFlight(false)
     }
@@ -1016,7 +1290,7 @@ export function TreasuryDashboard() {
 
   async function deployExecutorForWallet(activeWalletAddress: Address): Promise<Address | null> {
     if (!ownerAddress || activeWalletAddress.toLowerCase() !== ownerAddress.toLowerCase()) {
-      setExecutorDeployMessage('Only the contract owner wallet should deploy TreasuryExecutor.')
+      setExecutorDeployMessage('Only the live operator wallet should deploy TreasuryExecutor.')
       return null
     }
 
@@ -1052,7 +1326,7 @@ export function TreasuryDashboard() {
       setExecutorDeployMessage(`TreasuryExecutor deployed at ${deployedAddress}. Execution is now enabled in this browser.`)
       pushActivity({
         title: 'TreasuryExecutor deployed',
-        detail: `Contract deployed to ${truncateAddress(deployedAddress)} from the owner wallet.`,
+        detail: `Contract deployed to ${truncateAddress(deployedAddress)} from the live operator wallet.`,
         tone: 'success',
       })
       await treasuryBalanceQuery.refetch()
@@ -1072,10 +1346,25 @@ export function TreasuryDashboard() {
   }
 
   async function handleDeployExecutor(): Promise<Address | null> {
+    const demoExecutorAddress = '0x00000000000000000000000000000000deadbeef' as Address
+
+    if (!liveOperatorAvailable) {
+      setExecutorDeployMessage(
+        `Public demo mode: TreasuryExecutor is simulated at ${truncateAddress(demoExecutorAddress)}.`,
+      )
+      setLocalExecutorAddress(demoExecutorAddress)
+      pushActivity({
+        title: 'TreasuryExecutor simulated',
+        detail: `Public demo mode staged executor ${truncateAddress(demoExecutorAddress)} locally.`,
+        tone: 'success',
+      })
+      return demoExecutorAddress
+    }
+
     let activeWalletAddress = address ?? null
 
     if (!isConnected) {
-      setExecutorDeployMessage('Connect the owner wallet before deploying TreasuryExecutor.')
+      setExecutorDeployMessage('Connect the live operator wallet before deploying TreasuryExecutor.')
       activeWalletAddress = await handleConnect()
       if (!activeWalletAddress) {
         return null
@@ -1110,6 +1399,21 @@ export function TreasuryDashboard() {
   async function handleCreateCircleWallet() {
     try {
       setCircleWalletCreationInFlight(true)
+      if (!liveOperatorAvailable) {
+        const demoWalletSetId = `demo-circle-wallet-set-${Date.now().toString(36)}`
+        setLocalCircleWalletSetId(demoWalletSetId)
+        setCircleCreateMessage(
+          `Public demo mode: Circle wallet set ${demoWalletSetId} is simulated locally for this browser session.`,
+        )
+        pushActivity({
+          title: 'Circle wallet simulated',
+          detail: 'Public demo mode staged a local Circle wallet set for the dashboard preview.',
+          tone: 'success',
+        })
+        void circleStatusQuery.refetch().catch(() => undefined)
+        return
+      }
+
       setCircleCreateMessage('Submitting Circle wallet creation request...')
 
       const response = await fetch('/api/circle/wallets', {
@@ -1168,15 +1472,347 @@ export function TreasuryDashboard() {
     }
   }
 
-  const currentStatus = isConnected ? evaluation?.status ?? 'healthy' : null
+  async function handleWakeArcAgent(options?: { runBrief?: boolean }): Promise<ArcAgentActivationResult | null> {
+    try {
+      setArcAgentWakeInFlight(true)
+      setArcAgentWakeMessage('Submitting a fresh reputation and validation round from the dashboard...')
+
+      const response = await fetch('/api/arc-agent/activate', {
+        cache: 'no-store',
+        method: 'POST',
+      })
+
+      const payload = (await response.json().catch(() => ({}))) as Partial<ArcAgentActivationResult> & {
+        error?: string
+      }
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Arc agent activation failed with ${response.status}.`)
+      }
+
+      if (!payload.requestHash || !payload.validationStatus) {
+        throw new Error('Arc agent activation did not return the expected onchain state.')
+      }
+
+      const activation = payload as ArcAgentActivationResult
+      setLastArcAgentActivation(activation)
+      setLocalArcAgentValidationRequestHash(activation.requestHash)
+      setArcAgentWakeMessage(
+        `Agent activated. Validation ${activation.validationStatus.response} · ${activation.validationStatus.tag} · block ${activation.validationStatus.lastUpdate}.`,
+      )
+      pushActivity({
+        title: 'Arc agent activated',
+        detail: `Reputation tx ${formatTx(activation.txHashes.reputation)} and validation tx ${formatTx(
+          activation.txHashes.validationResponse,
+        )} submitted for agent ${activation.agentId}.`,
+        tone: 'success',
+      })
+      await Promise.all([arcAgentOwnerQuery.refetch(), arcAgentTokenUriQuery.refetch()])
+      if (options?.runBrief !== false) {
+        await handleRunArcAgentBrief(activation.requestHash)
+      }
+      return activation
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown Arc agent activation error.'
+      setArcAgentWakeMessage(`Activation failed: ${message}`)
+      pushActivity({
+        title: 'Arc agent activation failed',
+        detail: message,
+        tone: 'warning',
+      })
+      return null
+    } finally {
+      setArcAgentWakeInFlight(false)
+    }
+  }
+
+  async function handleRunArcAgentBrief(requestHash?: `0x${string}`) {
+    try {
+      setArcAgentBriefInFlight(true)
+      setArcAgentBriefMessage('Loading a live operational brief from Arc Testnet...')
+
+      const params = new URLSearchParams()
+      const activeRequestHash = requestHash ?? activeArcAgentValidationRequestHash
+
+      if (activeRequestHash) {
+        params.set('requestHash', activeRequestHash)
+      }
+
+      const response = await fetch(`/api/arc-agent/brief${params.toString() ? `?${params.toString()}` : ''}`, {
+        cache: 'no-store',
+      })
+
+      const payload = (await response.json().catch(() => ({}))) as Partial<ArcAgentBriefResult> & {
+        error?: string
+      }
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Arc agent brief request failed with ${response.status}.`)
+      }
+
+      if (!payload.recommendation || !payload.validationStatus) {
+        throw new Error('Arc agent brief did not return the expected operational state.')
+      }
+
+      const brief = payload as ArcAgentBriefResult
+      setLastArcAgentBrief(brief)
+      setArcAgentBriefMessage(
+        `${formatArcAgentRecommendationAction(brief.recommendation.action)} · ${brief.recommendation.headline}`,
+      )
+      pushActivity({
+        title: 'Arc agent brief ready',
+        detail: `${brief.recommendation.headline} ${brief.recommendation.detail}`,
+        tone: brief.recommendation.action === 'hold' ? 'success' : 'warning',
+      })
+      return brief
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown Arc agent brief error.'
+      setArcAgentBriefMessage(`Brief failed: ${message}`)
+      pushActivity({
+        title: 'Arc agent brief failed',
+        detail: message,
+        tone: 'warning',
+      })
+      return null
+    } finally {
+      setArcAgentBriefInFlight(false)
+    }
+  }
+
+  async function handleActOnArcAgentBrief(briefOverride?: ArcAgentBriefResult | null): Promise<boolean> {
+    const activeBrief = briefOverride ?? lastArcAgentBrief
+    const recommendation = activeBrief?.recommendation.action
+
+    if (!recommendation) {
+      setArcAgentBriefMessage('Run a brief first so the dashboard can determine the next action.')
+      return false
+    }
+
+    if (!liveOperatorAvailable) {
+      return handleActOnArcAgentBriefInDemo(activeBrief)
+    }
+
+    if (recommendation === 'hold') {
+      setArcAgentBriefMessage('The agent recommends holding. The site is already inside the policy band.')
+      pushActivity({
+        title: 'Arc agent brief held',
+        detail: 'No execution was needed after the takeover cycle.',
+        tone: 'success',
+      })
+      return true
+    }
+
+    if (recommendation === 'deploy_executor') {
+      const deployedAddress = await handleDeployExecutor()
+      if (deployedAddress) {
+        await handleRunArcAgentBrief(activeBrief?.requestHash)
+        return true
+      }
+      return false
+    }
+
+    if (recommendation === 'top_up' || recommendation === 'trim') {
+      const executed = await handleExecuteStablecoinPolicy()
+      if (executed) {
+        await handleRunArcAgentBrief(activeBrief?.requestHash)
+        return true
+      }
+      return false
+    }
+
+    if (recommendation === 'create_circle_wallet') {
+      await handleCreateCircleWallet()
+      await handleRunArcAgentBrief(activeBrief?.requestHash)
+      return true
+    }
+
+    if (recommendation === 'load_policy') {
+      await handleRefreshChainPolicy()
+      await handleRunArcAgentBrief(activeBrief?.requestHash)
+      return true
+    }
+
+    if (recommendation === 'configure_circle') {
+      await handleRefreshCircleStatus()
+      await handleRunArcAgentBrief(activeBrief?.requestHash)
+      return true
+    }
+
+    setArcAgentBriefMessage(`Recommendation ${recommendation} is not mapped to an executable action yet.`)
+    return false
+  }
+
+  async function handleActOnArcAgentBriefInDemo(brief: ArcAgentBriefResult): Promise<boolean> {
+    const recommendation = brief.recommendation.action
+
+    if (recommendation === 'hold') {
+      setArcAgentBriefMessage('Public demo mode: the agent recommends holding, and the preview stays in band.')
+      pushActivity({
+        title: 'Arc agent brief held',
+        detail: 'Public demo mode did not need to move any funds.',
+        tone: 'success',
+      })
+      return true
+    }
+
+    if (recommendation === 'deploy_executor') {
+      const deployedAddress = await handleDeployExecutor()
+      if (deployedAddress) {
+        await handleRunArcAgentBrief(brief.requestHash)
+        return true
+      }
+      return false
+    }
+
+    if (recommendation === 'top_up' || recommendation === 'trim') {
+      const nextTreasuryBalance =
+        recommendation === 'top_up'
+          ? treasuryBalance + stablecoinExecutionAmount
+          : Math.max(0, treasuryBalance - stablecoinExecutionAmount)
+      setDemoTreasuryBalance(nextTreasuryBalance)
+      setStablecoinExecutionMessage(
+        `Public demo mode: ${formatArcAgentRecommendationAction(recommendation)} simulated locally.`,
+      )
+      pushActivity({
+        title: recommendation === 'top_up' ? 'Stablecoin top-up simulated' : 'Stablecoin trim simulated',
+        detail: `Public demo mode adjusted the treasury preview by ${formatUsdc(stablecoinExecutionAmount)} USDC.`,
+        tone: 'success',
+      })
+      setStablecoinTestMessage(
+        `DEMO | ${recommendation.toUpperCase()} simulated. Treasury ${formatUsdc(nextTreasuryBalance)} USDC.`,
+      )
+      await handleRunArcAgentBrief(brief.requestHash)
+      return true
+    }
+
+    if (recommendation === 'create_circle_wallet') {
+      await handleCreateCircleWallet()
+      await handleRunArcAgentBrief(brief.requestHash)
+      return true
+    }
+
+    if (recommendation === 'load_policy') {
+      setDemoPolicy(chainPolicy ?? draftPolicy)
+      await handleRefreshChainPolicy()
+      await handleRunArcAgentBrief(brief.requestHash)
+      return true
+    }
+
+    if (recommendation === 'configure_circle') {
+      await handleRefreshCircleStatus()
+      await handleRunArcAgentBrief(brief.requestHash)
+      return true
+    }
+
+    setArcAgentBriefMessage(`Public demo mode: recommendation ${recommendation} is not mapped yet.`)
+    return false
+  }
+
+  async function handleRunAgentTakeover() {
+    if (agentTakeoverInFlight) {
+      return
+    }
+
+    const startedAt = new Date().toISOString()
+    setAgentTakeoverInFlight(true)
+    setLastAgentTakeoverAt(startedAt)
+    setAgentTakeoverMessage('Preparing the site for takeover...')
+    pushActivity({
+      title: 'Agent takeover started',
+      detail: publicDemoMode
+        ? 'Refreshing policy, Circle, and agent state from the public demo control loop.'
+        : 'Refreshing wallet, policy, Circle, and agent state from one control loop.',
+      tone: 'neutral',
+    })
+
+    try {
+      if (liveOperatorAvailable) {
+        if (!walletOnArc) {
+          setAgentTakeoverMessage('Switching the wallet to Arc Testnet...')
+          const switched = await handleSwitchChain()
+          if (!switched) {
+            setAgentTakeoverMessage('Takeover blocked: switch the wallet to Arc Testnet first.')
+            return
+          }
+        }
+      } else {
+        setAgentTakeoverMessage('Public demo mode: running the takeover cycle without a live wallet.')
+      }
+
+      setAgentTakeoverMessage('Refreshing Circle status and policy band...')
+      await handleRefreshCircleStatus()
+      if (contractAddress) {
+        await handleRefreshChainPolicy()
+      }
+
+      setAgentTakeoverMessage('Waking the Arc agent...')
+      const activation = await handleWakeArcAgent({ runBrief: false })
+      if (!activation) {
+        setAgentTakeoverMessage('Takeover blocked: agent activation failed.')
+        return
+      }
+
+      setAgentTakeoverMessage('Loading a live brief...')
+      const brief = await handleRunArcAgentBrief(activation.requestHash)
+      if (!brief) {
+        setAgentTakeoverMessage('Takeover blocked: agent brief failed.')
+        return
+      }
+
+      setAgentTakeoverMessage(`Acting on ${formatArcAgentRecommendationAction(brief.recommendation.action)}...`)
+      const executed = await handleActOnArcAgentBrief(brief)
+      if (!executed) {
+        setAgentTakeoverMessage(`Takeover paused: ${brief.recommendation.headline}`)
+        return
+      }
+
+      setAgentTakeoverMessage(
+        `Takeover complete: ${formatArcAgentRecommendationAction(brief.recommendation.action)} handled and the dashboard refreshed.`,
+      )
+      pushActivity({
+        title: 'Agent takeover complete',
+        detail: `${formatArcAgentRecommendationAction(brief.recommendation.action)} · ${brief.recommendation.headline}`,
+        tone: 'success',
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown takeover error.'
+      setAgentTakeoverMessage(`Takeover failed: ${message}`)
+      pushActivity({
+        title: 'Agent takeover failed',
+        detail: message,
+        tone: 'warning',
+      })
+    } finally {
+      setAgentTakeoverInFlight(false)
+    }
+  }
+
+  const currentStatus = evaluation?.status ?? (publicDemoMode ? 'healthy' : null)
+  const usingDemoPolicy = demoPolicy !== null
   const policySyncBadge =
-    chainPolicy && policiesEqual(draftPolicy, chainPolicy) ? 'Synced with chain' : chainPolicy ? 'Draft differs' : 'Draft only'
-  const policySyncVariant = chainPolicy ? (policiesEqual(draftPolicy, chainPolicy) ? 'success' : 'warning') : 'outline'
-  const policyCardTitle = chainPolicy ? 'Current policy from chain' : 'Current policy unavailable'
+    usingDemoPolicy
+      ? 'Synced in demo'
+      : chainPolicy && policiesEqual(draftPolicy, chainPolicy)
+        ? 'Synced with chain'
+        : chainPolicy
+          ? 'Draft differs'
+          : 'Draft only'
+  const policySyncVariant = usingDemoPolicy
+    ? 'outline'
+    : chainPolicy
+      ? (policiesEqual(draftPolicy, chainPolicy) ? 'success' : 'warning')
+      : 'outline'
+  const policyCardTitle = usingDemoPolicy
+    ? 'Demo policy preview'
+    : chainPolicy
+      ? 'Current policy from chain'
+      : 'Current policy unavailable'
   const policyCardDescription =
-    treasuryPolicyAddressConfig.status === 'configured'
-      ? 'Read the deployed TreasuryPolicy contract on Arc Testnet.'
-      : 'Set TREASURY_POLICY_ADDRESS to read the deployed TreasuryPolicy contract.'
+    usingDemoPolicy
+      ? 'Public demo mode is showing a local preview of the policy band.'
+      : treasuryPolicyAddressConfig.status === 'configured'
+        ? 'Read the deployed TreasuryPolicy contract on Arc Testnet.'
+        : 'Set TREASURY_POLICY_ADDRESS to read the deployed TreasuryPolicy contract.'
   const contractAddressLabel =
     treasuryPolicyAddressConfig.status === 'configured'
       ? truncateAddress(contractAddress ?? '')
@@ -1199,43 +1835,66 @@ export function TreasuryDashboard() {
   const circleGatewayBalanceLabel = circleGatewayBalances?.balances?.[0]?.balance
     ? `${circleGatewayBalances.balances[0].balance} USDC`
     : 'No Gateway balance returned yet'
+  const agentTakeoverReady = Boolean(contractAddress && circleApiReady && currentPolicy)
+  const agentTakeoverStatusLabel = !contractAddress
+    ? 'Policy missing'
+    : !circleApiReady
+      ? 'Circle incomplete'
+      : publicDemoMode
+        ? 'Public demo ready'
+        : 'Ready to take over'
 
   return (
     <main className="min-h-screen pb-16">
       <SiteHeader
         eyebrow="Treasury dashboard"
         title="Arc USDC Rebalancer"
-        description="Read the deployed TreasuryPolicy, submit owner-signed updates, and simulate rebalance status against Arc Testnet."
+        description="Explore the policy, run sample treasury scenarios, and switch to live operator mode only when you want signed Arc Testnet actions."
         ctaHref="/"
         ctaLabel="Back to landing"
       />
 
       <div className="sticky top-4 z-20">
-        <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-white/10 bg-background/90 p-4 shadow-[0_20px_60px_-32px_rgba(15,23,42,0.85)] backdrop-blur">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Quick actions</div>
               <div className="mt-1 text-sm text-muted-foreground">
-                Keep the wallet, network, deployment, and execution controls visible without scrolling.
+                Visitors can start in public demo mode. Connect a wallet only if you want live signing.
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <Badge variant={isConnected ? 'success' : 'outline'}>{isConnected ? 'Wallet ready' : 'Wallet disconnected'}</Badge>
-              <Badge variant={walletOnArc ? 'success' : 'warning'}>{walletOnArc ? 'Arc Testnet' : 'Switch needed'}</Badge>
-              <Badge variant={executorAddress ? 'success' : 'warning'}>
-                {executorAddress ? 'Executor ready' : 'Executor missing'}
+              <Badge variant={publicDemoMode ? 'success' : 'outline'}>{publicDemoMode ? 'Public demo' : 'Wallet ready'}</Badge>
+              <Badge variant={walletOnArc || publicDemoMode ? 'success' : 'warning'}>
+                {walletOnArc ? 'Arc Testnet' : publicDemoMode ? 'Wallet optional' : 'Switch needed'}
               </Badge>
-              <Badge variant={stablecoinRobotExecutionReady ? 'success' : 'warning'}>
-                {stablecoinRobotExecutionReady ? 'Execution ready' : 'Execution blocked'}
+              <Badge variant={executorAddress ? 'success' : 'warning'}>
+                {executorAddress ? 'Executor ready' : publicDemoMode ? 'Demo executor' : 'Executor missing'}
+              </Badge>
+              <Badge variant={stablecoinRobotExecutionReady || publicDemoMode ? 'success' : 'warning'}>
+                {stablecoinRobotExecutionReady
+                  ? 'Execution ready'
+                  : publicDemoMode
+                    ? 'Demo execution ready'
+                    : 'Execution blocked'}
               </Badge>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <Button
+              type="button"
+              className="w-full"
+              onClick={() => void handleRunAgentTakeover()}
+              disabled={agentTakeoverInFlight}
+            >
+              <Bot className="h-4 w-4" />
+              {agentTakeoverInFlight ? 'Taking over…' : publicDemoMode ? 'Run public demo' : 'Run takeover cycle'}
+            </Button>
             {!isConnected ? (
               <Button type="button" className="w-full" onClick={() => void handleConnect()} disabled={isConnecting}>
                 <Wallet className="h-4 w-4" />
-                {isConnecting ? 'Connecting…' : 'Connect wallet'}
+                {isConnecting ? 'Connecting…' : 'Connect live wallet'}
               </Button>
             ) : (
               <Button type="button" className="w-full" variant="secondary" onClick={handleDisconnect}>
@@ -1275,33 +1934,101 @@ export function TreasuryDashboard() {
                 {executorDeploymentInFlight ? 'Deploying…' : 'Recheck executor'}
               </Button>
             )}
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => void handleExecuteStablecoinPolicy()}
-              disabled={submissionInFlight}
-            >
-              <Send className="h-4 w-4" />
-              {submissionInFlight
-                ? 'Executing…'
-                : stablecoinExecutionAction === 'top_up'
-                  ? 'Execute top-up'
-                  : stablecoinExecutionAction === 'trim'
-                    ? 'Execute trim'
-                    : 'Execute policy update'}
-            </Button>
           </div>
         </div>
       </div>
       </div>
 
-      <section className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-8 pt-8 sm:px-6 lg:px-8">
-
-        <div className="grid gap-4 lg:grid-cols-4">
-          <Card>
+      <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-8 sm:px-6 lg:px-8">
+        <div className="grid gap-4 lg:grid-cols-12">
+          <Card className="border-primary/20 bg-primary/5 lg:col-span-12">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
-                <CardDescription>Connected wallet</CardDescription>
+                <CardDescription>Agent takeover</CardDescription>
+                <CardTitle className="mt-1 text-lg">
+                  One control loop for public demo or live operator mode
+                </CardTitle>
+              </div>
+              <Bot className="h-5 w-5 text-primary" />
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={agentTakeoverReady ? 'success' : 'warning'}>{agentTakeoverStatusLabel}</Badge>
+                <Badge variant="outline">
+                  {lastAgentTakeoverAt ? `Last run ${formatTimestamp(lastAgentTakeoverAt)}` : 'No takeover run yet'}
+                </Badge>
+                <Badge variant={circleApiReady ? 'success' : 'warning'}>
+                  {circleApiReady ? 'Circle ready' : 'Circle incomplete'}
+                </Badge>
+                <Badge variant={executorAddress ? 'success' : 'warning'}>
+                  {executorAddress ? 'Executor ready' : 'Executor missing'}
+                </Badge>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Wallet</div>
+                  <div className="mt-2 text-foreground">
+                    {isConnected
+                      ? truncateAddress(address ?? '')
+                      : 'Public demo ready. Connect a wallet only for live signing.'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Network</div>
+                  <div className="mt-2 text-foreground">{walletOnArc || publicDemoMode ? 'Arc Testnet' : 'Switch required'}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Policy</div>
+                  <div className="mt-2 text-foreground">{contractAddress ? 'Loaded' : 'Missing'}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Circle</div>
+                  <div className="mt-2 text-foreground">{circleApiReady || publicDemoMode ? 'Ready' : 'Incomplete'}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Executor</div>
+                  <div className="mt-2 text-foreground">{executorAddress || publicDemoMode ? 'Live or demo ready' : 'Deploy or simulate'}</div>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
+                {agentTakeoverMessage}
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  onClick={() => void handleRunAgentTakeover()}
+                  disabled={agentTakeoverInFlight}
+                >
+                  <Bot className="h-4 w-4" />
+                  {agentTakeoverInFlight ? 'Taking over…' : publicDemoMode ? 'Run public demo' : 'Run takeover cycle'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => void handleWakeArcAgent()} disabled={arcAgentWakeInFlight}>
+                  <RefreshCcw className="h-4 w-4" />
+                  {arcAgentWakeInFlight ? 'Waking…' : 'Wake agent'}
+                </Button>
+                <Button type="button" variant="outline" onClick={() => void handleRunArcAgentBrief()} disabled={arcAgentBriefInFlight}>
+                  <FileText className="h-4 w-4" />
+                  {arcAgentBriefInFlight ? 'Briefing…' : 'Run brief'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void handleActOnArcAgentBrief()}
+                  disabled={arcAgentBriefInFlight || arcAgentWakeInFlight}
+                >
+                  <Send className="h-4 w-4" />
+                  {lastArcAgentBrief
+                    ? `Run ${formatArcAgentRecommendationAction(lastArcAgentBrief.recommendation.action)}`
+                    : 'Act on brief'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-4">
+            <CardHeader className="flex-row items-start justify-between space-y-0">
+              <div>
+                <CardDescription>{publicDemoMode ? 'Visitor access' : 'Connected wallet'}</CardDescription>
                 <CardTitle className="mt-1 text-lg">{walletSummary}</CardTitle>
               </div>
               <Wallet className="h-5 w-5 text-primary" />
@@ -1313,20 +2040,20 @@ export function TreasuryDashboard() {
                   {isConnected ? (walletOnArc ? 'Arc Testnet' : 'Switch needed') : 'No wallet'}
                 </Badge>
                 <Badge variant={connectedWalletIsOwner ? 'success' : ownerAddress ? 'warning' : 'outline'}>
-                  {ownerAddress ? (connectedWalletIsOwner ? 'Owner wallet' : 'Owner required') : 'Owner loading'}
+                  {ownerAddress ? (connectedWalletIsOwner ? 'Live operator' : 'Public demo') : 'Operator loading'}
                 </Badge>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Wallet balance</div>
                 <div className="mt-2 text-foreground">
-                  {walletBalanceQuery.data ? `${formatUsdc(Number(walletBalanceQuery.data.formatted ?? 0))} USDC` : 'Connect wallet'}
+                  {walletBalanceQuery.data ? `${formatUsdc(Number(walletBalanceQuery.data.formatted ?? 0))} USDC` : 'Public demo mode'}
                 </div>
               </div>
-              <div>{isConnected ? `Active account ${address}` : 'Connect an injected wallet to continue.'}</div>
+              <div>{isConnected ? `Active account ${address}` : 'No wallet is required to explore the public demo.'}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="lg:col-span-4">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>{policyCardTitle}</CardDescription>
@@ -1358,13 +2085,13 @@ export function TreasuryDashboard() {
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant={policySyncVariant}>{policySyncBadge}</Badge>
                 <span>Contract {contractAddressLabel}</span>
-                <span>Owner {ownerLabel}</span>
+                    <span>Onchain owner {ownerLabel}</span>
               </div>
               <div className="text-sm text-muted-foreground">{policyCardDescription}</div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="lg:col-span-4">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Latest PolicyUpdated event</CardDescription>
@@ -1377,7 +2104,7 @@ export function TreasuryDashboard() {
                 <>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="success">Latest</Badge>
-                    <Badge variant="outline">Owner {truncateAddress(latestEvent.args.owner)}</Badge>
+                    <Badge variant="outline">Onchain owner {truncateAddress(latestEvent.args.owner)}</Badge>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
@@ -1409,19 +2136,19 @@ export function TreasuryDashboard() {
                 </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
-                  No `PolicyUpdated` event has been observed yet. The latest event will appear after the first owner
-                  update on Arc Testnet.
+                  No `PolicyUpdated` event has been observed yet. The latest event will appear after the first live
+                  operator update on Arc Testnet.
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="lg:col-span-12">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Simulated rebalance status</CardDescription>
                 <CardTitle className="mt-1 text-lg">
-                  {currentStatus ? currentStatus.replace('_', ' ') : 'Awaiting wallet'}
+                  {currentStatus ? currentStatus.replace('_', ' ') : 'Public demo mode'}
                 </CardTitle>
               </div>
               <ArrowRightLeft className="h-5 w-5 text-primary" />
@@ -1431,7 +2158,9 @@ export function TreasuryDashboard() {
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
                   <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Balance</div>
                   <div className="mt-2 text-foreground">
-                    {isConnected ? `${formatUsdc(Number(treasuryBalanceQuery.data?.formatted ?? 0))} USDC` : 'Connect wallet'}
+                    {isConnected
+                      ? `${formatUsdc(Number(treasuryBalanceQuery.data?.formatted ?? 0))} USDC`
+                      : 'Public demo preview'}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
@@ -1445,7 +2174,7 @@ export function TreasuryDashboard() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={evaluation?.status === 'healthy' ? 'success' : 'warning'}>
-                  {evaluation?.status ?? 'Awaiting wallet'}
+                  {evaluation?.status ?? (publicDemoMode ? 'Public demo' : 'Awaiting wallet')}
                 </Badge>
                 {evaluation?.reasonCodes.map((reasonCode) => (
                   <Badge key={reasonCode} variant="outline">
@@ -1453,8 +2182,51 @@ export function TreasuryDashboard() {
                   </Badge>
                 ))}
               </div>
+              {publicDemoMode ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => loadPublicDemoScenario(publicDemoPreviewBalance, 'Default public demo')}
+                  >
+                    Default demo
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      loadPublicDemoScenario(Math.max(0, currentPolicy.minThreshold - 25), 'Below-minimum scenario')
+                    }
+                  >
+                    Below minimum
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => loadPublicDemoScenario(currentPolicy.targetBalance, 'At-target scenario')}
+                  >
+                    At target
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      loadPublicDemoScenario(
+                        currentPolicy.targetBalance + currentPolicy.maxRebalanceAmount,
+                        'Above-target scenario',
+                      )
+                    }
+                  >
+                    Above target
+                  </Button>
+                </div>
+              ) : null}
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" onClick={() => void handleSimulateRebalance()} disabled={!isConnected}>
+                <Button variant="outline" onClick={() => void handleSimulateRebalance()}>
                   <ArrowRightLeft className="h-4 w-4" />
                   Simulate rebalance
                 </Button>
@@ -1465,7 +2237,7 @@ export function TreasuryDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-primary/20 bg-primary/5">
+          <Card className="border-primary/20 bg-primary/5 lg:col-span-12">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Stablecoin robot test</CardDescription>
@@ -1551,7 +2323,7 @@ export function TreasuryDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-cyan-500/20 bg-cyan-500/5">
+          <Card className="border-cyan-500/20 bg-cyan-500/5 lg:col-span-12">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Circle line</CardDescription>
@@ -1759,7 +2531,7 @@ export function TreasuryDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-emerald-500/20 bg-emerald-500/5">
+          <Card className="border-emerald-500/20 bg-emerald-500/5 lg:col-span-12">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Arc agent</CardDescription>
@@ -1772,7 +2544,7 @@ export function TreasuryDashboard() {
                 <Badge variant={arcAgentStatusTone === 'success' ? 'success' : 'warning'}>{arcAgentStatusLabel}</Badge>
                 <Badge variant="outline">{`Agent ${arcAgentId.toString()}`}</Badge>
                 <Badge variant={arcAgentOwnerMatches ? 'success' : 'warning'}>
-                  {arcAgentOwnerMatches ? 'Owner verified' : 'Owner check'}
+                  {arcAgentOwnerMatches ? 'Onchain owner verified' : 'Onchain owner check'}
                 </Badge>
                 <Badge variant={arcAgentValidationResponse === 100 ? 'success' : 'outline'}>
                   {arcAgentValidationResponse === 100
@@ -1782,8 +2554,8 @@ export function TreasuryDashboard() {
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Owner</div>
-                  <div className="mt-2 text-foreground">{arcAgentOwner ?? 'Loading owner...'}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Onchain owner</div>
+                  <div className="mt-2 text-foreground">{arcAgentOwner ?? 'Loading onchain owner...'}</div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
                   <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Validator</div>
@@ -1806,7 +2578,113 @@ export function TreasuryDashboard() {
                 This site now surfaces the registered Arc agent onchain state directly from Arc Testnet, so the UI and
                 the agent share the same trust anchor.
               </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Validation hash</div>
+                  <div className="mt-2 break-all text-foreground">{truncateAddress(activeArcAgentValidationRequestHash, 10, 8)}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reputation tag</div>
+                  <div className="mt-2 text-foreground">{arcAgentActivationReputationTag}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Activation status</div>
+                  <div className="mt-2 text-foreground">
+                    {arcAgentWakeInFlight ? 'Waking agent...' : arcAgentWakeMessage}
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Operational brief</div>
+                  <div className="mt-2 text-foreground">
+                    {arcAgentBriefInFlight ? 'Briefing agent...' : arcAgentBriefMessage}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Recommended action</div>
+                  <div className="mt-2 text-foreground">
+                    {lastArcAgentBrief ? formatArcAgentRecommendationAction(lastArcAgentBrief.recommendation.action) : 'Run brief'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Confidence</div>
+                  <div className="mt-2 text-foreground">
+                    {lastArcAgentBrief ? `${Math.round(lastArcAgentBrief.recommendation.confidence * 100)}%` : '--'}
+                  </div>
+                </div>
+              </div>
+              {lastArcAgentBrief ? (
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Brief headline</div>
+                    <div className="mt-2 text-foreground">{lastArcAgentBrief.recommendation.headline}</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Why</div>
+                    <div className="mt-2 text-foreground">{lastArcAgentBrief.recommendation.detail}</div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Next steps</div>
+                    <div className="mt-2 space-y-1 text-foreground">
+                      {lastArcAgentBrief.recommendation.nextSteps.map((step) => (
+                        <div key={step}>{step}</div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              {lastArcAgentActivation ? (
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Request tx</div>
+                    <div className="mt-2 break-all text-foreground">
+                      {formatTx(lastArcAgentActivation.txHashes.validationRequest)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reputation tx</div>
+                    <div className="mt-2 break-all text-foreground">
+                      {formatTx(lastArcAgentActivation.txHashes.reputation)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Validation tx</div>
+                    <div className="mt-2 break-all text-foreground">
+                      {formatTx(lastArcAgentActivation.txHashes.validationResponse)}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
               <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  onClick={() => void handleWakeArcAgent()}
+                  disabled={arcAgentWakeInFlight}
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  {arcAgentWakeInFlight ? 'Waking…' : 'Wake agent'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handleRunArcAgentBrief()}
+                  disabled={arcAgentBriefInFlight}
+                >
+                  <FileText className="h-4 w-4" />
+                  {arcAgentBriefInFlight ? 'Briefing…' : 'Run brief'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void handleActOnArcAgentBrief()}
+                  disabled={arcAgentBriefInFlight || arcAgentWakeInFlight}
+                >
+                  <Send className="h-4 w-4" />
+                  {lastArcAgentBrief
+                    ? `Run ${formatArcAgentRecommendationAction(lastArcAgentBrief.recommendation.action)}`
+                    : 'Act on brief'}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
@@ -1820,19 +2698,19 @@ export function TreasuryDashboard() {
           </Card>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(360px,0.9fr)]">
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Wallet controls</CardTitle>
-                <CardDescription>Connect, switch the wallet, and inspect the Arc Testnet deployment details.</CardDescription>
+                <CardDescription>Connect a wallet for live signing, or stay in public demo mode and inspect the Arc Testnet details.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-3">
                   {!isConnected ? (
                     <Button type="button" onClick={() => void handleConnect()} disabled={isConnecting}>
                       <Wallet className="h-4 w-4" />
-                      {isConnecting ? 'Connecting…' : 'Connect wallet'}
+                      {isConnecting ? 'Connecting…' : 'Connect live wallet'}
                     </Button>
                   ) : (
                     <>
@@ -1899,7 +2777,7 @@ export function TreasuryDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Policy update</CardTitle>
-                <CardDescription>Load the deployed policy, edit the draft, and submit from the owner wallet.</CardDescription>
+                <CardDescription>Load the deployed policy, edit the draft, and submit in live or demo mode.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -1961,14 +2839,7 @@ export function TreasuryDashboard() {
                   </Button>
                   <Button
                     onClick={() => void handleSubmitPolicy()}
-                    disabled={
-                      !isConnected ||
-                      !walletOnArc ||
-                      !contractAddress ||
-                      !connectedWalletIsOwner ||
-                      isWriting ||
-                      submissionInFlight
-                    }
+                    disabled={isWriting || submissionInFlight}
                   >
                     <Send className="h-4 w-4" />
                     {isWriting || submissionInFlight ? 'Submitting…' : 'Submit policy update'}
@@ -1979,19 +2850,19 @@ export function TreasuryDashboard() {
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
-                  Only the owner wallet can call `setPolicy` on Arc Testnet. The deployed contract address comes from
-                  the frontend env config.
+                  Live policy writes use the operator wallet on Arc Testnet. Public visitors can still edit the draft
+                  and save a local demo copy in this browser session.
                 </div>
 
                 <Separator />
 
                 <div className="text-sm text-muted-foreground">
                   {lastValidationError ? (
-                    <span className="text-amber-300">{lastValidationError}</span>
+                    <span className="text-slate-300">{lastValidationError}</span>
                   ) : contractAddress ? (
-                    'Draft values are validated locally before the owner wallet sends the transaction.'
+                    'Draft values are validated locally before a live transaction or demo save.'
                   ) : (
-                    'Set TREASURY_POLICY_ADDRESS before attempting any onchain policy update.'
+                    'Set TREASURY_POLICY_ADDRESS before attempting a live policy update.'
                   )}
                 </div>
               </CardContent>
@@ -2004,9 +2875,10 @@ export function TreasuryDashboard() {
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Owner-gated</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Live operator</div>
                   <div className="mt-2 text-sm text-foreground">
-                    The contract accepts updates only from the connected owner wallet.
+                    The contract accepts updates from the live operator wallet. Public demo mode keeps the flow
+                    interactive without a signed transaction.
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -2045,9 +2917,7 @@ export function TreasuryDashboard() {
                       <div className="flex items-center justify-between gap-3">
                         <div className="font-medium text-foreground">{item.title}</div>
                         <Badge
-                          variant={
-                            item.tone === 'success' ? 'success' : item.tone === 'warning' ? 'warning' : 'outline'
-                          }
+                          variant={activityBadgeVariant(item.tone)}
                         >
                           {item.tone}
                         </Badge>
@@ -2063,18 +2933,20 @@ export function TreasuryDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Quick checks</CardTitle>
-                <CardDescription>What the dashboard needs before a policy update can land on Arc Testnet.</CardDescription>
+                <CardDescription>What the dashboard needs for live settlement, plus the public demo path.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  Connect the owner wallet and switch it to Arc Testnet before submitting.
+                  Live settlement uses the operator wallet on Arc Testnet. Public demo mode stays interactive without
+                  a wallet.
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                   Set <span className="text-foreground">TREASURY_POLICY_ADDRESS</span> so the frontend can read and write
                   the deployed contract.
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  Use the Foundry deployment script to broadcast the contract and seed the initial policy values.
+                  Use the Foundry deployment script to broadcast the contract and seed the live policy values. Public
+                  visitors can still edit the local draft preview.
                 </div>
               </CardContent>
             </Card>
