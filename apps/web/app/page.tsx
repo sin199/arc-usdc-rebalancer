@@ -206,7 +206,8 @@ export default function HomePage() {
               </div>
               <CardTitle className="text-2xl">Operational snapshot</CardTitle>
               <CardDescription>
-                The display page now stages the core system in a bento layout instead of a flat product card.
+                The display page now stages the core system in a bento layout and points reviewers to the demo
+                path, live surface, and builder evidence.
               </CardDescription>
             </CardHeader>
 
@@ -305,7 +306,7 @@ export default function HomePage() {
                   Let visitors explore without a wallet, then move into live operator mode if needed.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Make it obvious that the product is still evolving, not frozen as a finished demo.
+                  Keep the builder story legible from GitHub to the live demo and the review notes.
                 </li>
               </ul>
             </CardContent>

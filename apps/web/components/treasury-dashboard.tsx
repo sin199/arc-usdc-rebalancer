@@ -312,6 +312,45 @@ function formatArcAgentRecommendationAction(action: ArcAgentBriefResult['recomme
   }
 }
 
+const publicLaunchPath = [
+  {
+    step: '01',
+    title: 'Pick a demo state',
+    description:
+      'Load a public scenario first so visitors can understand the treasury behavior before any live signing.',
+  },
+  {
+    step: '02',
+    title: 'Run the brief',
+    description:
+      'Let the Arc agent explain the recommended action, the policy band, and the current readiness state.',
+  },
+  {
+    step: '03',
+    title: 'Review evidence',
+    description:
+      'Open the repo notes, live demo, and activity log so the build stays auditable from GitHub to chain.',
+  },
+]
+
+const builderReferenceLinks = [
+  {
+    label: 'Live demo',
+    value: 'web-eight-chi-99.vercel.app/dashboard',
+    href: 'https://web-eight-chi-99.vercel.app/dashboard',
+  },
+  {
+    label: 'GitHub repo',
+    value: 'sin199/arc-usdc-rebalancer',
+    href: 'https://github.com/sin199/arc-usdc-rebalancer',
+  },
+  {
+    label: 'Builder notes',
+    value: 'docs/arc-builder-notes.md',
+    href: 'https://github.com/sin199/arc-usdc-rebalancer/blob/main/docs/arc-builder-notes.md',
+  },
+]
+
 export function TreasuryDashboard() {
   const { address, chainId, isConnected } = useAccount()
   const { connectors, connectAsync, isPending: isConnecting } = useConnect()
@@ -2025,6 +2064,95 @@ export function TreasuryDashboard() {
             </CardContent>
           </Card>
 
+          <Card className="lg:col-span-12 border-primary/20 bg-primary/5">
+            <CardHeader className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
+                  Public demo first
+                </Badge>
+                <Badge variant="outline">Builder evidence</Badge>
+              </div>
+              <CardTitle className="text-lg">Start with the demo path</CardTitle>
+              <CardDescription>
+                Visitors should begin in public demo mode, then inspect the brief and evidence before they ever touch
+                live signing.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-3">
+                {publicLaunchPath.map((item) => (
+                  <div key={item.step} className="rounded-3xl border border-white/10 bg-background/50 p-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="font-display text-3xl font-semibold tracking-tight text-primary">{item.step}</span>
+                      <div className="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent" />
+                    </div>
+                    <div className="mt-4 font-display text-xl font-semibold tracking-tight text-foreground">
+                      {item.title}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => loadPublicDemoScenario(publicDemoPreviewBalance, 'Default public demo')}
+                >
+                  Default demo
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    loadPublicDemoScenario(Math.max(0, currentPolicy.minThreshold - 25), 'Below-minimum scenario')
+                  }
+                >
+                  Below minimum
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => loadPublicDemoScenario(currentPolicy.targetBalance, 'At-target scenario')}
+                >
+                  At target
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() =>
+                    loadPublicDemoScenario(
+                      currentPolicy.targetBalance + currentPolicy.maxRebalanceAmount,
+                      'Above-target scenario',
+                    )
+                  }
+                >
+                  Above target
+                </Button>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                {builderReferenceLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    className="rounded-2xl border border-white/10 bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/70"
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{link.label}</div>
+                    <div className="mt-2 break-all text-sm text-foreground">{link.value}</div>
+                    <div className="mt-2 inline-flex items-center gap-1 text-xs text-primary">
+                      Open
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="lg:col-span-4">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
@@ -2932,21 +3060,27 @@ export function TreasuryDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Quick checks</CardTitle>
-                <CardDescription>What the dashboard needs for live settlement, plus the public demo path.</CardDescription>
+                <CardTitle>Builder evidence</CardTitle>
+                <CardDescription>
+                  What reviewers should open first when they want to verify the build from GitHub to chain.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">
+                {builderReferenceLinks.map((link) => (
+                  <a
+                    key={link.label}
+                    className="block rounded-2xl border border-white/10 bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/70"
+                    href={link.href}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{link.label}</div>
+                    <div className="mt-2 break-all text-sm text-foreground">{link.value}</div>
+                  </a>
+                ))}
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  Live settlement uses the operator wallet on Arc Testnet. Public demo mode stays interactive without
-                  a wallet.
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  Set <span className="text-foreground">TREASURY_POLICY_ADDRESS</span> so the frontend can read and write
-                  the deployed contract.
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  Use the Foundry deployment script to broadcast the contract and seed the live policy values. Public
-                  visitors can still edit the local draft preview.
+                  Live settlement still uses the operator wallet on Arc Testnet. Public demo mode stays interactive
+                  without a wallet, so the site remains usable for visitors and reviewers.
                 </div>
               </CardContent>
             </Card>
