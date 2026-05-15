@@ -351,6 +351,27 @@ const builderReferenceLinks = [
   },
 ]
 
+const workingNotes = [
+  {
+    label: 'Last hand-edited',
+    value: 'May 16, 2026',
+  },
+  {
+    label: 'What stays visible',
+    value: 'The demo path, the live path, and the gap between them.',
+  },
+  {
+    label: 'Intentional rough edge',
+    value: 'Live settlement stays operator-gated and the page says so plainly.',
+  },
+]
+
+const buildTrailNotes = [
+  'Public demo stays first so a new visitor can understand the build without a wallet.',
+  'Live signing remains obvious but optional.',
+  'A few internal notes stay visible so the page reads like a working project, not a brochure.',
+]
+
 export function TreasuryDashboard() {
   const { address, chainId, isConnected } = useAccount()
   const { connectors, connectAsync, isPending: isConnecting } = useConnect()
@@ -1904,6 +1925,9 @@ export function TreasuryDashboard() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                Working build
+              </Badge>
               <Badge variant={publicDemoMode ? 'success' : 'outline'}>{publicDemoMode ? 'Public demo' : 'Wallet ready'}</Badge>
               <Badge variant={walletOnArc || publicDemoMode ? 'success' : 'warning'}>
                 {walletOnArc ? 'Arc Testnet' : publicDemoMode ? 'Wallet optional' : 'Switch needed'}
@@ -1917,6 +1941,9 @@ export function TreasuryDashboard() {
                   : publicDemoMode
                     ? 'Demo execution ready'
                     : 'Execution blocked'}
+              </Badge>
+              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                Last edited May 16, 2026
               </Badge>
             </div>
           </div>
@@ -2149,6 +2176,41 @@ export function TreasuryDashboard() {
                     </div>
                   </a>
                 ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-12 border-white/10 bg-card/85">
+            <CardHeader className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                  Working notes
+                </Badge>
+                <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                  Hand-edited
+                </Badge>
+              </div>
+              <CardTitle className="text-lg">What I am leaving visible while this is still a work in progress</CardTitle>
+              <CardDescription>
+                Short notes from the current pass. They are intentionally plain and a little uneven.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-3">
+                {workingNotes.map((note) => (
+                  <div key={note.label} className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{note.label}</div>
+                    <div className="mt-2 text-sm leading-6 text-foreground">{note.value}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Why the page reads this way</div>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                  {buildTrailNotes.map((note) => (
+                    <li key={note}>• {note}</li>
+                  ))}
+                </ul>
               </div>
             </CardContent>
           </Card>
@@ -3026,7 +3088,7 @@ export function TreasuryDashboard() {
           </div>
 
           <div className="space-y-6">
-            <Card className="sticky top-6">
+          <Card className="sticky top-6">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Activity className="h-5 w-5 text-primary" />
@@ -3060,9 +3122,9 @@ export function TreasuryDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Builder evidence</CardTitle>
+                <CardTitle>Build trail</CardTitle>
                 <CardDescription>
-                  What reviewers should open first when they want to verify the build from GitHub to chain.
+                  The links I open first when I need to remember how this build is wired together.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-muted-foreground">

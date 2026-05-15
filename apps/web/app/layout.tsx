@@ -15,8 +15,9 @@ const body = Manrope({
 })
 
 export const metadata: Metadata = {
-  title: 'Arc Treasury Job Robot',
-  description: 'A testnet-only treasury job robot for Arc Testnet with safe dry-run and manual-approve defaults.',
+  title: 'Arc Treasury Job Robot · working build',
+  description:
+    'A public Arc Testnet treasury demo with live operator controls, demo-first flows, and visible build notes.',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

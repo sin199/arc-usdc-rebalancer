@@ -55,6 +55,12 @@ const liveTiles = [
   },
 ]
 
+const workingNotes = [
+  'This is the current working build, not a polished launch page.',
+  'Public demo stays first because that is how a new visitor gets oriented fastest.',
+  'Live signing remains available, but it should never be the only way to understand the project.',
+]
+
 const controlLoop = [
   {
     step: '01',
@@ -145,6 +151,9 @@ export default function HomePage() {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.18),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.16),transparent_24%)]" />
           <div className="relative space-y-6">
             <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                Working build
+              </Badge>
               <Badge variant="success">Built for Arc treasury ops</Badge>
               <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
                 Wallet + policy + execution
@@ -162,6 +171,7 @@ export default function HomePage() {
                 Visitors can inspect the policy, run the agent brief, and try sample treasury scenarios without
                 connecting a wallet. If you want live signing, switch to operator mode from the dashboard.
               </p>
+              <p className="text-sm text-muted-foreground">Last hand-edited: May 16, 2026.</p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -200,14 +210,14 @@ export default function HomePage() {
             <CardHeader className="space-y-2 p-0">
               <div className="flex items-center justify-between gap-4">
                 <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
-                  Live surface
+                  Working build
                 </Badge>
                 <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Project status</span>
               </div>
-              <CardTitle className="text-2xl">Operational snapshot</CardTitle>
+              <CardTitle className="text-2xl">What is live right now</CardTitle>
               <CardDescription>
-                The display page now stages the core system in a bento layout and points reviewers to the demo
-                path, live surface, and builder evidence.
+                The page stays close to the actual build: demo path first, live operator mode second, and a few
+                working notes left visible so the site reads like something a person is still shaping.
               </CardDescription>
             </CardHeader>
 
@@ -252,6 +262,14 @@ export default function HomePage() {
                     <div className="mt-2 break-all text-sm leading-6 text-foreground">{fact.value}</div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-4 rounded-2xl border border-white/10 bg-background/45 p-4">
+                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Working notes</div>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                  {workingNotes.map((note) => (
+                    <li key={note}>• {note}</li>
+                  ))}
+                </ul>
               </div>
             </CardContent>
           </Card>
