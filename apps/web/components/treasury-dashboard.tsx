@@ -27,6 +27,7 @@ import {
 } from 'lucide-react'
 import {
   ACTIVITY_LOG_STORAGE_KEY,
+  BUILD_NOTES_STORAGE_KEY,
   circleSkillCatalog,
   circleSkillsPageUrl,
   circleStackConfig,
@@ -95,6 +96,13 @@ type TreasuryPolicyUpdatedLog = {
   }
   blockNumber?: bigint
   transactionHash?: `0x${string}`
+}
+
+type BuildNote = {
+  id: string
+  title: string
+  detail: string
+  createdAt: string
 }
 
 function statusTone(status: 'below_min' | 'healthy' | 'above_target') {
@@ -372,6 +380,27 @@ const buildTrailNotes = [
   'A few internal notes stay visible so the page reads like a working project, not a brochure.',
 ]
 
+const seedBuildNotes: BuildNote[] = [
+  {
+    id: 'seed-public-demo',
+    title: 'Keep public demo first',
+    detail: 'Visitors should understand the treasury flow before they ever need a wallet or operator mode.',
+    createdAt: '2026-05-20T09:00:00.000Z',
+  },
+  {
+    id: 'seed-live-operator',
+    title: 'Leave live signing visible',
+    detail: 'The live Arc Testnet path should stay obvious, but it should never be the only way into the site.',
+    createdAt: '2026-05-20T09:10:00.000Z',
+  },
+  {
+    id: 'seed-builder-trail',
+    title: 'Keep a builder trail',
+    detail: 'Reference links and small maintenance notes make the project feel actively worked on.',
+    createdAt: '2026-05-20T09:20:00.000Z',
+  },
+]
+
 export function TreasuryDashboard() {
   const { address, chainId, isConnected } = useAccount()
   const { connectors, connectAsync, isPending: isConnecting } = useConnect()
@@ -489,6 +518,10 @@ export function TreasuryDashboard() {
   const [executorDeploymentInFlight, setExecutorDeploymentInFlight] = useState(false)
   const [demoPolicy, setDemoPolicy] = useState<TreasuryPolicy | null>(null)
   const [demoTreasuryBalance, setDemoTreasuryBalance] = useState<number | null>(null)
+  const [buildNotes, setBuildNotes] = useState<BuildNote[]>(seedBuildNotes)
+  const [buildNotesHydrated, setBuildNotesHydrated] = useState(false)
+  const [buildNoteTitle, setBuildNoteTitle] = useState(seedBuildNotes[0]?.title ?? '')
+  const [buildNoteDetail, setBuildNoteDetail] = useState('')
   const chainPolicyInitializedRef = useRef(false)
   const configuredCircleWalletSetId = process.env.NEXT_PUBLIC_CIRCLE_WALLET_SET_ID?.trim() || undefined
   const circleWalletSetId = configuredCircleWalletSetId ?? localCircleWalletSetId
@@ -769,6 +802,20 @@ export function TreasuryDashboard() {
   }, [])
 
   useEffect(() => {
+    const storedBuildNotes = readJson<BuildNote[]>(BUILD_NOTES_STORAGE_KEY, seedBuildNotes)
+    setBuildNotes(storedBuildNotes.length > 0 ? storedBuildNotes : seedBuildNotes)
+    setBuildNotesHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!buildNotesHydrated) {
+      return
+    }
+
+    writeJson(BUILD_NOTES_STORAGE_KEY, buildNotes)
+  }, [buildNotes, buildNotesHydrated])
+
+  useEffect(() => {
     if (!chainPolicy || chainPolicyInitializedRef.current) {
       return
     }
@@ -843,6 +890,48 @@ export function TreasuryDashboard() {
       const next = [nextEntry, ...current].slice(0, 12)
       writeJson(ACTIVITY_LOG_STORAGE_KEY, next)
       return next
+    })
+  }
+
+  function handleSaveBuildNote() {
+    const title = buildNoteTitle.trim()
+    const detail = buildNoteDetail.trim()
+
+    if (!title || !detail) {
+      pushActivity({
+        title: 'Build note blocked',
+        detail: 'Add both a title and a detail before saving the maintenance note.',
+        tone: 'warning',
+      })
+      return
+    }
+
+    const nextNote: BuildNote = {
+      id: crypto.randomUUID(),
+      title,
+      detail,
+      createdAt: new Date().toISOString(),
+    }
+    const nextNotes = [nextNote, ...buildNotes].slice(0, 6)
+
+    setBuildNotes(nextNotes)
+    setBuildNoteTitle('')
+    setBuildNoteDetail('')
+    pushActivity({
+      title: 'Build note saved',
+      detail: `${title} · maintenance log updated locally in this browser.`,
+      tone: 'success',
+    })
+  }
+
+  function handleResetBuildNotes() {
+    setBuildNotes(seedBuildNotes)
+    setBuildNoteTitle(seedBuildNotes[0]?.title ?? '')
+    setBuildNoteDetail('')
+    pushActivity({
+      title: 'Build notes reset',
+      detail: 'Restored the seeded maintenance notes for the current browser session.',
+      tone: 'neutral',
     })
   }
 
@@ -3122,27 +3211,78 @@ export function TreasuryDashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Build trail</CardTitle>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <CardTitle>Maintenance log</CardTitle>
+                </div>
                 <CardDescription>
-                  The links I open first when I need to remember how this build is wired together.
+                  A small scratchpad for what changed, what still feels rough, and what I want to ship next.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                {builderReferenceLinks.map((link) => (
-                  <a
-                    key={link.label}
-                    className="block rounded-2xl border border-white/10 bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/70"
-                    href={link.href}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{link.label}</div>
-                    <div className="mt-2 break-all text-sm text-foreground">{link.value}</div>
-                  </a>
-                ))}
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  Live settlement still uses the operator wallet on Arc Testnet. Public demo mode stays interactive
-                  without a wallet, so the site remains usable for visitors and reviewers.
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="build-note-title">Note title</Label>
+                    <Input
+                      id="build-note-title"
+                      value={buildNoteTitle}
+                      onChange={(event) => setBuildNoteTitle(event.target.value)}
+                      placeholder="What changed?"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="build-note-detail">Note detail</Label>
+                    <textarea
+                      id="build-note-detail"
+                      value={buildNoteDetail}
+                      onChange={(event) => setBuildNoteDetail(event.target.value)}
+                      rows={4}
+                      placeholder="Short note about the current pass..."
+                      className="flex min-h-[108px] w-full rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" onClick={() => void handleSaveBuildNote()}>
+                      Save note
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleResetBuildNotes}>
+                      Reset notes
+                    </Button>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  {buildNotes.slice(0, 3).map((note) => (
+                    <div key={note.id} className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="font-medium text-foreground">{note.title}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                          {formatTimestamp(note.createdAt)}
+                        </div>
+                      </div>
+                      <div className="mt-2 text-sm leading-6 text-muted-foreground">{note.detail}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reference links</div>
+                  {builderReferenceLinks.map((link) => (
+                    <a
+                      key={link.label}
+                      className="block rounded-2xl border border-white/10 bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/70"
+                      href={link.href}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{link.label}</div>
+                      <div className="mt-2 break-all text-sm text-foreground">{link.value}</div>
+                    </a>
+                  ))}
                 </div>
               </CardContent>
             </Card>

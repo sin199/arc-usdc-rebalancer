@@ -22,6 +22,7 @@ export const DEFAULT_TREASURY_POLICY: TreasuryPolicy = {
 
 export const TREASURY_POLICY_STORAGE_KEY = 'arc-usdc-rebalancer:treasury-policy'
 export const ACTIVITY_LOG_STORAGE_KEY = 'arc-usdc-rebalancer:activity-log'
+export const BUILD_NOTES_STORAGE_KEY = 'arc-usdc-rebalancer:build-notes'
 
 export function formatUsdc(amount: number): string {
   if (!Number.isFinite(amount)) {

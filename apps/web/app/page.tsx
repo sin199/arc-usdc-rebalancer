@@ -59,6 +59,7 @@ const workingNotes = [
   'This is the current working build, not a polished launch page.',
   'Public demo stays first because that is how a new visitor gets oriented fastest.',
   'Live signing remains available, but it should never be the only way to understand the project.',
+  'The dashboard keeps a local maintenance log so updates can be written down as they happen.',
 ]
 
 const controlLoop = [
@@ -216,8 +217,8 @@ export default function HomePage() {
               </div>
               <CardTitle className="text-2xl">What is live right now</CardTitle>
               <CardDescription>
-                The page stays close to the actual build: demo path first, live operator mode second, and a few
-                working notes left visible so the site reads like something a person is still shaping.
+                The page stays close to the actual build: demo path first, live operator mode second, and the
+                dashboard keeps a maintenance log so the site reads like something a person is still shaping.
               </CardDescription>
             </CardHeader>
 
