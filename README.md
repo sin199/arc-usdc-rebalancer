@@ -12,6 +12,7 @@ Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer
 - A short case study page that explains what to inspect and how to replay the build.
 - A live operator mode for signed Arc Testnet actions.
 - A copyable action pack with the exact commands and payload needed for operator execution.
+- A one-click live action button that can submit top-up or trim through the server signer.
 - A treasury policy and executor flow on Arc Testnet.
 - An Arc agent identity and brief surfaced inside the dashboard.
 - Circle developer-controlled wallet and Gateway readiness for USDC routing.
@@ -87,7 +88,7 @@ Open:
 
 1. Open the case study page and read the short summary of what the repo proves.
 2. Open the dashboard and generate a readiness report from the current balance and policy inputs.
-3. Copy the markdown report or the action pack, then compare the sample scenarios to the live policy snapshot.
+3. Copy the markdown report or the action pack, or use the live action button when the live executor is configured.
 4. Switch to live operator mode only if the Arc Testnet policy, Circle readiness, and executor are all configured.
 
 ## Reproduce locally in 1 minute

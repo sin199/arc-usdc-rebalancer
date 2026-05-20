@@ -49,17 +49,34 @@ type CircleControlPlaneStatus = {
   } | null
 }
 
+type TreasuryExecutionResponse = {
+  action?: 'top_up' | 'trim'
+  amountUsdc?: number
+  error?: string
+  mode?: 'server'
+  ownerAddress?: `0x${string}`
+  recipient?: `0x${string}`
+  summary?: string
+  txHashes?: {
+    approve?: `0x${string}`
+    execute?: `0x${string}`
+  }
+}
+
 const initialPolicy = DEFAULT_TREASURY_POLICY
 
 export function ReadinessChecker() {
   const { address: operatorAddress } = useAccount()
   const contractAddress = treasuryPolicyAddressConfig.address
   const executorAddress = treasuryExecutorAddressConfig.address
-  const [balance, setBalance] = useState(Math.max(0, initialPolicy.targetBalance - 25))
+  const [balance, setBalance] = useState(Math.max(0, initialPolicy.minThreshold - 25))
   const [policy, setPolicy] = useState(initialPolicy)
   const [policySourceLabel, setPolicySourceLabel] = useState<'Draft policy' | 'Live chain snapshot'>('Draft policy')
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
   const [actionCopyState, setActionCopyState] = useState<'idle' | 'copied'>('idle')
+  const [executionState, setExecutionState] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [executionMessage, setExecutionMessage] = useState('Run the live action from the server signer when the report is actionable.')
+  const [executionResult, setExecutionResult] = useState<TreasuryExecutionResponse | null>(null)
   const policyHydratedRef = useRef(false)
 
   const policyQuery = useReadContract({
@@ -127,6 +144,7 @@ export function ReadinessChecker() {
   })
   const actionCommandsText = report.actionPack.commands.map((command) => `### ${command.label}\n${command.command}`).join('\n\n')
   const actionPayloadText = JSON.stringify(report.actionPack.payload, null, 2)
+  const canRunLiveAction = report.actionPack.actionable && Boolean(executorAddress)
 
   async function handleCopyReport() {
     await navigator.clipboard.writeText(report.markdown)
@@ -183,6 +201,47 @@ export function ReadinessChecker() {
     anchor.click()
 
     window.setTimeout(() => URL.revokeObjectURL(url), 2000)
+  }
+
+  async function handleRunLiveAction() {
+    if (!canRunLiveAction) {
+      setExecutionState('error')
+      setExecutionMessage('Resolve the missing dependencies before running a live action.')
+      return
+    }
+
+    try {
+      setExecutionState('running')
+      setExecutionMessage('Submitting the server-signer execution request...')
+      setExecutionResult(null)
+
+      const response = await fetch('/api/treasury/execute', {
+        body: JSON.stringify({
+          action: report.action,
+          amountUsdc: report.actionPack.payload.amountUsdc,
+          recipient: operatorAddress ?? undefined,
+        }),
+        cache: 'no-store',
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'POST',
+      })
+
+      const payload = (await response.json().catch(() => ({}))) as TreasuryExecutionResponse
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? `Treasury execution failed with ${response.status}.`)
+      }
+
+      setExecutionResult(payload)
+      setExecutionState('done')
+      setExecutionMessage(payload.summary ?? 'Execution confirmed via the server signer.')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown treasury execution error.'
+      setExecutionState('error')
+      setExecutionMessage(`Execution failed: ${message}`)
+    }
   }
 
   async function loadLivePolicy() {
@@ -451,6 +510,11 @@ export function ReadinessChecker() {
                 <div className="mt-2 text-sm leading-6 text-foreground">{report.actionPack.summary}</div>
               </div>
 
+              <div className="rounded-2xl border border-white/10 bg-primary/5 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Run status</div>
+                <div className="mt-2 text-sm leading-6 text-foreground">{executionMessage}</div>
+              </div>
+
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Commands</div>
                 <textarea
@@ -474,11 +538,44 @@ export function ReadinessChecker() {
                   <Copy className="h-4 w-4" />
                   {actionCopyState === 'copied' ? 'Copied' : 'Copy action pack'}
                 </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleRunLiveAction()}
+                  disabled={!canRunLiveAction || executionState === 'running'}
+                >
+                  <ArrowRight className="h-4 w-4" />
+                  {executionState === 'running'
+                    ? 'Running…'
+                    : report.action === 'top_up'
+                      ? 'Run top-up'
+                      : report.action === 'trim'
+                        ? 'Run trim'
+                        : 'Run live action'}
+                </Button>
                 <Button type="button" variant="outline" onClick={handleDownloadActionPack}>
                   <Download className="h-4 w-4" />
                   Download JSON
                 </Button>
               </div>
+
+              {executionResult ? (
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Latest execution</div>
+                  <div className="mt-2 text-sm leading-6 text-foreground">{executionResult.summary}</div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {executionResult.txHashes?.approve ? (
+                      <div className="rounded-xl border border-white/10 bg-card/70 p-3 text-xs text-muted-foreground">
+                        Approve tx
+                        <div className="mt-1 break-all text-sm text-foreground">{executionResult.txHashes.approve}</div>
+                      </div>
+                    ) : null}
+                    <div className="rounded-xl border border-white/10 bg-card/70 p-3 text-xs text-muted-foreground">
+                      Execute tx
+                      <div className="mt-1 break-all text-sm text-foreground">{executionResult.txHashes?.execute ?? '--'}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </div>

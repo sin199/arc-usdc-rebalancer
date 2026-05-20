@@ -54,6 +54,13 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     detail:
       'The checker now emits command lines and JSON that an operator can actually use instead of only reading the report.',
   },
+  {
+    date: 'May 20, 2026',
+    tag: 'product',
+    title: 'Added a live action button',
+    detail:
+      'The dashboard can now submit the server-signer execution path directly when the report calls for top-up or trim.',
+  },
 ]
 
 export const projectKnownGaps = [
