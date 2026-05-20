@@ -7,11 +7,18 @@ export type ProjectReleaseNote = {
 
 export const projectTrailSummary = {
   buildLabel: 'Working build',
-  headline: 'Case study first, report second, live operator only when needed.',
+  headline: 'Architects packet first, case study second, live operator only when needed.',
   lastReviewed: 'May 20, 2026',
 }
 
 export const projectReleaseNotes: ProjectReleaseNote[] = [
+  {
+    date: 'May 20, 2026',
+    tag: 'review',
+    title: 'Added an Arc Architects packet page',
+    detail:
+      'The site now has a dedicated review surface that explains what the build proves, what to inspect first, and which public Arc docs it follows.',
+  },
   {
     date: 'May 20, 2026',
     tag: 'product',
@@ -67,9 +74,15 @@ export const projectKnownGaps = [
   'Maintenance notes are browser-local until a shared backend is added.',
   'Live settlement still depends on the operator wallet on Arc Testnet.',
   'The report is strongest when live policy, Circle, and executor wiring are actually configured.',
+  'Architect recognition is still decided by Arc House; this site only packages the evidence trail.',
 ]
 
 export const projectReferenceLinks = [
+  {
+    label: 'Architects packet',
+    value: '/architects',
+    href: '/architects',
+  },
   {
     label: 'Case study',
     value: '/case-study',

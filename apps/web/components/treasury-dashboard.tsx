@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -2094,6 +2095,12 @@ export function TreasuryDashboard() {
                 {executorDeploymentInFlight ? 'Deploying…' : 'Recheck executor'}
               </Button>
             )}
+            <Button className="w-full" variant="outline" asChild>
+              <Link href="/architects">
+                <ExternalLink className="h-4 w-4" />
+                Open architects packet
+              </Link>
+            </Button>
           </div>
         </div>
       </div>

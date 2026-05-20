@@ -124,10 +124,13 @@ export default function HomePage() {
                 <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
                   Readiness report available
                 </Badge>
+                <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                  Architects packet ready
+                </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
                 Arc USDC Rebalancer · agent {arcAgentId.toString()} · {arcAgentValidationTag} · visitors can generate
-                a report without a wallet
+                a report without a wallet · Arc House review trail included
               </p>
             </div>
           </div>
@@ -191,6 +194,12 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
+                <Link href="/architects">
+                  Architects packet
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
                 <Link href="/notes">Release notes</Link>
               </Button>
             </div>
@@ -249,9 +258,9 @@ export default function HomePage() {
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-primary/10 p-4 text-sm leading-6 text-foreground">
-                The homepage is the public entry point. The case study explains the replay path. The dashboard is where
-                visitors can generate the readiness report, compare sample states, and optionally hand control to the
-                live operator.
+                The homepage is the public entry point. The architects packet explains the review trail. The case
+                study explains the replay path. The dashboard is where visitors can generate the readiness report,
+                compare sample states, and optionally hand control to the live operator.
               </div>
             </CardContent>
           </Card>
@@ -337,6 +346,9 @@ export default function HomePage() {
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
                   Surface the current work in progress without pretending the live operator path is automatic.
                 </li>
+                <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
+                  Use the architects packet as the shortest path for an Arc House reviewer.
+                </li>
               </ul>
             </CardContent>
           </Card>
@@ -356,6 +368,9 @@ export default function HomePage() {
                     Go to checker
                     <ArrowRight className="h-4 w-4" />
                   </Link>
+                </Button>
+                <Button asChild className="mt-3 w-full" size="lg" variant="outline">
+                  <Link href="/architects">Open architects packet</Link>
                 </Button>
                 <Button asChild className="mt-3 w-full" size="lg" variant="outline">
                   <Link href="/case-study">Open case study</Link>
