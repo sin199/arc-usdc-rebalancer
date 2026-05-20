@@ -1,4 +1,12 @@
-import { evaluatePolicy, formatUsdc, type TreasuryPolicy } from '@arc-usdc-rebalancer/shared'
+import { parseUnits } from 'viem'
+import {
+  arcTestnetRpcUrl,
+  arcUsdcAddress,
+  arcUsdcDecimals,
+  evaluatePolicy,
+  formatUsdc,
+  type TreasuryPolicy,
+} from '@arc-usdc-rebalancer/shared'
 
 export type ReadinessReportInputs = {
   agentId: string
@@ -14,6 +22,7 @@ export type ReadinessReportInputs = {
   modeLabel: string
   policy: TreasuryPolicy
   policySourceLabel: string
+  operatorAddress?: string
   walletSetId?: string
 }
 
@@ -28,9 +37,23 @@ export type ReadinessReportEvidence = {
   value: string
 }
 
+export type ReadinessCommand = {
+  label: string
+  command: string
+}
+
+export type ReadinessActionPack = {
+  actionable: boolean
+  amountUnits: string
+  commands: ReadinessCommand[]
+  payload: Record<string, string | number | null>
+  summary: string
+}
+
 export type ReadinessReport = {
   action: 'hold' | 'top_up' | 'trim' | 'review'
   confidence: number
+  actionPack: ReadinessActionPack
   evidence: ReadinessReportEvidence[]
   headline: string
   markdown: string
@@ -57,6 +80,85 @@ function formatAction(evaluationAction: 'hold' | 'top_up' | 'trim') {
   return 'Hold'
 }
 
+function buildActionPack(reportAction: ReadinessReport['action'], inputs: ReadinessReportInputs, amountUsdc: number): ReadinessActionPack {
+  const amountUnits = parseUnits(String(amountUsdc), arcUsdcDecimals).toString()
+  const executorAddress = inputs.executorAddress ?? '<TREASURY_EXECUTOR_ADDRESS>'
+  const operatorAddress = inputs.operatorAddress ?? '<RECIPIENT_WALLET_ADDRESS>'
+
+  if (reportAction === 'top_up' && amountUsdc > 0) {
+    return {
+      actionable: true,
+      amountUnits,
+      commands: [
+        {
+          label: 'Approve USDC',
+          command: `cast send ${arcUsdcAddress} "approve(address,uint256)" ${executorAddress} ${amountUnits} --rpc-url ${arcTestnetRpcUrl} --private-key $OWNER_PRIVATE_KEY`,
+        },
+        {
+          label: 'Execute top-up',
+          command: `cast send ${executorAddress} "executeTopUp(uint256)" ${amountUnits} --rpc-url ${arcTestnetRpcUrl} --private-key $OWNER_PRIVATE_KEY`,
+        },
+      ],
+      payload: {
+        action: 'top_up',
+        amountUsdc,
+        amountUnits,
+        chainId: 5042002,
+        executorAddress: inputs.executorAddress ?? null,
+        operatorAddress: inputs.operatorAddress ?? null,
+        rpcUrl: arcTestnetRpcUrl,
+        tokenAddress: arcUsdcAddress,
+      },
+      summary: 'Approve USDC to the executor, then submit the top-up transaction.',
+    }
+  }
+
+  if (reportAction === 'trim' && amountUsdc > 0) {
+    return {
+      actionable: true,
+      amountUnits,
+      commands: [
+        {
+          label: 'Execute trim',
+          command: `cast send ${executorAddress} "executeTrim(address,uint256)" ${operatorAddress} ${amountUnits} --rpc-url ${arcTestnetRpcUrl} --private-key $OWNER_PRIVATE_KEY`,
+        },
+      ],
+      payload: {
+        action: 'trim',
+        amountUsdc,
+        amountUnits,
+        chainId: 5042002,
+        executorAddress: inputs.executorAddress ?? null,
+        operatorAddress: inputs.operatorAddress ?? null,
+        recipientAddress: inputs.operatorAddress ?? null,
+        rpcUrl: arcTestnetRpcUrl,
+        tokenAddress: arcUsdcAddress,
+      },
+      summary: 'Send the trim directly back to the connected operator wallet.',
+    }
+  }
+
+  return {
+    actionable: false,
+    amountUnits,
+    commands: [],
+    payload: {
+      action: reportAction,
+      amountUsdc,
+      amountUnits,
+      chainId: 5042002,
+      executorAddress: inputs.executorAddress ?? null,
+      operatorAddress: inputs.operatorAddress ?? null,
+      rpcUrl: arcTestnetRpcUrl,
+      tokenAddress: arcUsdcAddress,
+    },
+    summary:
+      reportAction === 'hold'
+        ? 'No chain transaction is needed. Keep monitoring and share the report.'
+        : 'Resolve the missing dependencies before preparing an execution command.',
+  }
+}
+
 function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, evaluationMessage: string) {
   const lines = [
     '# Arc USDC Rebalancer readiness report',
@@ -71,6 +173,12 @@ function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, 
     '',
     '## Evidence',
     ...report.evidence.map((item) => `- ${item.label}: ${item.value}`),
+    '',
+    '## Action pack',
+    report.actionPack.summary,
+    ...(report.actionPack.commands.length > 0
+      ? ['', '### Commands', ...report.actionPack.commands.map((command) => `- ${command.label}: ${command.command}`)]
+      : []),
     '',
     '## Next steps',
     ...report.nextSteps.map((step) => `- ${step}`),
@@ -194,6 +302,7 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
           : liveDependenciesReady
             ? 0.87
             : 0.64,
+    actionPack: buildActionPack(reportAction, inputs, evaluation.amount),
     evidence,
     headline,
     nextSteps,

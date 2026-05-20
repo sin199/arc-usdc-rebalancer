@@ -47,6 +47,13 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     detail:
       'A short public page now explains what the repo proves, how to replay it locally, and what a reviewer should inspect first.',
   },
+  {
+    date: 'May 20, 2026',
+    tag: 'product',
+    title: 'Added a copyable action pack',
+    detail:
+      'The checker now emits command lines and JSON that an operator can actually use instead of only reading the report.',
+  },
 ]
 
 export const projectKnownGaps = [

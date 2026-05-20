@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useReadContract } from 'wagmi'
+import { useAccount, useReadContract } from 'wagmi'
 import {
   ArrowRight,
   CheckCircle2,
@@ -52,12 +52,14 @@ type CircleControlPlaneStatus = {
 const initialPolicy = DEFAULT_TREASURY_POLICY
 
 export function ReadinessChecker() {
+  const { address: operatorAddress } = useAccount()
   const contractAddress = treasuryPolicyAddressConfig.address
   const executorAddress = treasuryExecutorAddressConfig.address
   const [balance, setBalance] = useState(Math.max(0, initialPolicy.targetBalance - 25))
   const [policy, setPolicy] = useState(initialPolicy)
   const [policySourceLabel, setPolicySourceLabel] = useState<'Draft policy' | 'Live chain snapshot'>('Draft policy')
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
+  const [actionCopyState, setActionCopyState] = useState<'idle' | 'copied'>('idle')
   const policyHydratedRef = useRef(false)
 
   const policyQuery = useReadContract({
@@ -120,13 +122,27 @@ export function ReadinessChecker() {
     modeLabel,
     policy,
     policySourceLabel,
+    operatorAddress: operatorAddress ?? undefined,
     walletSetId: circleStatusQuery.data?.walletSet?.id,
   })
+  const actionCommandsText = report.actionPack.commands.map((command) => `### ${command.label}\n${command.command}`).join('\n\n')
+  const actionPayloadText = JSON.stringify(report.actionPack.payload, null, 2)
 
   async function handleCopyReport() {
     await navigator.clipboard.writeText(report.markdown)
     setCopyState('copied')
     window.setTimeout(() => setCopyState('idle'), 1600)
+  }
+
+  async function handleCopyActionPack() {
+    const text =
+      report.actionPack.commands.length > 0
+        ? report.actionPack.commands.map((command) => `${command.label}: ${command.command}`).join('\n')
+        : report.actionPack.summary
+
+    await navigator.clipboard.writeText(text)
+    setActionCopyState('copied')
+    window.setTimeout(() => setActionCopyState('idle'), 1600)
   }
 
   function handleDownloadReport() {
@@ -136,6 +152,34 @@ export function ReadinessChecker() {
 
     anchor.href = url
     anchor.download = 'arc-usdc-rebalancer-readiness-report.md'
+    anchor.click()
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 2000)
+  }
+
+  function handleDownloadActionPack() {
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            generatedAt: new Date().toISOString(),
+            action: report.action,
+            headline: report.headline,
+            summary: report.summary,
+            actionPack: report.actionPack,
+            report: report.markdown,
+          },
+          null,
+          2,
+        ),
+      ],
+      { type: 'application/json;charset=utf-8' },
+    )
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+
+    anchor.href = url
+    anchor.download = 'arc-usdc-rebalancer-action-pack.json'
     anchor.click()
 
     window.setTimeout(() => URL.revokeObjectURL(url), 2000)
@@ -164,7 +208,7 @@ export function ReadinessChecker() {
       <SiteHeader
         eyebrow="Readiness checker"
         title="Arc USDC Rebalancer"
-        description="Generate a copyable treasury readiness report from the current balance, policy band, Circle status, and executor state."
+        description="Generate a treasury readiness report and a copyable action pack from the current balance, policy band, Circle status, and executor state."
         ctaHref="/notes"
         ctaLabel="Open notes"
       />
@@ -183,8 +227,8 @@ export function ReadinessChecker() {
             </div>
             <CardTitle className="text-3xl">One input surface for treasury decisions</CardTitle>
             <CardDescription className="max-w-3xl">
-              Paste the current balance, load the policy if you have it onchain, and the page returns one concise
-              report you can copy into chat, docs, or GitHub.
+              Paste the current balance, load the policy if you have it onchain, and the page returns a concise
+              report plus a command pack you can copy into chat, docs, GitHub, or a terminal.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-4">
@@ -387,6 +431,53 @@ export function ReadinessChecker() {
                   value={report.markdown}
                   className="mt-3 min-h-[260px] w-full rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm leading-6 text-foreground shadow-sm focus-visible:outline-none"
                 />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/10 bg-card/85">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-primary" />
+                <CardTitle className="text-xl">Action pack</CardTitle>
+              </div>
+              <CardDescription>
+                This is the usable output: exact commands, an execution payload, and the report context in one place.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">What it does</div>
+                <div className="mt-2 text-sm leading-6 text-foreground">{report.actionPack.summary}</div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Commands</div>
+                <textarea
+                  readOnly
+                  value={actionCommandsText || report.actionPack.summary}
+                  className="mt-3 min-h-[220px] w-full rounded-2xl border border-border bg-background/70 px-4 py-3 font-mono text-sm leading-6 text-foreground shadow-sm focus-visible:outline-none"
+                />
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Payload JSON</div>
+                <textarea
+                  readOnly
+                  value={actionPayloadText}
+                  className="mt-3 min-h-[220px] w-full rounded-2xl border border-border bg-background/70 px-4 py-3 font-mono text-sm leading-6 text-foreground shadow-sm focus-visible:outline-none"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" onClick={() => void handleCopyActionPack()}>
+                  <Copy className="h-4 w-4" />
+                  {actionCopyState === 'copied' ? 'Copied' : 'Copy action pack'}
+                </Button>
+                <Button type="button" variant="outline" onClick={handleDownloadActionPack}>
+                  <Download className="h-4 w-4" />
+                  Download JSON
+                </Button>
               </div>
             </CardContent>
           </Card>
