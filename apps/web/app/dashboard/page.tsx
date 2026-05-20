@@ -1,5 +1,5 @@
-import { TreasuryDashboard } from '@/components/treasury-dashboard'
+import { ReadinessChecker } from '@/components/readiness-checker'
 
 export default function DashboardPage() {
-  return <TreasuryDashboard />
+  return <ReadinessChecker />
 }

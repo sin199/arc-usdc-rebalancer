@@ -29,7 +29,7 @@ export default function NotesPage() {
               <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
                 {projectTrailSummary.buildLabel}
               </Badge>
-              <Badge variant="success">Public demo first</Badge>
+              <Badge variant="success">Readiness first</Badge>
             </div>
             <CardTitle className="text-2xl">What this build is trying to be</CardTitle>
             <CardDescription className="max-w-3xl">
@@ -50,7 +50,7 @@ export default function NotesPage() {
                 <CheckCircle2 className="h-4 w-4 text-primary" />
                 Current focus
               </div>
-              <div className="mt-2 text-sm text-foreground">Public demo path, visible notes, and honest live gating.</div>
+              <div className="mt-2 text-sm text-foreground">Readiness path, visible notes, and honest live gating.</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">

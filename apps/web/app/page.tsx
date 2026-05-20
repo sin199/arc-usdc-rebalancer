@@ -24,8 +24,8 @@ const heroSignals = [
   {
     icon: Layers3,
     label: 'Surface',
-    value: 'Public demo',
-    detail: 'Dashboard + optional live operator',
+    value: 'Readiness report',
+    detail: 'Dashboard + copyable evidence pack',
   },
 ]
 
@@ -33,56 +33,56 @@ const liveTiles = [
   {
     icon: ShieldCheck,
     label: 'Treasury policy',
-    value: 'Owner-gated',
-    detail: 'Min, target, and max rebalance settings stay onchain for live mode.',
+    value: 'Band + source',
+    detail: 'Min, target, and max values become a plain report instead of hidden state.',
   },
   {
     icon: Wallet,
     label: 'Wallet layer',
-    value: 'Injected wallet',
-    detail: 'Connect only for live signing. Visitors can explore without a wallet.',
+    value: 'Optional',
+    detail: 'Connect only if you want live signing. The report still works without it.',
   },
   {
     icon: CircleDollarSign,
     label: 'Execution rail',
-    value: 'Circle-ready',
-    detail: 'Sample scenarios and the live rail share the same dashboard.',
+    value: 'Review first',
+    detail: 'The page tells you whether to hold, top up, trim, or stop and inspect wiring.',
   },
   {
     icon: Activity,
     label: 'Runtime',
-    value: 'Visitor-first loop',
-    detail: 'The agent summarizes, routes, and acts, even without a wallet connected.',
+    value: 'Copyable output',
+    detail: 'The main output is a report you can paste into chat, docs, or GitHub.',
   },
 ]
 
 const workingNotes = [
   'This is the current working build, not a polished launch page.',
-  'Public demo stays first because that is how a new visitor gets oriented fastest.',
-  'Live signing remains available, but it should never be the only way to understand the project.',
+  'The main job is to produce a readable treasury readiness report.',
+  'Live signing remains available, but it should never be required to understand the result.',
   'The dashboard keeps a local maintenance log so updates can be written down as they happen.',
 ]
 
 const controlLoop = [
   {
     step: '01',
-    title: 'Observe',
-    description: 'Read wallet balance, policy bounds, agent identity, and chain state together.',
+    title: 'Load',
+    description: 'Read the balance, policy bounds, and live readiness signals together.',
   },
   {
     step: '02',
-    title: 'Brief',
-    description: 'Turn the live signals into one recommended action instead of a wall of diagnostics.',
+    title: 'Decide',
+    description: 'Turn the signals into one recommended action instead of a wall of diagnostics.',
   },
   {
     step: '03',
-    title: 'Execute',
-    description: 'Use the dashboard to drive the owner-gated treasury path or the Circle control plane.',
+    title: 'Copy',
+    description: 'Turn the result into a compact report that can be shared without explanation.',
   },
   {
     step: '04',
-    title: 'Audit',
-    description: 'Keep the chain hashes, status cards, and endpoints visible so the flow can be reviewed.',
+    title: 'Act',
+    description: 'Only move funds after the report says the live dependencies are actually ready.',
   },
 ]
 
@@ -122,12 +122,12 @@ export default function HomePage() {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="success">Arc Testnet</Badge>
                 <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
-                  Public demo available
+                  Readiness report available
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                Arc USDC Rebalancer · agent {arcAgentId.toString()} · {arcAgentValidationTag} · visitors can try the
-                demo without a wallet
+                Arc USDC Rebalancer · agent {arcAgentId.toString()} · {arcAgentValidationTag} · visitors can generate
+                a report without a wallet
               </p>
             </div>
           </div>
@@ -135,7 +135,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center gap-2">
             <Button asChild variant="outline">
               <Link href="/dashboard">
-                Open demo
+                Open checker
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -167,10 +167,10 @@ export default function HomePage() {
 
             <div className="space-y-4">
               <h1 className="max-w-3xl font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                A public treasury demo powered by a live agent.
+                A treasury readiness checker powered by a live agent.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Visitors can inspect the policy, run the agent brief, and try sample treasury scenarios without
+                Visitors can inspect the policy, generate a copyable report, and try sample treasury scenarios without
                 connecting a wallet. If you want live signing, switch to operator mode from the dashboard.
               </p>
               <p className="text-sm text-muted-foreground">{projectTrailSummary.headline}</p>
@@ -180,7 +180,7 @@ export default function HomePage() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
                 <Link href="/dashboard">
-                  Launch demo
+                  Generate report
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -222,8 +222,8 @@ export default function HomePage() {
               </div>
               <CardTitle className="text-2xl">What is live right now</CardTitle>
               <CardDescription>
-                The page stays close to the actual build: demo path first, live operator mode second, and the
-                dashboard keeps a maintenance log so the site reads like something a person is still shaping.
+                The page stays close to the actual build: report first, live operator mode second, and the dashboard
+                keeps a maintenance log so the site reads like something a person is still shaping.
               </CardDescription>
             </CardHeader>
 
@@ -248,8 +248,8 @@ export default function HomePage() {
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-primary/10 p-4 text-sm leading-6 text-foreground">
-                The homepage is the public entry point. The dashboard is where visitors can try the agent, compare
-                sample states, and optionally hand control to the live operator.
+                The homepage is the public entry point. The dashboard is where visitors can generate the readiness
+                report, compare sample states, and optionally hand control to the live operator.
               </div>
             </CardContent>
           </Card>
@@ -257,7 +257,7 @@ export default function HomePage() {
           <Card className="border-white/10 bg-card/85 p-6">
             <CardHeader className="p-0">
               <CardTitle>Deployment facts</CardTitle>
-              <CardDescription>Short facts that keep the public demo and live path legible at a glance.</CardDescription>
+              <CardDescription>Short facts that keep the report path and live path legible at a glance.</CardDescription>
             </CardHeader>
 
             <CardContent className="pt-6">
@@ -290,7 +290,7 @@ export default function HomePage() {
               </Badge>
               <CardTitle className="mt-3 text-2xl sm:text-3xl">What visitors can do here</CardTitle>
               <CardDescription className="max-w-2xl">
-                Start with the demo, inspect the live signals, and switch to live mode only if you want signed
+                Start with the report, inspect the live signals, and switch to live mode only if you want signed
                 execution.
               </CardDescription>
             </CardHeader>
@@ -316,21 +316,21 @@ export default function HomePage() {
             <CardHeader className="p-0">
               <CardTitle>What this page is for</CardTitle>
               <CardDescription>
-                A single glance should tell you what is public, what is live, and how far the project has already
-                been wired.
+                A single glance should tell you what is public, what is live, and how far the report workflow has
+                already been wired.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="pt-6">
               <ul className="space-y-3 text-sm leading-6 text-muted-foreground">
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Show the Arc agent, treasury policy, and execution path together.
+                  Show the Arc agent, treasury policy, and report output together.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
                   Let visitors explore without a wallet, then move into live operator mode if needed.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Keep the builder story legible from GitHub to the live demo and the review notes.
+                  Keep the builder story legible from GitHub to the live checker and the review notes.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
                   Surface the current work in progress without pretending the live operator path is automatic.
@@ -343,14 +343,14 @@ export default function HomePage() {
             <CardHeader className="p-0">
               <CardTitle>Open the working surface</CardTitle>
               <CardDescription>
-                The homepage is the overview. The dashboard is where people actually try the demo.
+                The homepage is the overview. The dashboard is where people actually generate the report.
               </CardDescription>
             </CardHeader>
 
               <CardContent className="pt-6">
                 <Button asChild className="w-full" size="lg">
                   <Link href="/dashboard">
-                    Go to demo
+                    Go to checker
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>

@@ -7,11 +7,18 @@ export type ProjectReleaseNote = {
 
 export const projectTrailSummary = {
   buildLabel: 'Working build',
-  headline: 'Public demo first, live operator second, notes always visible.',
+  headline: 'Treasury readiness first, live operator second, notes always visible.',
   lastReviewed: 'May 20, 2026',
 }
 
 export const projectReleaseNotes: ProjectReleaseNote[] = [
+  {
+    date: 'May 20, 2026',
+    tag: 'product',
+    title: 'Reframed the dashboard as a readiness checker',
+    detail:
+      'The main route now produces a copyable treasury report instead of expecting visitors to assemble the state from several panels.',
+  },
   {
     date: 'May 20, 2026',
     tag: 'maintenance',
@@ -29,21 +36,21 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
   {
     date: 'May 20, 2026',
     tag: 'flow',
-    title: 'Kept the demo path explicit',
+    title: 'Kept the report path explicit',
     detail:
-      'Visitors still land on a public demo first, with live signing, agent control, and Circle/Arc actions available only when they are intentionally needed.',
+      'Visitors still land on a report first, with live signing, agent control, and Circle/Arc actions available only when they are intentionally needed.',
   },
 ]
 
 export const projectKnownGaps = [
   'Maintenance notes are browser-local until a shared backend is added.',
   'Live settlement still depends on the operator wallet on Arc Testnet.',
-  'Some Circle wallet and bridge work remains intentionally surfaced as readiness, not silent automation.',
+  'The report is strongest when live policy, Circle, and executor wiring are actually configured.',
 ]
 
 export const projectReferenceLinks = [
   {
-    label: 'Live demo',
+    label: 'Live checker',
     value: 'web-eight-chi-99.vercel.app/dashboard',
     href: 'https://web-eight-chi-99.vercel.app/dashboard',
   },
