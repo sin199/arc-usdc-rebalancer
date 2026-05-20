@@ -15,9 +15,9 @@ const body = Manrope({
 })
 
 export const metadata: Metadata = {
-  title: 'Arc USDC Rebalancer · Architects packet',
+  title: 'Arc USDC Rebalancer',
   description:
-    'A public Arc Testnet treasury review packet with copyable reports, live operator gating, and visible build notes.',
+    'A public Arc Testnet treasury demo with a live agent, copyable reports, live operator gating, and visible build notes.',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

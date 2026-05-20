@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRight, CalendarDays, CheckCircle2, NotebookPen, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +11,12 @@ import {
   projectReleaseNotes,
   projectTrailSummary,
 } from '@/lib/project-trail'
+
+export const metadata: Metadata = {
+  title: 'Arc USDC Rebalancer · release notes',
+  description:
+    'Release notes and known gaps for the Arc USDC Rebalancer public treasury demo and review packet.',
+}
 
 export default function NotesPage() {
   return (

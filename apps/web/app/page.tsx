@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRight, Activity, Bot, CircleDollarSign, Layers3, ShieldCheck, Wallet, Waves } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +8,12 @@ import { arcTestnetChainId, arcTestnetExplorerUrl } from '@arc-usdc-rebalancer/s
 import { arcTestnetRpcUrl } from '@/lib/treasury-policy'
 import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
 import { projectTrailSummary } from '@/lib/project-trail'
+
+export const metadata: Metadata = {
+  title: 'Arc USDC Rebalancer · public demo',
+  description:
+    'A public Arc Testnet treasury demo with a live agent, a copyable readiness report, and a visible review trail.',
+}
 
 const heroSignals = [
   {

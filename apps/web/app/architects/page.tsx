@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -21,6 +22,12 @@ import {
   architectsPacketSummary,
 } from '@/lib/architects-packet'
 import { projectTrailSummary } from '@/lib/project-trail'
+
+export const metadata: Metadata = {
+  title: 'Arc USDC Rebalancer · architects packet',
+  description:
+    'A submission-ready Arc House review packet for the Arc USDC Rebalancer public treasury demo.',
+}
 
 const reviewerSteps = [
   'Open this packet and read the status note first.',

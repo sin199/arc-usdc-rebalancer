@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, FileText, PlayCircle, Route } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +8,12 @@ import { SiteHeader } from '@/components/site-header'
 import { arcTestnetExplorerUrl, arcTestnetRpcUrl } from '@arc-usdc-rebalancer/shared'
 import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
 import { projectReferenceLinks, projectTrailSummary } from '@/lib/project-trail'
+
+export const metadata: Metadata = {
+  title: 'Arc USDC Rebalancer · case study',
+  description:
+    'A short Arc builder case study showing what the repo proves, how to replay it, and what to inspect first.',
+}
 
 const replaySteps = [
   {
