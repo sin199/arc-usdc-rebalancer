@@ -54,6 +54,7 @@ type TreasuryExecutionResponse = {
   amountUsdc?: number
   error?: string
   mode?: 'server'
+  executorAddress?: `0x${string}`
   ownerAddress?: `0x${string}`
   recipient?: `0x${string}`
   summary?: string
@@ -63,19 +64,30 @@ type TreasuryExecutionResponse = {
   }
 }
 
+type TreasuryExecutorDeploymentResponse = {
+  error?: string
+  executorAddress?: `0x${string}`
+  mode?: 'server'
+  ownerAddress?: `0x${string}`
+  summary?: string
+  txHash?: `0x${string}`
+}
+
 const initialPolicy = DEFAULT_TREASURY_POLICY
+const treasuryExecutorStorageKey = 'arc-usdc-rebalancer:readiness-executor-address'
 
 export function ReadinessChecker() {
   const { address: operatorAddress } = useAccount()
   const contractAddress = treasuryPolicyAddressConfig.address
-  const executorAddress = treasuryExecutorAddressConfig.address
+  const [localExecutorAddress, setLocalExecutorAddress] = useState<string | undefined>()
+  const executorAddress = localExecutorAddress ?? treasuryExecutorAddressConfig.address
   const [balance, setBalance] = useState(Math.max(0, initialPolicy.minThreshold - 25))
   const [policy, setPolicy] = useState(initialPolicy)
   const [policySourceLabel, setPolicySourceLabel] = useState<'Draft policy' | 'Live chain snapshot'>('Draft policy')
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
   const [actionCopyState, setActionCopyState] = useState<'idle' | 'copied'>('idle')
   const [executionState, setExecutionState] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
-  const [executionMessage, setExecutionMessage] = useState('Run the live action from the server signer when the report is actionable.')
+  const [executionMessage, setExecutionMessage] = useState('Run the live action; the page will redeploy a fresh executor if the saved one is stale.')
   const [executionResult, setExecutionResult] = useState<TreasuryExecutionResponse | null>(null)
   const policyHydratedRef = useRef(false)
 
@@ -144,7 +156,21 @@ export function ReadinessChecker() {
   })
   const actionCommandsText = report.actionPack.commands.map((command) => `### ${command.label}\n${command.command}`).join('\n\n')
   const actionPayloadText = JSON.stringify(report.actionPack.payload, null, 2)
-  const canRunLiveAction = report.actionPack.actionable && Boolean(executorAddress)
+  const canRunLiveAction = report.actionPack.actionable
+  const liveActionLabel =
+    executionState === 'running'
+      ? 'Running…'
+      : executorAddress
+        ? report.action === 'top_up'
+          ? 'Run top-up'
+          : report.action === 'trim'
+            ? 'Run trim'
+            : 'Run live action'
+        : report.action === 'top_up'
+          ? 'Deploy & run top-up'
+          : report.action === 'trim'
+            ? 'Deploy & run trim'
+            : 'Deploy & run live action'
 
   async function handleCopyReport() {
     await navigator.clipboard.writeText(report.markdown)
@@ -161,6 +187,28 @@ export function ReadinessChecker() {
     await navigator.clipboard.writeText(text)
     setActionCopyState('copied')
     window.setTimeout(() => setActionCopyState('idle'), 1600)
+  }
+
+  async function deployTreasuryExecutor(): Promise<`0x${string}`> {
+    const response = await fetch('/api/treasury/executor/deploy', {
+      cache: 'no-store',
+      method: 'POST',
+    })
+
+    const payload = (await response.json().catch(() => ({}))) as TreasuryExecutorDeploymentResponse
+
+    if (!response.ok) {
+      throw new Error(payload.error ?? `TreasuryExecutor deployment failed with ${response.status}.`)
+    }
+
+    if (!payload.executorAddress) {
+      throw new Error('TreasuryExecutor deployment did not return an address.')
+    }
+
+    setLocalExecutorAddress(payload.executorAddress)
+    setExecutionMessage(payload.summary ?? `TreasuryExecutor deployed at ${payload.executorAddress}.`)
+
+    return payload.executorAddress
   }
 
   function handleDownloadReport() {
@@ -215,23 +263,49 @@ export function ReadinessChecker() {
       setExecutionMessage('Submitting the server-signer execution request...')
       setExecutionResult(null)
 
-      const response = await fetch('/api/treasury/execute', {
-        body: JSON.stringify({
-          action: report.action,
-          amountUsdc: report.actionPack.payload.amountUsdc,
-          recipient: operatorAddress ?? undefined,
-        }),
-        cache: 'no-store',
-        headers: {
-          'content-type': 'application/json',
-        },
-        method: 'POST',
-      })
+      const requestBody = {
+        action: report.action,
+        amountUsdc: report.actionPack.payload.amountUsdc,
+        recipient: operatorAddress ?? undefined,
+        executorAddress: executorAddress ?? undefined,
+      }
 
-      const payload = (await response.json().catch(() => ({}))) as TreasuryExecutionResponse
+      const executeWithServerSigner = async (body: typeof requestBody) => {
+        const response = await fetch('/api/treasury/execute', {
+          body: JSON.stringify(body),
+          cache: 'no-store',
+          headers: {
+            'content-type': 'application/json',
+          },
+          method: 'POST',
+        })
+
+        const payload = (await response.json().catch(() => ({}))) as TreasuryExecutionResponse
+        return { payload, response }
+      }
+
+      let { payload, response } = await executeWithServerSigner(requestBody)
+
+      if (!response.ok) {
+        const message = payload.error ?? `Treasury execution failed with ${response.status}.`
+        if (/owner mismatch|TREASURY_EXECUTOR_ADDRESS is missing|executor address/i.test(message)) {
+          const deployedExecutorAddress = await deployTreasuryExecutor()
+          setExecutionMessage('Retrying the live action with the fresh executor...')
+          const retried = await executeWithServerSigner({
+            ...requestBody,
+            executorAddress: deployedExecutorAddress,
+          })
+          payload = retried.payload
+          response = retried.response
+        }
+      }
 
       if (!response.ok) {
         throw new Error(payload.error ?? `Treasury execution failed with ${response.status}.`)
+      }
+
+      if (payload.executorAddress) {
+        setLocalExecutorAddress(payload.executorAddress)
       }
 
       setExecutionResult(payload)
@@ -259,6 +333,21 @@ export function ReadinessChecker() {
     setBalance(Math.max(0, nextBalance))
     setPolicySourceLabel(policyHydratedRef.current ? 'Live chain snapshot' : 'Draft policy')
   }
+
+  useEffect(() => {
+    const storedExecutor = window.localStorage.getItem(treasuryExecutorStorageKey)
+    if (storedExecutor && !localExecutorAddress) {
+      setLocalExecutorAddress(storedExecutor)
+    }
+  }, [localExecutorAddress])
+
+  useEffect(() => {
+    if (!localExecutorAddress) {
+      return
+    }
+
+    window.localStorage.setItem(treasuryExecutorStorageKey, localExecutorAddress)
+  }, [localExecutorAddress])
 
   const reportStatusTone = report.action === 'hold' ? 'success' : report.action === 'review' ? 'warning' : 'outline'
 
@@ -544,13 +633,7 @@ export function ReadinessChecker() {
                   disabled={!canRunLiveAction || executionState === 'running'}
                 >
                   <ArrowRight className="h-4 w-4" />
-                  {executionState === 'running'
-                    ? 'Running…'
-                    : report.action === 'top_up'
-                      ? 'Run top-up'
-                      : report.action === 'trim'
-                        ? 'Run trim'
-                        : 'Run live action'}
+                  {liveActionLabel}
                 </Button>
                 <Button type="button" variant="outline" onClick={handleDownloadActionPack}>
                   <Download className="h-4 w-4" />

@@ -14,11 +14,16 @@ export async function POST(request: NextRequest) {
     const body = (await request.json().catch(() => ({}))) as {
       action?: unknown
       amountUsdc?: unknown
+      executorAddress?: unknown
       recipient?: unknown
     }
 
     const action = parseAction(body.action)
     const amountUsdc = Number(body.amountUsdc)
+    const executorAddress =
+      typeof body.executorAddress === 'string' && isAddress(body.executorAddress.trim())
+        ? (body.executorAddress.trim() as `0x${string}`)
+        : undefined
     const recipient =
       typeof body.recipient === 'string' && isAddress(body.recipient.trim())
         ? (body.recipient.trim() as `0x${string}`)
@@ -35,6 +40,7 @@ export async function POST(request: NextRequest) {
     const result = await runTreasuryExecution({
       action,
       amountUsdc,
+      executorAddress,
       recipient,
     })
 

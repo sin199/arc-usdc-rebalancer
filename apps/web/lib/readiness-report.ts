@@ -84,6 +84,7 @@ function buildActionPack(reportAction: ReadinessReport['action'], inputs: Readin
   const amountUnits = parseUnits(String(amountUsdc), arcUsdcDecimals).toString()
   const executorAddress = inputs.executorAddress ?? '<TREASURY_EXECUTOR_ADDRESS>'
   const operatorAddress = inputs.operatorAddress ?? '<RECIPIENT_WALLET_ADDRESS>'
+  const executorFallbackNote = inputs.executorAddress ? '' : ' The dashboard will deploy a fresh TreasuryExecutor first if needed.'
 
   if (reportAction === 'top_up' && amountUsdc > 0) {
     return {
@@ -109,7 +110,7 @@ function buildActionPack(reportAction: ReadinessReport['action'], inputs: Readin
         rpcUrl: arcTestnetRpcUrl,
         tokenAddress: arcUsdcAddress,
       },
-      summary: 'Approve USDC to the executor, then submit the top-up transaction.',
+      summary: `Approve USDC to the executor, then submit the top-up transaction.${executorFallbackNote}`,
     }
   }
 
@@ -134,7 +135,7 @@ function buildActionPack(reportAction: ReadinessReport['action'], inputs: Readin
         rpcUrl: arcTestnetRpcUrl,
         tokenAddress: arcUsdcAddress,
       },
-      summary: 'Send the trim directly back to the connected operator wallet.',
+      summary: `Send the trim directly back to the connected operator wallet.${executorFallbackNote}`,
     }
   }
 
@@ -241,7 +242,7 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
   }
 
   if (!inputs.executorAddress) {
-    nextSteps.push('Deploy or set the TreasuryExecutor address before live execution.')
+    nextSteps.push('The live action button will deploy a fresh TreasuryExecutor first if needed.')
   }
 
   if (reportAction === 'hold') {

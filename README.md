@@ -13,6 +13,7 @@ Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer
 - A live operator mode for signed Arc Testnet actions.
 - A copyable action pack with the exact commands and payload needed for operator execution.
 - A one-click live action button that can submit top-up or trim through the server signer.
+- A self-healing live action path that can redeploy a fresh `TreasuryExecutor` if the saved one is stale.
 - A treasury policy and executor flow on Arc Testnet.
 - An Arc agent identity and brief surfaced inside the dashboard.
 - Circle developer-controlled wallet and Gateway readiness for USDC routing.
@@ -25,7 +26,7 @@ The repo is built to show a concrete Arc-native workflow:
 1. Read the live TreasuryPolicy state on Arc Testnet.
 2. Preview and simulate treasury scenarios in public demo mode.
 3. Surface agent identity and a brief that recommends the next action.
-4. Switch to live operator mode only when a signed onchain action is needed.
+4. Switch to live operator mode only when a signed onchain action is needed, or let the live action button redeploy a fresh executor if the saved one is stale.
 5. Keep Circle wallets and Gateway visible as part of the same USDC stack.
 
 ## Arc surface

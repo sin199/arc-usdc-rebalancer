@@ -15,6 +15,7 @@ import {
   arcUsdcDecimals,
   erc20ContractAbi,
   formatUsdc,
+  treasuryExecutorContractBytecode,
   treasuryExecutorContractAbi,
 } from '@arc-usdc-rebalancer/shared'
 import { arcTestnetRpcUrl } from './treasury-policy'
@@ -52,6 +53,14 @@ export type TreasuryExecutionResult = {
     approve?: `0x${string}`
     execute: `0x${string}`
   }
+  summary: string
+  mode: 'server'
+}
+
+export type TreasuryExecutorDeploymentResult = {
+  executorAddress: `0x${string}`
+  ownerAddress: `0x${string}`
+  txHash: `0x${string}`
   summary: string
   mode: 'server'
 }
@@ -106,8 +115,9 @@ export async function runTreasuryExecution(params: {
   action: TreasuryExecutionAction
   amountUsdc: number
   recipient?: Address
+  executorAddress?: Address
 }): Promise<TreasuryExecutionResult> {
-  const executorAddress = treasuryExecutorAddressConfig.address
+  const executorAddress = params.executorAddress ?? treasuryExecutorAddressConfig.address
 
   if (!executorAddress) {
     throw new Error('TREASURY_EXECUTOR_ADDRESS is missing.')
@@ -187,6 +197,32 @@ export async function runTreasuryExecution(params: {
       execute: executeHash,
     },
     summary: `Trim confirmed via the server signer. ${formatUsdc(params.amountUsdc)} USDC moved back to the owner wallet.`,
+    mode: 'server',
+  }
+}
+
+export async function deployTreasuryExecutorServerSide(): Promise<TreasuryExecutorDeploymentResult> {
+  const { ownerAccount, publicClient, walletClient } = createTreasuryExecutionClients()
+
+  const txHash = await walletClient.deployContract({
+    abi: treasuryExecutorContractAbi,
+    bytecode: treasuryExecutorContractBytecode,
+    chain: arcTestnet,
+    args: [arcUsdcAddress],
+  })
+
+  const receipt = await waitForReceipt(publicClient, txHash)
+  const executorAddress = receipt.contractAddress
+
+  if (!executorAddress) {
+    throw new Error('TreasuryExecutor deployment did not return a contract address.')
+  }
+
+  return {
+    executorAddress,
+    ownerAddress: ownerAccount.address,
+    txHash,
+    summary: `TreasuryExecutor deployed at ${executorAddress} by the server signer.`,
     mode: 'server',
   }
 }
