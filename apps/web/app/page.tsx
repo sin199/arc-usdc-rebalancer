@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { arcTestnetChainId, arcTestnetExplorerUrl } from '@arc-usdc-rebalancer/shared'
 import { arcTestnetRpcUrl } from '@/lib/treasury-policy'
 import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
+import { projectTrailSummary } from '@/lib/project-trail'
 
 const heroSignals = [
   {
@@ -172,7 +173,8 @@ export default function HomePage() {
                 Visitors can inspect the policy, run the agent brief, and try sample treasury scenarios without
                 connecting a wallet. If you want live signing, switch to operator mode from the dashboard.
               </p>
-              <p className="text-sm text-muted-foreground">Last hand-edited: May 16, 2026.</p>
+              <p className="text-sm text-muted-foreground">{projectTrailSummary.headline}</p>
+              <p className="text-sm text-muted-foreground">Last hand-edited: {projectTrailSummary.lastReviewed}.</p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -186,6 +188,9 @@ export default function HomePage() {
                 <a href="https://developers.circle.com/ai/skills" target="_blank" rel="noreferrer">
                   Circle AI skills
                 </a>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/notes">Release notes</Link>
               </Button>
             </div>
 
@@ -327,6 +332,9 @@ export default function HomePage() {
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
                   Keep the builder story legible from GitHub to the live demo and the review notes.
                 </li>
+                <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
+                  Surface the current work in progress without pretending the live operator path is automatic.
+                </li>
               </ul>
             </CardContent>
           </Card>
@@ -339,15 +347,18 @@ export default function HomePage() {
               </CardDescription>
             </CardHeader>
 
-            <CardContent className="pt-6">
-              <Button asChild className="w-full" size="lg">
-                <Link href="/dashboard">
-                  Go to demo
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+              <CardContent className="pt-6">
+                <Button asChild className="w-full" size="lg">
+                  <Link href="/dashboard">
+                    Go to demo
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild className="mt-3 w-full" size="lg" variant="outline">
+                  <Link href="/notes">Open release notes</Link>
+                </Button>
+              </CardContent>
+            </Card>
         </div>
       </section>
     </main>

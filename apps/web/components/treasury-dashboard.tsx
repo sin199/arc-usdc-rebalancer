@@ -357,6 +357,11 @@ const builderReferenceLinks = [
     value: 'docs/arc-builder-notes.md',
     href: 'https://github.com/sin199/arc-usdc-rebalancer/blob/main/docs/arc-builder-notes.md',
   },
+  {
+    label: 'Release notes',
+    value: '/notes',
+    href: '/notes',
+  },
 ]
 
 const workingNotes = [
