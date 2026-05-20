@@ -18,8 +18,8 @@ export default function NotesPage() {
         eyebrow="Release notes"
         title="Arc USDC Rebalancer"
         description="A small written trail of what changed, what remains rough, and where to review the current build."
-        ctaHref="/dashboard"
-        ctaLabel="Open dashboard"
+        ctaHref="/case-study"
+        ctaLabel="Open case study"
       />
 
       <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
@@ -109,13 +109,19 @@ export default function NotesPage() {
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-4">
             <Button asChild>
+              <Link href="/case-study">
+                Open case study
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild>
               <Link href="/dashboard">
                 Open dashboard
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             {projectReferenceLinks
-              .filter((link) => link.href !== '/notes')
+              .filter((link) => link.href !== '/notes' && link.href !== '/case-study')
               .map((link) => (
               <Button key={link.label} asChild variant="outline">
                 <a

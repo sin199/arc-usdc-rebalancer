@@ -477,13 +477,11 @@ export function ReadinessChecker() {
               <div className="mt-2 break-all text-sm text-foreground">Open the written trail</div>
             </a>
             <a
-              href="https://developers.circle.com/ai/skills"
-              target="_blank"
-              rel="noreferrer"
+              href="/case-study"
               className="rounded-2xl border border-white/10 bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/70"
             >
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Circle skills</div>
-              <div className="mt-2 break-all text-sm text-foreground">AI skills for Arc and wallets</div>
+              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Case study</div>
+              <div className="mt-2 break-all text-sm text-foreground">Three-minute replay path</div>
             </a>
           </CardContent>
         </Card>

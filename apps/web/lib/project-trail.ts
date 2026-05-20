@@ -7,7 +7,7 @@ export type ProjectReleaseNote = {
 
 export const projectTrailSummary = {
   buildLabel: 'Working build',
-  headline: 'Treasury readiness first, live operator second, notes always visible.',
+  headline: 'Case study first, report second, live operator only when needed.',
   lastReviewed: 'May 20, 2026',
 }
 
@@ -40,6 +40,13 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     detail:
       'Visitors still land on a report first, with live signing, agent control, and Circle/Arc actions available only when they are intentionally needed.',
   },
+  {
+    date: 'May 20, 2026',
+    tag: 'documentation',
+    title: 'Added a case study page',
+    detail:
+      'A short public page now explains what the repo proves, how to replay it locally, and what a reviewer should inspect first.',
+  },
 ]
 
 export const projectKnownGaps = [
@@ -49,6 +56,11 @@ export const projectKnownGaps = [
 ]
 
 export const projectReferenceLinks = [
+  {
+    label: 'Case study',
+    value: '/case-study',
+    href: '/case-study',
+  },
   {
     label: 'Live checker',
     value: 'web-eight-chi-99.vercel.app/dashboard',

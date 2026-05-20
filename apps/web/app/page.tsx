@@ -185,9 +185,10 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <a href="https://developers.circle.com/ai/skills" target="_blank" rel="noreferrer">
-                  Circle AI skills
-                </a>
+                <Link href="/case-study">
+                  Open case study
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/notes">Release notes</Link>
@@ -248,8 +249,9 @@ export default function HomePage() {
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-primary/10 p-4 text-sm leading-6 text-foreground">
-                The homepage is the public entry point. The dashboard is where visitors can generate the readiness
-                report, compare sample states, and optionally hand control to the live operator.
+                The homepage is the public entry point. The case study explains the replay path. The dashboard is where
+                visitors can generate the readiness report, compare sample states, and optionally hand control to the
+                live operator.
               </div>
             </CardContent>
           </Card>
@@ -343,7 +345,8 @@ export default function HomePage() {
             <CardHeader className="p-0">
               <CardTitle>Open the working surface</CardTitle>
               <CardDescription>
-                The homepage is the overview. The dashboard is where people actually generate the report.
+                The homepage is the overview. The case study explains the replay path. The dashboard is where people
+                actually generate the report.
               </CardDescription>
             </CardHeader>
 
@@ -353,6 +356,9 @@ export default function HomePage() {
                     Go to checker
                     <ArrowRight className="h-4 w-4" />
                   </Link>
+                </Button>
+                <Button asChild className="mt-3 w-full" size="lg" variant="outline">
+                  <Link href="/case-study">Open case study</Link>
                 </Button>
                 <Button asChild className="mt-3 w-full" size="lg" variant="outline">
                   <Link href="/notes">Open release notes</Link>
