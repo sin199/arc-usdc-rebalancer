@@ -1,6 +1,8 @@
 # Arc USDC Rebalancer
 
-Public Arc Testnet operator console with a live agent, Circle wallets/Gateway readiness, and operator-gated execution.
+Readiness checker + operator brief + optional live execution for Arc Testnet treasury ops.
+
+The public demo is report first, execution second: visitors can generate a readiness report, copy markdown or an action pack, and only switch into operator mode when the live signer, Circle, and executor dependencies are ready.
 
 Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
 Operator brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
@@ -93,6 +95,16 @@ Open:
 2. Open the dashboard and generate a readiness report from the current balance and policy inputs.
 3. Copy the markdown report or the action pack, or use the live action button when the live executor is configured.
 4. Switch to live operator mode only if the Arc Testnet policy, Circle readiness, and executor are all configured.
+
+## Demo checklist
+
+Use these screenshots to show the public flow without implying live execution:
+
+1. Homepage hero.
+2. Dashboard in below minimum.
+3. Dashboard at target.
+4. Dashboard above target.
+5. Dashboard in execution locked state.
 
 ## Reproduce locally in 1 minute
 
