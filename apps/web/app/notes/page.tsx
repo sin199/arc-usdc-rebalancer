@@ -15,7 +15,7 @@ import {
 export const metadata: Metadata = {
   title: 'Arc USDC Rebalancer · release notes',
   description:
-    'Release notes and known gaps for the Arc USDC Rebalancer public treasury demo and review packet.',
+    'Release notes and known gaps for the Arc USDC Rebalancer public treasury demo and robot brief.',
 }
 
 export default function NotesPage() {
@@ -26,7 +26,7 @@ export default function NotesPage() {
         title="Arc USDC Rebalancer"
         description="A small written trail of what changed, what remains rough, and where to review the current build."
         ctaHref="/architects"
-        ctaLabel="Open packet"
+        ctaLabel="Open brief"
       />
 
       <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
@@ -117,7 +117,7 @@ export default function NotesPage() {
           <CardContent className="grid gap-3 md:grid-cols-4">
             <Button asChild>
               <Link href="/architects">
-                Open architects packet
+                Open robot brief
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

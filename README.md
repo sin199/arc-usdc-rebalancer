@@ -1,16 +1,16 @@
 # Arc USDC Rebalancer
 
-Public Arc Testnet treasury demo with a live agent, Circle wallets/Gateway readiness, and operator-gated execution.
+Public Arc Testnet operator console with a live agent, Circle wallets/Gateway readiness, and operator-gated execution.
 
 Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
-Architects packet: [https://web-eight-chi-99.vercel.app/architects](https://web-eight-chi-99.vercel.app/architects)
+Robot brief: [https://web-eight-chi-99.vercel.app/architects](https://web-eight-chi-99.vercel.app/architects)
 Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
 Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
 
 ## What this repo shows
 
 - A public demo mode that visitors can use without a wallet.
-- A dedicated Arc Architects packet that explains what the build proves and how to review it.
+- A dedicated robot brief that explains what the installed agent does inside the project.
 - A short case study page that explains what to inspect and how to replay the build.
 - A live operator mode for signed Arc Testnet actions.
 - A copyable action pack with the exact commands and payload needed for operator execution.
@@ -23,15 +23,15 @@ Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer
 
 ## Why this exists
 
-The repo is built to show a concrete Arc-native workflow:
+The repo is built to show how the installed robot is used inside this project:
 
 1. Read the live TreasuryPolicy state on Arc Testnet.
 2. Preview and simulate treasury scenarios in public demo mode.
-3. Surface agent identity and a brief that recommends the next action.
+3. Surface the agent identity and the brief that recommends the next action.
 4. Switch to live operator mode only when a signed onchain action is needed, or let the live action button redeploy a fresh executor if the saved one is stale.
 5. Keep Circle wallets and Gateway visible as part of the same USDC stack.
 
-## Arc surface
+## Project surface on Arc
 
 The dashboard currently exposes these Arc-specific surfaces:
 
@@ -167,7 +167,7 @@ The contract package is separate and can be deployed independently from the fron
 
 If you are reviewing this repo as an Arc builder project, start here:
 
-1. Open the architects packet at [web-eight-chi-99.vercel.app/architects](https://web-eight-chi-99.vercel.app/architects).
+1. Open the robot brief at [web-eight-chi-99.vercel.app/architects](https://web-eight-chi-99.vercel.app/architects).
 2. Open the case study at [web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study).
 3. Open the live checker at [web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard).
 4. Generate a report, copy the action pack, and compare the sample scenarios.

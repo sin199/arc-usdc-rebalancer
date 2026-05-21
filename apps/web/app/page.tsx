@@ -12,7 +12,7 @@ import { projectTrailSummary } from '@/lib/project-trail'
 export const metadata: Metadata = {
   title: 'Arc USDC Rebalancer · public demo',
   description:
-    'A public Arc Testnet treasury demo with a live agent, a copyable readiness report, and a visible review trail.',
+    'A public Arc Testnet treasury demo with a live agent, a copyable readiness report, and a visible operator trail.',
 }
 
 const heroSignals = [
@@ -132,12 +132,12 @@ export default function HomePage() {
                   Readiness report available
                 </Badge>
                 <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                  Architects packet ready
+                  Robot brief ready
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
                 Arc USDC Rebalancer · agent {arcAgentId.toString()} · {arcAgentValidationTag} · visitors can generate
-                a report without a wallet · Arc House review trail included
+                a report without a wallet · robot brief included
               </p>
             </div>
           </div>
@@ -202,7 +202,7 @@ export default function HomePage() {
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/architects">
-                  Architects packet
+                  Robot brief
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -265,9 +265,9 @@ export default function HomePage() {
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-primary/10 p-4 text-sm leading-6 text-foreground">
-                The homepage is the public entry point. The architects packet explains the review trail. The case
-                study explains the replay path. The dashboard is where visitors can generate the readiness report,
-                compare sample states, and optionally hand control to the live operator.
+                The homepage is the public entry point. The robot brief explains what the installed agent does in this
+                project. The case study explains the replay path. The dashboard is where visitors can generate the
+                readiness report, compare sample states, and optionally hand control to the live operator.
               </div>
             </CardContent>
           </Card>
@@ -354,7 +354,7 @@ export default function HomePage() {
                   Surface the current work in progress without pretending the live operator path is automatic.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Use the architects packet as the shortest path for an Arc House reviewer.
+                  Use the robot brief as the shortest path for someone checking what the agent does here.
                 </li>
               </ul>
             </CardContent>
@@ -377,7 +377,7 @@ export default function HomePage() {
                   </Link>
                 </Button>
                 <Button asChild className="mt-3 w-full" size="lg" variant="outline">
-                  <Link href="/architects">Open architects packet</Link>
+                  <Link href="/architects">Open robot brief</Link>
                 </Button>
                 <Button asChild className="mt-3 w-full" size="lg" variant="outline">
                   <Link href="/case-study">Open case study</Link>

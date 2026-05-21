@@ -1,8 +1,7 @@
 export const architectsPacketSummary = {
-  headline: 'A public Arc Testnet treasury demo packaged for Arc House review.',
-  reviewGoal: 'Make it easy to see what was built, how to verify it, and which pieces are intentionally public.',
-  statusNote:
-    'The site is designed to support Architects review. It does not claim a badge or bypass Arc House points, opt-in, or review flow.',
+  headline: 'A public operator brief for the installed robot inside this Arc Testnet project.',
+  reviewGoal: 'Make it easy to see what the robot does, how to verify it, and which pieces are intentionally public.',
+  statusNote: 'The site is designed to explain the robot workflow. It does not claim a badge.',
 }
 
 export const architectsPacketEvidence = [
@@ -13,6 +12,10 @@ export const architectsPacketEvidence = [
   {
     label: 'Arc surface',
     value: 'Arc Testnet policy, executor, agent identity, and readiness checks in one flow.',
+  },
+  {
+    label: 'Robot surface',
+    value: 'Installed agent, brief generation, action pack, and execution trail in one flow.',
   },
   {
     label: 'Circle surface',
@@ -28,7 +31,7 @@ export const architectsPacketChecklist = [
   'Open the dashboard and generate a readiness report from the live balance and policy inputs.',
   'Open the case study to see the short replay path and what to inspect first.',
   'Open the notes page to read the maintenance trail and known gaps.',
-  'Use the repo and the live deployment as the evidence trail for the builder work.',
+  'Use the repo and the live deployment as the evidence trail for the robot workflow.',
 ]
 
 export const architectsPacketActions = [
@@ -72,4 +75,3 @@ export const architectsPacketOfficialDocs = [
     href: 'https://community.arc.network/en/public/resources/architects-contribution-opportunities',
   },
 ]
-

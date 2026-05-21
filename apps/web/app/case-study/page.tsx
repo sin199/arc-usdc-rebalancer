@@ -54,9 +54,9 @@ export default function CaseStudyPage() {
       <SiteHeader
         eyebrow="Case study"
         title="Arc USDC Rebalancer"
-        description="A short public path for reviewers: what this repo proves, how to replay it, and what to inspect first."
+        description="A short public path for operators: what this repo proves, how to replay it, and what to inspect first."
         ctaHref="/architects"
-        ctaLabel="Open packet"
+        ctaLabel="Open brief"
       />
 
       <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
@@ -84,8 +84,8 @@ export default function CaseStudyPage() {
                 Reviewer signal
               </div>
               <div className="mt-2 text-sm leading-6 text-foreground">
-                Arc reviewers can open one public page and see the report path, the live policy path, and the operator
-                gate without guessing where to click next.
+                Operators can open one public page and see the report path, the live policy path, and the operator gate
+                without guessing where to click next.
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -240,7 +240,7 @@ export default function CaseStudyPage() {
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild>
               <Link href="/architects">
-                Open architects packet
+                Open robot brief
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
