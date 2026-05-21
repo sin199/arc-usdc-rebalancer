@@ -2096,9 +2096,9 @@ export function TreasuryDashboard() {
               </Button>
             )}
             <Button className="w-full" variant="outline" asChild>
-              <Link href="/architects">
+              <Link href="/operator">
                 <ExternalLink className="h-4 w-4" />
-                Open robot brief
+                Open operator brief
               </Link>
             </Button>
           </div>

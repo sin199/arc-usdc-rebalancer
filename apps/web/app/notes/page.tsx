@@ -25,8 +25,8 @@ export default function NotesPage() {
         eyebrow="Release notes"
         title="Arc USDC Rebalancer"
         description="A small written trail of what changed, what remains rough, and where to review the current build."
-        ctaHref="/architects"
-        ctaLabel="Open brief"
+        ctaHref="/operator"
+        ctaLabel="Open operator brief"
       />
 
       <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
@@ -116,8 +116,8 @@ export default function NotesPage() {
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-4">
             <Button asChild>
-              <Link href="/architects">
-                Open robot brief
+              <Link href="/operator">
+                Open operator brief
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

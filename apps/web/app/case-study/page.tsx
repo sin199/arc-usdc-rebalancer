@@ -55,8 +55,8 @@ export default function CaseStudyPage() {
         eyebrow="Case study"
         title="Arc USDC Rebalancer"
         description="A short public path for operators: what this repo proves, how to replay it, and what to inspect first."
-        ctaHref="/architects"
-        ctaLabel="Open brief"
+        ctaHref="/operator"
+        ctaLabel="Open operator brief"
       />
 
       <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
@@ -239,8 +239,8 @@ export default function CaseStudyPage() {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild>
-              <Link href="/architects">
-                Open robot brief
+              <Link href="/operator">
+                Open operator brief
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

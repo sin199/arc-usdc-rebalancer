@@ -132,12 +132,12 @@ export default function HomePage() {
                   Readiness report available
                 </Badge>
                 <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                  Robot brief ready
+                  Operator brief ready
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
                 Arc USDC Rebalancer · agent {arcAgentId.toString()} · {arcAgentValidationTag} · visitors can generate
-                a report without a wallet · robot brief included
+                a report without a wallet · operator brief included
               </p>
             </div>
           </div>
@@ -201,8 +201,8 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/architects">
-                  Robot brief
+                <Link href="/operator">
+                  Operator brief
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -377,7 +377,7 @@ export default function HomePage() {
                   </Link>
                 </Button>
                 <Button asChild className="mt-3 w-full" size="lg" variant="outline">
-                  <Link href="/architects">Open robot brief</Link>
+                  <Link href="/operator">Open operator brief</Link>
                 </Button>
                 <Button asChild className="mt-3 w-full" size="lg" variant="outline">
                   <Link href="/case-study">Open case study</Link>

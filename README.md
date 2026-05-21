@@ -3,7 +3,7 @@
 Public Arc Testnet operator console with a live agent, Circle wallets/Gateway readiness, and operator-gated execution.
 
 Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
-Robot brief: [https://web-eight-chi-99.vercel.app/architects](https://web-eight-chi-99.vercel.app/architects)
+Operator brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
 Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
 
@@ -165,9 +165,9 @@ The contract package is separate and can be deployed independently from the fron
 
 ## Review path
 
-If you are reviewing this repo as an Arc builder project, start here:
+If you are reviewing this repo, start here:
 
-1. Open the robot brief at [web-eight-chi-99.vercel.app/architects](https://web-eight-chi-99.vercel.app/architects).
+1. Open the operator brief at [web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator).
 2. Open the case study at [web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study).
 3. Open the live checker at [web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard).
 4. Generate a report, copy the action pack, and compare the sample scenarios.

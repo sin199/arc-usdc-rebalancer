@@ -1,10 +1,10 @@
-export const architectsPacketSummary = {
+export const operatorBriefSummary = {
   headline: 'A public operator brief for the installed robot inside this Arc Testnet project.',
   reviewGoal: 'Make it easy to see what the robot does, how to verify it, and which pieces are intentionally public.',
   statusNote: 'The site is designed to explain the robot workflow. It does not claim a badge.',
 }
 
-export const architectsPacketEvidence = [
+export const operatorBriefEvidence = [
   {
     label: 'Live demo',
     value: 'Public dashboard with report-first treasury flow and live operator gating.',
@@ -27,14 +27,14 @@ export const architectsPacketEvidence = [
   },
 ]
 
-export const architectsPacketChecklist = [
+export const operatorBriefChecklist = [
   'Open the dashboard and generate a readiness report from the live balance and policy inputs.',
   'Open the case study to see the short replay path and what to inspect first.',
   'Open the notes page to read the maintenance trail and known gaps.',
   'Use the repo and the live deployment as the evidence trail for the robot workflow.',
 ]
 
-export const architectsPacketActions = [
+export const operatorBriefActions = [
   {
     label: 'Dashboard',
     href: '/dashboard',
@@ -57,7 +57,7 @@ export const architectsPacketActions = [
   },
 ]
 
-export const architectsPacketOfficialDocs = [
+export const operatorBriefOfficialDocs = [
   {
     label: 'Program overview',
     href: 'https://community.arc.network/en/home/resources/architects-overview',

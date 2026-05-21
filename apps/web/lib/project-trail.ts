@@ -7,7 +7,7 @@ export type ProjectReleaseNote = {
 
 export const projectTrailSummary = {
   buildLabel: 'Working build',
-  headline: 'Robot brief first, case study second, live operator only when needed.',
+  headline: 'Operator brief first, case study second, live operator only when needed.',
   lastReviewed: 'May 20, 2026',
 }
 
@@ -15,7 +15,7 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
   {
     date: 'May 20, 2026',
     tag: 'review',
-    title: 'Added a robot brief page',
+    title: 'Added an operator brief page',
     detail:
       'The site now has a dedicated brief surface that explains what the robot does, what to inspect first, and where to verify the project.',
   },
@@ -79,9 +79,9 @@ export const projectKnownGaps = [
 
 export const projectReferenceLinks = [
   {
-    label: 'Robot brief',
-    value: '/architects',
-    href: '/architects',
+    label: 'Operator brief',
+    value: '/operator',
+    href: '/operator',
   },
   {
     label: 'Case study',
