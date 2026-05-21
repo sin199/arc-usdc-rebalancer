@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, Activity, Bot, CircleDollarSign, Layers3, ShieldCheck, Wallet, Waves } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +14,9 @@ export const metadata: Metadata = {
   title: 'Arc USDC Rebalancer · public demo',
   description:
     'A public Arc Testnet treasury demo with a live agent, a copyable readiness report, and a visible operator trail.',
+  icons: {
+    icon: '/icon.svg',
+  },
 }
 
 const heroSignals = [
@@ -122,9 +126,7 @@ export default function HomePage() {
       <div className="relative mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 rounded-full border border-white/10 bg-card/70 px-4 py-3 backdrop-blur md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-sm font-semibold text-primary">
-              AU
-            </div>
+            <Image src="/logo.svg" alt="Arc USDC Rebalancer logo" width={44} height={44} className="h-11 w-11 shrink-0" />
             <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="success">Arc Testnet</Badge>
