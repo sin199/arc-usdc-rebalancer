@@ -76,8 +76,10 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 | Item | Evidence |
 | --- | --- |
 | Production URL | `https://web-eight-chi-99.vercel.app` |
-| Latest deployment URL | `https://web-fd69s6i56-sin199s-projects.vercel.app` |
-| Deployment hash | `dpl_8tuw4c8fE6FgffJz1qP1kqrC4CNT` |
+| Latest deployment URL | `https://web-dn7aynyz7-sin199s-projects.vercel.app` |
+| Deployment hash | `dpl_A2ypsJAXorD9wv9RQFC1tdKLHQCu` |
+| Commit hash | `e0f5e337` |
+| Arc House post link | [community.arc.network/home/clubs/agentic-economy-dofua/resources/circle-agent-stack-builder-feedback-2026-05-12](https://community.arc.network/home/clubs/agentic-economy-dofua/resources/circle-agent-stack-builder-feedback-2026-05-12) |
 | GitHub repo | `sin199/arc-usdc-rebalancer` |
 | README alignment | README now states `Readiness checker + operator brief + optional live execution` and links this pack |
 | Lint status | `pnpm lint` passed |
