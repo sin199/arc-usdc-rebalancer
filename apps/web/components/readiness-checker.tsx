@@ -10,8 +10,8 @@ import {
   Download,
   FileText,
   RefreshCcw,
+  BadgeCheck,
   ShieldCheck,
-  TriangleAlert,
   Wallet,
 } from 'lucide-react'
 import {
@@ -792,8 +792,8 @@ export function ReadinessChecker() {
           </Card>
           <Card className="border-white/10 bg-card/85">
             <CardHeader className="space-y-2">
-              <TriangleAlert className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Agent</CardTitle>
+              <BadgeCheck className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Agent identity</CardTitle>
               <CardDescription>
                 #{arcAgentId.toString()} · {arcAgentValidationTag} · Arc Testnet-linked identity
               </CardDescription>
