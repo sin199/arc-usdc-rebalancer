@@ -87,7 +87,9 @@ export function ReadinessChecker() {
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
   const [actionCopyState, setActionCopyState] = useState<'idle' | 'copied'>('idle')
   const [executionState, setExecutionState] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
-  const [executionMessage, setExecutionMessage] = useState('Run the live action; the page will redeploy a fresh executor if the saved one is stale.')
+  const [executionMessage, setExecutionMessage] = useState(
+    'Execution locked until operator wallet and live dependencies are ready. Copy the action pack in preview mode.',
+  )
   const [executionResult, setExecutionResult] = useState<TreasuryExecutionResponse | null>(null)
   const policyHydratedRef = useRef(false)
 
@@ -135,8 +137,19 @@ export function ReadinessChecker() {
       circleReadiness?.walletSetConfigured,
   )
   const circleSummary = circleReady ? 'Readiness complete' : 'Readiness incomplete'
-  const liveMode = Boolean(contractAddress && circleReady && executorAddress)
-  const modeLabel = liveMode ? 'Live operator mode' : 'Preview mode'
+  const policyIsLive = policySourceLabel === 'Live chain snapshot'
+  const policyStateLabel = policyIsLive ? 'Onchain policy loaded' : 'Draft policy preview'
+  const liveExecutionReady = Boolean(operatorAddress && contractAddress && policyIsLive && circleReady && executorAddress)
+  const liveExecutionBlockers = [
+    operatorAddress ? null : 'Connect the operator wallet.',
+    policyIsLive ? null : 'Load the live onchain policy snapshot.',
+    circleReady ? null : 'Finish Circle readiness.',
+    executorAddress ? null : 'Deploy or recheck the TreasuryExecutor.',
+  ].filter((item): item is string => Boolean(item))
+  const liveExecutionLockedMessage =
+    'Execution locked until operator wallet and live dependencies are ready.'
+  const liveMode = liveExecutionReady
+  const modeLabel = liveExecutionReady ? 'Live operator mode' : 'Preview mode'
   const report = buildReadinessReport({
     agentId: arcAgentId.toString(),
     agentTag: arcAgentValidationTag,
@@ -156,21 +169,24 @@ export function ReadinessChecker() {
   })
   const actionCommandsText = report.actionPack.commands.map((command) => `### ${command.label}\n${command.command}`).join('\n\n')
   const actionPayloadText = JSON.stringify(report.actionPack.payload, null, 2)
-  const canRunLiveAction = report.actionPack.actionable
+  const canRunLiveAction = liveExecutionReady && report.actionPack.actionable
+  const showLiveExecutionControls = liveExecutionReady && report.actionPack.actionable
+  const liveExecutionStatusMessage = showLiveExecutionControls
+    ? 'Live execution is ready.'
+    : liveExecutionReady
+      ? 'No live transaction is needed for the current report.'
+      : `${liveExecutionLockedMessage} ${liveExecutionBlockers.join(' ')}`
+  const actionPackStatusMessage = executionState === 'idle' ? liveExecutionStatusMessage : executionMessage
   const liveActionLabel =
     executionState === 'running'
       ? 'Running…'
-      : executorAddress
+      : liveExecutionReady
         ? report.action === 'top_up'
           ? 'Run top-up'
           : report.action === 'trim'
             ? 'Run trim'
             : 'Run live action'
-        : report.action === 'top_up'
-          ? 'Deploy & run top-up'
-          : report.action === 'trim'
-            ? 'Deploy & run trim'
-            : 'Deploy & run live action'
+        : 'Execution locked'
 
   async function handleCopyReport() {
     await navigator.clipboard.writeText(report.markdown)
@@ -254,7 +270,7 @@ export function ReadinessChecker() {
   async function handleRunLiveAction() {
     if (!canRunLiveAction) {
       setExecutionState('error')
-      setExecutionMessage('Resolve the missing dependencies before running a live action.')
+      setExecutionMessage(liveExecutionLockedMessage)
       return
     }
 
@@ -350,6 +366,17 @@ export function ReadinessChecker() {
   }, [localExecutorAddress])
 
   const reportStatusTone = report.action === 'hold' ? 'success' : report.action === 'review' ? 'warning' : 'outline'
+  const siteCanDo = [
+    'Generate a readiness report without a wallet.',
+    'Compare treasury scenarios before touching funds.',
+    'Copy the markdown report or action pack for chat, docs, or GitHub.',
+    'Allow optional operator execution when live configuration is ready.',
+  ]
+  const siteCannotDo = [
+    'It does not silently send transactions.',
+    'It does not execute without a live signer, Circle, and an executor.',
+    'It is not a profit bot.',
+  ]
 
   return (
     <main className="min-h-screen pb-16">
@@ -375,8 +402,8 @@ export function ReadinessChecker() {
             </div>
             <CardTitle className="text-3xl">One input surface for treasury decisions</CardTitle>
             <CardDescription className="max-w-3xl">
-              Paste the current balance, load the policy if you have it onchain, and the page returns a concise
-              report plus a command pack you can copy into chat, docs, GitHub, or a terminal.
+              Paste the current balance, use the draft policy for preview mode, and the page returns a concise report
+              plus a command pack you can copy into chat, docs, GitHub, or a terminal.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-4">
@@ -386,7 +413,7 @@ export function ReadinessChecker() {
             </div>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Policy source</div>
-              <div className="mt-2 text-sm text-foreground">{policySourceLabel}</div>
+              <div className="mt-2 text-sm text-foreground">{policyStateLabel}</div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Circle</div>
@@ -396,8 +423,44 @@ export function ReadinessChecker() {
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Executor</div>
               <div className="mt-2 text-sm text-foreground">{executorAddress ? 'Configured' : 'Missing'}</div>
             </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card className="border-white/10 bg-card/85">
+              <CardHeader className="space-y-2">
+                <Badge variant="outline" className="w-fit border-primary/25 bg-primary/10 text-primary">
+                  What this site can do
+                </Badge>
+                <CardTitle className="text-lg">Useful without a wallet</CardTitle>
+                <CardDescription>Visitors can learn the treasury shape before they ever connect live signing.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {siteCanDo.map((item) => (
+                  <div key={item} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
+                    {item}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-white/10 bg-card/85">
+              <CardHeader className="space-y-2">
+                <Badge variant="outline" className="w-fit border-white/15 bg-white/5 text-foreground">
+                  What this site cannot do
+                </Badge>
+                <CardTitle className="text-lg">Hard limits stay visible</CardTitle>
+                <CardDescription>Preview mode never pretends to be live execution.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {siteCannotDo.map((item) => (
+                  <div key={item} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
+                    {item}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.06fr_0.94fr]">
           <Card className="border-white/10 bg-card/85">
@@ -406,13 +469,14 @@ export function ReadinessChecker() {
                 <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
                   Report inputs
                 </Badge>
-                <Badge variant={policyQuery.isFetching ? 'outline' : contractAddress ? 'success' : 'outline'}>
-                  {policyQuery.isFetching ? 'Loading policy' : contractAddress ? 'Policy ready' : 'Policy preview'}
+                <Badge variant={policyQuery.isFetching ? 'outline' : policyIsLive ? 'success' : 'warning'}>
+                  {policyQuery.isFetching ? 'Loading policy' : policyIsLive ? 'Policy ready' : 'Policy preview'}
                 </Badge>
               </div>
               <CardTitle className="text-xl">Set the state you want to inspect</CardTitle>
               <CardDescription>
-                Use the live chain policy when it is available, or keep the draft values and generate a preview report.
+                Keep the draft values for preview mode, or load the onchain policy before switching to live operator
+                mode.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -601,7 +665,7 @@ export function ReadinessChecker() {
 
               <div className="rounded-2xl border border-white/10 bg-primary/5 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Run status</div>
-                <div className="mt-2 text-sm leading-6 text-foreground">{executionMessage}</div>
+                <div className="mt-2 text-sm leading-6 text-foreground">{actionPackStatusMessage}</div>
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -627,19 +691,44 @@ export function ReadinessChecker() {
                   <Copy className="h-4 w-4" />
                   {actionCopyState === 'copied' ? 'Copied' : 'Copy action pack'}
                 </Button>
-                <Button
-                  type="button"
-                  onClick={() => void handleRunLiveAction()}
-                  disabled={!canRunLiveAction || executionState === 'running'}
-                >
-                  <ArrowRight className="h-4 w-4" />
-                  {liveActionLabel}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleDownloadActionPack}>
-                  <Download className="h-4 w-4" />
-                  Download JSON
-                </Button>
+                {showLiveExecutionControls ? (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={() => void handleRunLiveAction()}
+                      disabled={executionState === 'running'}
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                      {liveActionLabel}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleDownloadActionPack}>
+                      <Download className="h-4 w-4" />
+                      Download JSON
+                    </Button>
+                  </>
+                ) : null}
               </div>
+
+              {!liveExecutionReady ? (
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="warning">Execution locked</Badge>
+                    <div className="text-sm text-foreground">Execution locked until operator wallet and live dependencies are ready.</div>
+                  </div>
+                  <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
+                    {liveExecutionBlockers.map((item) => (
+                      <li key={item}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : !showLiveExecutionControls ? (
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="success">No live transaction needed</Badge>
+                    <div className="text-sm text-foreground">{liveExecutionStatusMessage}</div>
+                  </div>
+                </div>
+              ) : null}
 
               {executionResult ? (
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -667,9 +756,13 @@ export function ReadinessChecker() {
           <Card className="border-white/10 bg-card/85">
             <CardHeader className="space-y-2">
               <ShieldCheck className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Policy</CardTitle>
+              <CardTitle className="text-base">Policy source</CardTitle>
               <CardDescription>
-                {contractAddress ? `Arc Testnet chain ${arcTestnetChainId}.` : 'Draft only until a policy address is set.'}
+                {policyIsLive
+                  ? `Arc Testnet chain ${arcTestnetChainId}.`
+                  : contractAddress
+                    ? 'Draft policy preview until the live onchain snapshot is loaded.'
+                    : 'Draft only until a policy address is set.'}
               </CardDescription>
             </CardHeader>
           </Card>

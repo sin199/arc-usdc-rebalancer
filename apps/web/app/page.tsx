@@ -73,23 +73,23 @@ const workingNotes = [
 const controlLoop = [
   {
     step: '01',
-    title: 'Load',
-    description: 'Read the balance, policy bounds, and live readiness signals together.',
+    title: 'Open dashboard',
+    description: 'Start from the report surface instead of hunting through the whole site.',
   },
   {
     step: '02',
-    title: 'Decide',
-    description: 'Turn the signals into one recommended action instead of a wall of diagnostics.',
+    title: 'Generate report',
+    description: 'Read the balance, policy bounds, and live readiness signals together.',
   },
   {
     step: '03',
-    title: 'Copy',
-    description: 'Turn the result into a compact report that can be shared without explanation.',
+    title: 'Copy outputs',
+    description: 'Grab the markdown report or the action pack for chat, docs, or GitHub.',
   },
   {
     step: '04',
-    title: 'Act',
-    description: 'Only move funds after the report says the live dependencies are actually ready.',
+    title: 'Operator mode',
+    description: 'Live execution stays behind the operator wallet and live dependencies.',
   },
 ]
 
@@ -180,8 +180,8 @@ export default function HomePage() {
                 A treasury readiness checker powered by a live agent.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-                Visitors can inspect the policy, generate a copyable report, and try sample treasury scenarios without
-                connecting a wallet. If you want live signing, switch to operator mode from the dashboard.
+                In 30 seconds, a visitor can open the dashboard, generate a readiness report, copy the markdown or
+                action pack, and only move into operator mode if they explicitly want live execution.
               </p>
               <p className="text-sm text-muted-foreground">{projectTrailSummary.headline}</p>
               <p className="text-sm text-muted-foreground">Last hand-edited: {projectTrailSummary.lastReviewed}.</p>

@@ -7,7 +7,7 @@ export type ProjectReleaseNote = {
 
 export const projectTrailSummary = {
   buildLabel: 'Working build',
-  headline: 'Operator brief first, case study second, live operator only when needed.',
+  headline: 'Readiness checker first, operator brief second, optional live execution.',
   lastReviewed: 'May 20, 2026',
 }
 

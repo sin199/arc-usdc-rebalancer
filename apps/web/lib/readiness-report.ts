@@ -198,6 +198,7 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
   const evaluation = evaluatePolicy(inputs.balance, inputs.policy)
   const policyBand = formatPolicyBand(inputs.policy)
   const liveDependenciesReady = inputs.liveMode && inputs.circleReady && Boolean(inputs.executorAddress)
+  const policyLoaded = inputs.policySourceLabel === 'Live chain snapshot' && Boolean(inputs.contractAddress)
   const reportAction: ReadinessReport['action'] =
     !inputs.contractAddress && inputs.liveMode
       ? 'review'
@@ -266,11 +267,13 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
 
   const checks: ReadinessReportCheck[] = [
     {
-      label: 'Policy loaded',
-      passed: Boolean(inputs.contractAddress) || inputs.policySourceLabel === 'Draft policy',
-      detail: inputs.contractAddress
-        ? 'Onchain policy address is configured.'
-        : 'Draft policy preview is being used.',
+      label: 'Policy source',
+      passed: policyLoaded,
+      detail: policyLoaded
+        ? 'Onchain policy snapshot is configured and loaded.'
+        : inputs.contractAddress
+          ? 'Draft policy preview is active; load the onchain snapshot before live execution.'
+          : 'Draft policy preview is active because no policy address is configured yet.',
     },
     {
       label: 'Circle ready',
