@@ -669,6 +669,14 @@ export function ReadinessChecker() {
               </div>
 
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Safety note</div>
+                <p className="mt-2 text-sm leading-6 text-foreground">
+                  These are manual operator command templates for testnet/demo use. Do not paste real private keys
+                  into the browser. The site does not collect private keys.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Commands</div>
                 <textarea
                   readOnly
