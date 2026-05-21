@@ -2,7 +2,7 @@
 
 Readiness checker + operator brief + optional live execution for Arc Testnet treasury ops.
 
-The public demo is report first, execution second: visitors can generate a readiness report, copy markdown or an action pack, and only switch into operator mode when the live signer, Circle, and executor dependencies are ready.
+The public demo is report first, execution second: visitors can generate a readiness report without a wallet, compare sample treasury states, copy markdown or an action pack, and only move into operator mode when the operator wallet, live policy, Circle readiness, and executor dependencies are ready.
 
 Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
 Operator brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
@@ -14,23 +14,30 @@ Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer
 - A public demo mode that visitors can use without a wallet.
 - A dedicated robot brief that explains what the installed agent does inside the project.
 - A short case study page that explains what to inspect and how to replay the build.
-- A live operator mode for signed Arc Testnet actions.
-- A copyable action pack with the exact commands and payload needed for operator execution.
-- A one-click live action button that can submit top-up or trim through the server signer.
-- A self-healing live action path that can redeploy a fresh `TreasuryExecutor` if the saved one is stale.
+- A copyable readiness report with policy, balance, Circle, wallet, executor, and agent evidence.
+- A copyable action pack with exact commands and payload context for an operator to review.
+- Live action controls that render only when operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
+- A self-healing live action path that can redeploy a fresh `TreasuryExecutor` if the saved one is stale, after the live gates are satisfied.
 - A treasury policy and executor flow on Arc Testnet.
 - An Arc agent identity and brief surfaced inside the dashboard.
 - Circle developer-controlled wallet and Gateway readiness for USDC routing.
 - A single dashboard that ties the agent, policy, wallet layer, and execution rail together.
 
+## What it does not do
+
+- It does not silently send transactions.
+- It does not execute from preview mode.
+- It does not execute without a live signer, Circle readiness, an operator wallet, a live policy snapshot, and an executor.
+- It is not a profit bot.
+
 ## Why this exists
 
 The repo is built to show how the installed robot is used inside this project:
 
-1. Read the live TreasuryPolicy state on Arc Testnet.
+1. Read or preview TreasuryPolicy state on Arc Testnet.
 2. Preview and simulate treasury scenarios in public demo mode.
 3. Surface the agent identity and the brief that recommends the next action.
-4. Switch to live operator mode only when a signed onchain action is needed, or let the live action button redeploy a fresh executor if the saved one is stale.
+4. Keep live operator execution gated until all live dependencies are ready.
 5. Keep Circle wallets and Gateway visible as part of the same USDC stack.
 
 ## Project surface on Arc
@@ -43,7 +50,7 @@ The dashboard currently exposes these Arc-specific surfaces:
 - Arc agent identity, validation, and operational brief
 - Circle control plane for wallets and Gateway
 - Public demo mode for unauthenticated visitors
-- Live operator mode for signed execution
+- Live operator mode for signed execution after readiness gates pass
 
 ## Architecture
 
@@ -91,20 +98,21 @@ Open:
 
 ## Reproduce in 3 minutes
 
-1. Open the case study page and read the short summary of what the repo proves.
+1. Open the homepage and confirm the 30-second visitor path: dashboard, readiness report, markdown/action pack, optional operator mode.
 2. Open the dashboard and generate a readiness report from the current balance and policy inputs.
-3. Copy the markdown report or the action pack, or use the live action button when the live executor is configured.
-4. Switch to live operator mode only if the Arc Testnet policy, Circle readiness, and executor are all configured.
+3. Switch between below minimum, at target, and above target to confirm `top_up`, `hold`, and `trim` outputs.
+4. Copy the markdown report or the action pack in preview mode.
+5. Confirm live action controls stay hidden until operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
 
 ## Demo checklist
 
 Use these screenshots to show the public flow without implying live execution:
 
-1. Homepage hero.
-2. Dashboard in below minimum.
-3. Dashboard at target.
-4. Dashboard above target.
-5. Dashboard in execution locked state.
+1. Homepage hero with the 30-second visitor path.
+2. Dashboard below minimum, showing a `top_up` readiness report.
+3. Dashboard at target, showing a `hold` readiness report.
+4. Dashboard above target, showing a `trim` readiness report.
+5. Dashboard preview mode with `Execution locked until operator wallet and live dependencies are ready.`
 
 ## Reproduce locally in 1 minute
 
@@ -179,18 +187,19 @@ The contract package is separate and can be deployed independently from the fron
 
 If you are reviewing this repo, start here:
 
-1. Open the operator brief at [web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator).
-2. Open the case study at [web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study).
-3. Open the live checker at [web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard).
-4. Generate a report, copy the action pack, and compare the sample scenarios.
-5. Check whether the live policy, Circle readiness, and executor are configured.
-6. Read the release notes and the README before judging the build.
+1. Open the live checker at [web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard).
+2. Generate a report, copy the action pack, and compare the sample scenarios.
+3. Confirm preview mode shows the locked execution state instead of runnable live controls.
+4. Open the operator brief at [web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator).
+5. Open the case study at [web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study).
+6. Read the release notes and this README before judging the build.
 
 ## Notes
 
 - The dashboard reads and writes the deployed contract on Arc Testnet only.
 - Public visitors can explore the demo without a wallet.
-- Live signing stays gated behind the operator wallet.
+- Preview mode is for reports and copyable action packs, not live transaction submission.
+- Live signing stays gated behind the operator wallet and live dependency checks.
 - The Circle line is the live control plane for wallets and Gateway, not a separate product.
 - The Arc agent panel surfaces the onchain identity and validation state tied to this website.
 - The brief panel turns the current state into a single recommended action.
