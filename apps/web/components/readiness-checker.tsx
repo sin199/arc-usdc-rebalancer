@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useAccount, useReadContract } from 'wagmi'
+import { useAccount, useConnect, useReadContract } from 'wagmi'
 import {
   ArrowRight,
   CheckCircle2,
@@ -78,6 +78,7 @@ const treasuryExecutorStorageKey = 'arc-usdc-rebalancer:readiness-executor-addre
 
 export function ReadinessChecker() {
   const { address: operatorAddress } = useAccount()
+  const { connectAsync, connectors, isPending: isConnecting } = useConnect()
   const contractAddress = treasuryPolicyAddressConfig.address
   const [localExecutorAddress, setLocalExecutorAddress] = useState<string | undefined>()
   const executorAddress = localExecutorAddress ?? treasuryExecutorAddressConfig.address
@@ -140,6 +141,8 @@ export function ReadinessChecker() {
   const policyIsLive = policySourceLabel === 'Live chain snapshot'
   const policyStateLabel = policyIsLive ? 'Onchain policy loaded' : 'Draft policy preview'
   const liveExecutionReady = Boolean(operatorAddress && contractAddress && policyIsLive && circleReady && executorAddress)
+  const operatorWalletConnected = Boolean(operatorAddress)
+  const walletConnector = connectors[0]
   const liveExecutionBlockers = [
     operatorAddress ? null : 'Connect the operator wallet.',
     policyIsLive ? null : 'Load the live onchain policy snapshot.',
@@ -187,6 +190,18 @@ export function ReadinessChecker() {
             ? 'Run trim'
             : 'Run live action'
         : 'Execution locked'
+
+  async function handleConnectOperatorWallet() {
+    if (!walletConnector) {
+      return
+    }
+
+    try {
+      await connectAsync({ connector: walletConnector })
+    } catch (error) {
+      console.error('Operator wallet connection failed.', error)
+    }
+  }
 
   async function handleCopyReport() {
     await navigator.clipboard.writeText(report.markdown)
@@ -423,6 +438,96 @@ export function ReadinessChecker() {
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Executor</div>
               <div className="mt-2 text-sm text-foreground">{executorAddress ? 'Configured' : 'Missing'}</div>
             </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/10 bg-card/85">
+            <CardHeader className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
+                  Operator readiness
+                </Badge>
+                <Badge variant={liveExecutionReady ? 'success' : 'warning'}>
+                  {liveExecutionReady ? 'Execution ready' : 'Execution locked'}
+                </Badge>
+              </div>
+              <CardTitle className="text-lg">Live execution stays optional and gated</CardTitle>
+              <CardDescription>
+                Preview mode remains useful without a wallet. These are the live gates the page checks before it will
+                expose any signed execution path.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-5">
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Operator wallet</div>
+                  <div className="mt-2 text-sm text-foreground">
+                    {operatorWalletConnected ? 'Connected' : 'Not connected'}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {operatorWalletConnected ? operatorAddress : 'Not connected in public preview.'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Live policy</div>
+                  <div className="mt-2 text-sm text-foreground">{policyIsLive ? 'Loaded' : 'Draft policy preview'}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {policyIsLive ? 'Live onchain snapshot is active.' : 'Preview stays on the draft policy band.'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Circle wallet set</div>
+                  <div className="mt-2 text-sm text-foreground">{circleReady ? 'Ready' : 'Missing'}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {circleStatusQuery.data?.walletSet?.id ? circleStatusQuery.data.walletSet.id : 'Wallet set not configured yet.'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Executor</div>
+                  <div className="mt-2 text-sm text-foreground">{executorAddress ? 'Configured' : 'Missing'}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {executorAddress ?? 'Deploy or recheck the TreasuryExecutor first.'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Execution</div>
+                  <div className="mt-2 text-sm text-foreground">{liveExecutionReady ? 'Ready' : 'Locked'}</div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    {liveExecutionReady ? 'All current live gates are satisfied.' : 'Preview mode remains report-first.'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {walletConnector ? (
+                  <Button
+                    type="button"
+                    variant={operatorWalletConnected ? 'secondary' : 'outline'}
+                    onClick={() => void handleConnectOperatorWallet()}
+                    disabled={operatorWalletConnected || isConnecting}
+                  >
+                    <Wallet className="h-4 w-4" />
+                    {operatorWalletConnected ? 'Operator wallet connected' : isConnecting ? 'Connecting…' : 'Connect operator wallet'}
+                  </Button>
+                ) : (
+                  <Button type="button" variant="outline" disabled>
+                    <Wallet className="h-4 w-4" />
+                    Operator wallet not connected in public preview
+                  </Button>
+                )}
+
+                <Button type="button" variant="outline" onClick={() => void loadLivePolicy()} disabled={!contractAddress || policyQuery.isFetching}>
+                  <RefreshCcw className="h-4 w-4" />
+                  {policyQuery.isFetching ? 'Loading policy…' : 'Load live policy'}
+                </Button>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Why execution is locked</div>
+                <div className="mt-2 text-sm leading-6 text-foreground">
+                  {liveExecutionReady ? 'Live execution is available, but the report still stays first.' : liveExecutionStatusMessage}
+                </div>
+              </div>
             </CardContent>
           </Card>
 
