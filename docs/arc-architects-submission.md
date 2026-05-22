@@ -86,14 +86,13 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 | Build status | `pnpm build` passed |
 | Alias check | Production alias and latest deployment render the same public demo copy |
 
-## Onchain proof
+## Current onchain proof status
 
-Status: blocked for this revision.
-
-- The public production routes currently render the report-first surface only: `/dashboard` shows the readiness checker and action pack, while `/operator` shows the operator brief.
-- The live operator execution surface is not exposed as a public route in the current deployment, so there is no safe in-browser path to trigger a live top-up or trim from the public demo.
-- Current Circle readiness on production still reports `walletSetConfigured=false`, with the note to set `CIRCLE_WALLET_SET_ID` or create a new wallet set from the dashboard.
-- Because the gating remains locked, there is no Arc Testnet transaction hash to cite for this revision.
+- The public demo already proves the report-first readiness flow on Arc Testnet: a visitor can inspect the readiness report, review the recommendation, and copy the markdown report or action pack without a wallet.
+- The action pack and locked execution boundary are both visible in production, so the demo shows where execution would begin and where it remains intentionally gated.
+- No Arc Testnet `top_up` or `trim` transaction hash is published yet for this revision.
+- Live execution remains gated behind the operator wallet, live policy snapshot, Circle wallet-set readiness, and executor configuration.
+- No execution gates were bypassed to create this submission evidence.
 
 ## Screenshot checklist
 
