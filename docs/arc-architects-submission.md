@@ -86,6 +86,14 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 | Build status | `pnpm build` passed |
 | Alias check | Production alias and latest deployment render the same public demo copy |
 
+## Current onchain proof status
+
+- The public demo already proves the report-first readiness flow on Arc Testnet: a visitor can inspect the readiness report, review the recommendation, and copy the markdown report or action pack without a wallet.
+- The action pack and locked execution boundary are both visible in production, so the demo shows where execution would begin and where it remains intentionally gated.
+- No Arc Testnet `top_up` or `trim` transaction hash is published yet for this revision.
+- Live execution remains gated behind the operator wallet, live policy snapshot, Circle wallet-set readiness, and executor configuration.
+- No execution gates were bypassed to create this submission evidence.
+
 ## Screenshot checklist
 
 Capture these five states from the live site:
