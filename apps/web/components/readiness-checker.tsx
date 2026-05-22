@@ -92,6 +92,8 @@ export function ReadinessChecker() {
     'Execution locked until operator wallet and live dependencies are ready. Copy the action pack in preview mode.',
   )
   const [executionResult, setExecutionResult] = useState<TreasuryExecutionResponse | null>(null)
+  const [walletConnectMessage, setWalletConnectMessage] = useState<string | null>(null)
+  const [walletConnectTone, setWalletConnectTone] = useState<'info' | 'success' | 'warning'>('info')
   const policyHydratedRef = useRef(false)
 
   const policyQuery = useReadContract({
@@ -142,7 +144,10 @@ export function ReadinessChecker() {
   const policyStateLabel = policyIsLive ? 'Onchain policy loaded' : 'Draft policy preview'
   const liveExecutionReady = Boolean(operatorAddress && contractAddress && policyIsLive && circleReady && executorAddress)
   const operatorWalletConnected = Boolean(operatorAddress)
-  const walletConnector = connectors[0]
+  const walletConnector =
+    connectors.find((connector) => /metamask/i.test(connector.name) || connector.id === 'metaMask') ??
+    connectors.find((connector) => connector.type === 'injected') ??
+    connectors[0]
   const liveExecutionBlockers = [
     operatorAddress ? null : 'Connect the operator wallet.',
     policyIsLive ? null : 'Load the live onchain policy snapshot.',
@@ -191,15 +196,61 @@ export function ReadinessChecker() {
             : 'Run live action'
         : 'Execution locked'
 
+  useEffect(() => {
+    if (!operatorWalletConnected) {
+      return
+    }
+
+    setWalletConnectTone('success')
+    setWalletConnectMessage(`Operator wallet connected${operatorAddress ? `: ${operatorAddress}` : '.'}`)
+  }, [operatorAddress, operatorWalletConnected])
+
+  function hasInjectedWalletProvider() {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    const injectedWindow = window as Window & {
+      ethereum?: unknown
+    }
+
+    return Boolean(injectedWindow.ethereum)
+  }
+
   async function handleConnectOperatorWallet() {
+    setWalletConnectTone('info')
+
     if (!walletConnector) {
+      setWalletConnectTone('warning')
+      setWalletConnectMessage(
+        'No injected wallet detected. Install MetaMask or Rabby, or open this page in a wallet-enabled browser.',
+      )
+      return
+    }
+
+    if (!hasInjectedWalletProvider()) {
+      setWalletConnectTone('warning')
+      setWalletConnectMessage(
+        'No injected wallet detected. Install MetaMask or Rabby, or open this page in a wallet-enabled browser.',
+      )
       return
     }
 
     try {
-      await connectAsync({ connector: walletConnector })
+      setWalletConnectMessage('Waiting for wallet connection prompt…')
+      const result = await connectAsync({ connector: walletConnector })
+      const connectedAddress = result.accounts[0]
+
+      setWalletConnectTone('success')
+      setWalletConnectMessage(
+        connectedAddress
+          ? `Operator wallet connected: ${connectedAddress}`
+          : 'Operator wallet connected.',
+      )
     } catch (error) {
       console.error('Operator wallet connection failed.', error)
+      setWalletConnectTone('warning')
+      setWalletConnectMessage('Wallet connection was cancelled or failed.')
     }
   }
 
@@ -521,6 +572,23 @@ export function ReadinessChecker() {
                   {policyQuery.isFetching ? 'Loading policy…' : 'Load live policy'}
                 </Button>
               </div>
+
+              {walletConnectMessage ? (
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Wallet connection status</div>
+                  <div
+                    className={`mt-2 text-sm leading-6 ${
+                      walletConnectTone === 'warning'
+                        ? 'text-foreground'
+                        : walletConnectTone === 'success'
+                          ? 'text-primary'
+                          : 'text-foreground'
+                    }`}
+                  >
+                    {walletConnectMessage}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Why execution is locked</div>
