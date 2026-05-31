@@ -7,11 +7,18 @@ export type ProjectReleaseNote = {
 
 export const projectTrailSummary = {
   buildLabel: 'Working build',
-  headline: 'Readiness checker first, operator brief second, optional live execution.',
-  lastReviewed: 'May 20, 2026',
+  headline: 'Readiness checker first, operator brief second, optional live execution, with a visible release trail.',
+  lastReviewed: 'May 31, 2026',
 }
 
 export const projectReleaseNotes: ProjectReleaseNote[] = [
+  {
+    date: 'May 31, 2026',
+    tag: 'product',
+    title: 'Surfaced a recent change trail on the homepage',
+    detail:
+      'The homepage now shows a compact, visible release trail so reviewers can see what changed without opening the notes page.',
+  },
   {
     date: 'May 20, 2026',
     tag: 'review',
