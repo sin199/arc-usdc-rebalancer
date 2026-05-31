@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { arcTestnetChainId, arcTestnetExplorerUrl } from '@arc-usdc-rebalancer/shared'
 import { arcTestnetRpcUrl } from '@/lib/treasury-policy'
 import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
-import { projectTrailSummary } from '@/lib/project-trail'
+import { projectReleaseNotes, projectTrailSummary } from '@/lib/project-trail'
 
 export const metadata: Metadata = {
   title: 'Arc USDC Rebalancer · public demo',
@@ -115,6 +115,8 @@ const projectFacts = [
     value: arcAgentValidationTag,
   },
 ]
+
+const recentReleaseNotes = projectReleaseNotes.slice(0, 3)
 
 export default function HomePage() {
   return (
@@ -296,6 +298,37 @@ export default function HomePage() {
                     <li key={note}>• {note}</li>
                   ))}
                 </ul>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/10 bg-card/85 p-6">
+            <CardHeader className="p-0">
+              <Badge variant="outline" className="w-fit border-primary/25 bg-primary/10 text-primary">
+                Recent changes
+              </Badge>
+              <CardTitle className="mt-3 text-2xl">What changed most recently</CardTitle>
+              <CardDescription>
+                A compact trail of the latest edits, so the homepage looks like a maintained build instead of a frozen mockup.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="pt-6">
+              <div className="space-y-3">
+                {recentReleaseNotes.map((note) => (
+                  <div key={`${note.date}-${note.title}`} className="rounded-2xl border border-white/10 bg-background/45 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                        {note.tag}
+                      </Badge>
+                      <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">{note.date}</span>
+                    </div>
+                    <div className="mt-3 font-display text-lg font-semibold tracking-tight text-foreground">
+                      {note.title}
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{note.detail}</p>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
