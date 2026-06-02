@@ -73,7 +73,7 @@ export default function CaseStudyPage() {
             </div>
             <CardTitle className="text-3xl">What this project proves</CardTitle>
             <CardDescription className="max-w-3xl">
-              {projectTrailSummary.headline} The point of this page is to make the working build easy to replay without
+              {projectTrailSummary.headline} The point of this page is to make the verified demo easy to replay without
               opening every surface first.
             </CardDescription>
           </CardHeader>
@@ -234,8 +234,8 @@ export default function CaseStudyPage() {
 
         <Card className="border-white/10 bg-card/85">
           <CardHeader>
-            <CardTitle>Open the working surface</CardTitle>
-            <CardDescription>Use the links below when you want to move from reading to checking the live build.</CardDescription>
+            <CardTitle>Open the review surface</CardTitle>
+            <CardDescription>Use the links below when you want to move from reading to checking the live demo.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild>

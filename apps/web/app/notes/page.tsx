@@ -24,7 +24,7 @@ export default function NotesPage() {
       <SiteHeader
         eyebrow="Release notes"
         title="Arc USDC Rebalancer"
-        description="A small written trail of what changed, what remains rough, and where to review the current build."
+        description="A small written trail of what changed, what remains rough, and where to review the current demo."
         ctaHref="/operator"
         ctaLabel="Open operator brief"
       />
@@ -38,9 +38,9 @@ export default function NotesPage() {
               </Badge>
               <Badge variant="success">Readiness first</Badge>
             </div>
-            <CardTitle className="text-2xl">What this build is trying to be</CardTitle>
+            <CardTitle className="text-2xl">What this demo is trying to be</CardTitle>
             <CardDescription className="max-w-3xl">
-              {projectTrailSummary.headline} The point of this page is to make the current state of the project easy
+              {projectTrailSummary.headline} The point of this page is to make the current demo easy
               to read without opening the dashboard first.
             </CardDescription>
           </CardHeader>
@@ -74,7 +74,7 @@ export default function NotesPage() {
             <CardHeader>
               <CardTitle>Recent changes</CardTitle>
               <CardDescription>
-                The last few changes that made the project read more like a maintained build instead of a static demo.
+                The last few changes that made the project read more like a maintained demo instead of a static shell.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -111,7 +111,7 @@ export default function NotesPage() {
 
         <Card className="border-white/10 bg-card/85">
           <CardHeader>
-            <CardTitle>Open the working surface</CardTitle>
+            <CardTitle>Open the review surface</CardTitle>
             <CardDescription>Keep the route simple for anyone who wants to verify the project quickly.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-4">

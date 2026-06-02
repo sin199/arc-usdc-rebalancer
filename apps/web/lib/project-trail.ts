@@ -6,12 +6,20 @@ export type ProjectReleaseNote = {
 }
 
 export const projectTrailSummary = {
-  buildLabel: 'Working build',
-  headline: 'Readiness checker first, operator brief second, optional live execution, with a visible release trail.',
-  lastReviewed: 'May 31, 2026',
+  buildLabel: 'Verified Arc Testnet demo',
+  headline:
+    'Readiness checker first, operator brief second, optional live execution, with an architect proof page for Arc review.',
+  lastReviewed: 'June 2, 2026',
 }
 
 export const projectReleaseNotes: ProjectReleaseNote[] = [
+  {
+    date: 'June 2, 2026',
+    tag: 'review',
+    title: 'Added an architect proof page',
+    detail:
+      'The site now surfaces one proof page with the production link, deployment hash, Arc Testnet addresses, current proof status, and screenshot checklist.',
+  },
   {
     date: 'May 31, 2026',
     tag: 'product',
@@ -45,7 +53,7 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     tag: 'navigation',
     title: 'Added a release notes page',
     detail:
-      'The site now has a dedicated notes surface for the current build, known gaps, and the most recent changes, instead of burying that context inside the dashboard.',
+      'The site now has a dedicated notes surface for the current demo, known gaps, and the most recent changes, instead of burying that context inside the dashboard.',
   },
   {
     date: 'May 20, 2026',
@@ -80,11 +88,16 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
 export const projectKnownGaps = [
   'Maintenance notes are browser-local until a shared backend is added.',
   'Live settlement still depends on the operator wallet on Arc Testnet.',
-  'The report is strongest when live policy, Circle, and executor wiring are actually configured.',
-  'Robot value comes from the operator flow, not from the brief page alone.',
+  'Circle wallet set is optional for the current proof and required only for live crosschain execution.',
+  'The report is strongest when live policy, agent, executor, and proof links are visible together.',
 ]
 
 export const projectReferenceLinks = [
+  {
+    label: 'Architect proof',
+    value: '/architects',
+    href: '/architects',
+  },
   {
     label: 'Operator brief',
     value: '/operator',

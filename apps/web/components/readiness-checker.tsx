@@ -30,6 +30,7 @@ import { Label } from '@/components/ui/label'
 import { SiteHeader } from '@/components/site-header'
 import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
 import { buildReadinessReport } from '@/lib/readiness-report'
+import { projectTrailSummary } from '@/lib/project-trail'
 import { treasuryExecutorAddressConfig } from '@/lib/treasury-executor'
 import { arcTestnetRpcUrl, formatTreasuryPolicyFromUnits, treasuryPolicyAddressConfig } from '@/lib/treasury-policy'
 import { arcTestnet } from '@/lib/wagmi'
@@ -82,7 +83,7 @@ export function ReadinessChecker() {
   const contractAddress = treasuryPolicyAddressConfig.address
   const [localExecutorAddress, setLocalExecutorAddress] = useState<string | undefined>()
   const executorAddress = localExecutorAddress ?? treasuryExecutorAddressConfig.address
-  const [balance, setBalance] = useState(Math.max(0, initialPolicy.minThreshold - 25))
+  const [balance, setBalance] = useState(initialPolicy.targetBalance)
   const [policy, setPolicy] = useState(initialPolicy)
   const [policySourceLabel, setPolicySourceLabel] = useState<'Draft policy' | 'Live chain snapshot'>('Draft policy')
   const [copyState, setCopyState] = useState<'idle' | 'copied'>('idle')
@@ -139,7 +140,11 @@ export function ReadinessChecker() {
       circleReadiness?.entitySecretConfigured &&
       circleReadiness?.walletSetConfigured,
   )
-  const circleSummary = circleReady ? 'Readiness complete' : 'Readiness incomplete'
+  const circleSummary = circleReady
+    ? 'Readiness complete'
+    : operatorAddress
+      ? 'Readiness incomplete'
+      : 'Optional crosschain readiness'
   const policyIsLive = policySourceLabel === 'Live chain snapshot'
   const policyStateLabel = policyIsLive ? 'Onchain policy loaded' : 'Draft policy preview'
   const liveExecutionReady = Boolean(operatorAddress && contractAddress && policyIsLive && circleReady && executorAddress)
@@ -432,6 +437,14 @@ export function ReadinessChecker() {
   }, [localExecutorAddress])
 
   const reportStatusTone = report.action === 'hold' ? 'success' : report.action === 'review' ? 'warning' : 'outline'
+  const reportStatusLabel =
+    report.action === 'hold'
+      ? 'At target'
+      : report.action === 'top_up'
+        ? 'Below minimum'
+        : report.action === 'trim'
+          ? 'Above target'
+          : 'Review'
   const siteCanDo = [
     'Generate a readiness report without a wallet.',
     'Compare treasury scenarios before touching funds.',
@@ -459,9 +472,11 @@ export function ReadinessChecker() {
           <CardHeader className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                Working build
+                {projectTrailSummary.buildLabel}
               </Badge>
-              <Badge variant={reportStatusTone}>{report.action === 'review' ? 'Needs review' : report.action === 'hold' ? 'Ready' : 'Action suggested'}</Badge>
+              <Badge variant={reportStatusTone}>
+                {report.action === 'review' ? 'Needs review' : report.action === 'hold' ? 'Ready' : 'Action suggested'}
+              </Badge>
               <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
                 {modeLabel}
               </Badge>
@@ -477,18 +492,18 @@ export function ReadinessChecker() {
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Current balance</div>
               <div className="mt-2 text-sm text-foreground">{formatUsdc(balance)} USDC</div>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Policy source</div>
-              <div className="mt-2 text-sm text-foreground">{policyStateLabel}</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Circle</div>
-              <div className="mt-2 text-sm text-foreground">{circleSummary}</div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Executor</div>
-              <div className="mt-2 text-sm text-foreground">{executorAddress ? 'Configured' : 'Missing'}</div>
-            </div>
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Policy source</div>
+                <div className="mt-2 text-sm text-foreground">{policyStateLabel}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Circle</div>
+                <div className="mt-2 text-sm text-foreground">{circleSummary}</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Executor</div>
+                <div className="mt-2 text-sm text-foreground">{executorAddress ? 'Configured' : 'Missing'}</div>
+              </div>
             </CardContent>
           </Card>
 
@@ -500,6 +515,9 @@ export function ReadinessChecker() {
                 </Badge>
                 <Badge variant={liveExecutionReady ? 'success' : 'warning'}>
                   {liveExecutionReady ? 'Execution ready' : 'Execution locked'}
+                </Badge>
+                <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                  {reportStatusLabel}
                 </Badge>
               </div>
               <CardTitle className="text-lg">Live execution stays optional and gated</CardTitle>

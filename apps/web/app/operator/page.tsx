@@ -36,7 +36,7 @@ const reviewerSteps = [
 
 const docsContext = [
   'The installed robot is used as an operator assistant inside this project.',
-  'The dashboard is the real working surface where the robot turns state into a report.',
+  'The dashboard is the real review surface where the robot turns state into a report.',
   'The live action path is gated so the robot can recommend before it can execute.',
   'The repo, live deployment, and notes should all tell the same story.',
 ]
@@ -216,8 +216,8 @@ export default function OperatorPage() {
 
         <Card className="border-white/10 bg-card/85">
           <CardHeader>
-            <CardTitle>Open the working surface</CardTitle>
-            <CardDescription>Move from the brief to the live build without hunting through the site.</CardDescription>
+            <CardTitle>Open the review surface</CardTitle>
+            <CardDescription>Move from the brief to the live demo without hunting through the site.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild>

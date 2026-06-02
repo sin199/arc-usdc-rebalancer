@@ -87,6 +87,7 @@ import {
   arcAgentValidationTag,
   arcAgentValidatorAddress,
 } from '@/lib/arc-agent'
+import { projectTrailSummary } from '@/lib/project-trail'
 
 type TreasuryPolicyUpdatedLog = {
   args: {
@@ -344,6 +345,11 @@ const publicLaunchPath = [
 
 const builderReferenceLinks = [
   {
+    label: 'Architect proof',
+    value: '/architects',
+    href: '/architects',
+  },
+  {
     label: 'Live demo',
     value: 'web-eight-chi-99.vercel.app/dashboard',
     href: 'https://web-eight-chi-99.vercel.app/dashboard',
@@ -367,23 +373,23 @@ const builderReferenceLinks = [
 
 const workingNotes = [
   {
-    label: 'Last hand-edited',
-    value: 'May 16, 2026',
+    label: 'Last reviewed',
+    value: 'June 2, 2026',
   },
   {
     label: 'What stays visible',
-    value: 'The demo path, the live path, and the gap between them.',
+    value: 'The demo path, the proof page, and the live path boundary.',
   },
   {
-    label: 'Intentional rough edge',
+    label: 'Intentional boundary',
     value: 'Live settlement stays operator-gated and the page says so plainly.',
   },
 ]
 
 const buildTrailNotes = [
-  'Public demo stays first so a new visitor can understand the build without a wallet.',
+  'Public demo stays first so a new visitor can understand the proof without a wallet.',
   'Live signing remains obvious but optional.',
-  'A few internal notes stay visible so the page reads like a working project, not a brochure.',
+  'A few internal notes stay visible so the page reads like a maintained builder contribution, not a brochure.',
 ]
 
 const seedBuildNotes: BuildNote[] = [
@@ -482,7 +488,7 @@ export function TreasuryDashboard() {
   const [draftPolicy, setDraftPolicy] = useState<TreasuryPolicy>(DEFAULT_TREASURY_POLICY)
   const [activity, setActivity] = useState<ActivityEntry[]>([])
   const [simulationMessage, setSimulationMessage] = useState<string>(
-    'Public demo mode is ready. Try the sample treasury scenarios or connect a wallet for live signing.',
+    'Verified sample ready. Try the At target, Below minimum, or Above target scenarios, or connect a wallet for live signing.',
   )
   const [stablecoinTestMessage, setStablecoinTestMessage] = useState<string>(
     'Run the stablecoin robot test to inspect the public demo or live USDC policy state.',
@@ -613,7 +619,7 @@ export function TreasuryDashboard() {
   const chainPolicy = liveOperatorAvailable ? liveChainPolicy : demoPolicy ?? liveChainPolicy
 
   const currentPolicy = chainPolicy ?? draftPolicy
-  const publicDemoPreviewBalance = Math.max(0, currentPolicy.minThreshold - 25)
+  const publicDemoPreviewBalance = currentPolicy.targetBalance
   const treasuryBalance = liveOperatorAvailable
     ? Number(treasuryBalanceQuery.data?.formatted ?? 0)
     : demoTreasuryBalance ?? publicDemoPreviewBalance
@@ -729,7 +735,13 @@ export function TreasuryDashboard() {
       ? 'pass'
       : 'warn'
   const circleStackStatusLabel =
-    circleStackStatus === 'pass' ? 'READY' : circleStackStatus === 'warn' ? 'WIRING NEEDED' : 'WAIT'
+    circleStackStatus === 'pass'
+      ? 'READY'
+      : publicDemoMode
+        ? 'OPTIONAL CROSSCHAIN'
+        : circleStackStatus === 'warn'
+          ? 'WIRING NEEDED'
+          : 'WAIT'
   const circleStackChecks = [
     {
       label: 'Wallet mode',
@@ -1942,7 +1954,16 @@ export function TreasuryDashboard() {
     }
   }
 
-  const currentStatus = evaluation?.status ?? (publicDemoMode ? 'healthy' : null)
+  const currentStatusLabel =
+    evaluation?.action === 'hold'
+      ? 'At target'
+      : evaluation?.action === 'top_up'
+        ? 'Below minimum'
+        : evaluation?.action === 'trim'
+          ? 'Above target'
+          : publicDemoMode
+            ? 'Public demo mode'
+            : 'Awaiting wallet'
   const usingDemoPolicy = demoPolicy !== null
   const policySyncBadge =
     usingDemoPolicy
@@ -2016,12 +2037,12 @@ export function TreasuryDashboard() {
             <div>
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Quick actions</div>
               <div className="mt-1 text-sm text-muted-foreground">
-                Visitors can start in public demo mode. Connect a wallet only if you want live signing.
+                Visitors can start in verified public demo mode. Connect an operator wallet only if you want live signing.
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
               <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                Working build
+                {projectTrailSummary.buildLabel}
               </Badge>
               <Badge variant={publicDemoMode ? 'success' : 'outline'}>{publicDemoMode ? 'Public demo' : 'Wallet ready'}</Badge>
               <Badge variant={walletOnArc || publicDemoMode ? 'success' : 'warning'}>
@@ -2038,7 +2059,7 @@ export function TreasuryDashboard() {
                     : 'Execution blocked'}
               </Badge>
               <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                Last edited May 16, 2026
+                Last reviewed {projectTrailSummary.lastReviewed}
               </Badge>
             </div>
           </div>
@@ -2055,7 +2076,7 @@ export function TreasuryDashboard() {
             {!isConnected ? (
               <Button type="button" className="w-full" onClick={() => void handleConnect()} disabled={isConnecting}>
                 <Wallet className="h-4 w-4" />
-                {isConnecting ? 'Connecting…' : 'Connect live wallet'}
+                {isConnecting ? 'Connecting…' : 'Connect operator wallet'}
               </Button>
             ) : (
               <Button type="button" className="w-full" variant="secondary" onClick={handleDisconnect}>
@@ -2226,9 +2247,9 @@ export function TreasuryDashboard() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => loadPublicDemoScenario(publicDemoPreviewBalance, 'Default public demo')}
+                  onClick={() => loadPublicDemoScenario(publicDemoPreviewBalance, 'Verified sample')}
                 >
-                  Default demo
+                  Verified sample
                 </Button>
                 <Button
                   type="button"
@@ -2285,15 +2306,15 @@ export function TreasuryDashboard() {
             <CardHeader className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                  Working notes
+                  Proof notes
                 </Badge>
                 <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
                   Hand-edited
                 </Badge>
               </div>
-              <CardTitle className="text-lg">What I am leaving visible while this is still a work in progress</CardTitle>
+              <CardTitle className="text-lg">What I am leaving visible while the proof is still being reviewed</CardTitle>
               <CardDescription>
-                Short notes from the current pass. They are intentionally plain and a little uneven.
+                Short notes from the current pass. They are intentionally plain so the review trail stays readable.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -2439,7 +2460,7 @@ export function TreasuryDashboard() {
               <div>
                 <CardDescription>Simulated rebalance status</CardDescription>
                 <CardTitle className="mt-1 text-lg">
-                  {currentStatus ? currentStatus.replace('_', ' ') : 'Public demo mode'}
+                  {currentStatusLabel}
                 </CardTitle>
               </div>
               <ArrowRightLeft className="h-5 w-5 text-primary" />
@@ -2465,7 +2486,7 @@ export function TreasuryDashboard() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={evaluation?.status === 'healthy' ? 'success' : 'warning'}>
-                  {evaluation?.status ?? (publicDemoMode ? 'Public demo' : 'Awaiting wallet')}
+                  {currentStatusLabel}
                 </Badge>
                 {evaluation?.reasonCodes.map((reasonCode) => (
                   <Badge key={reasonCode} variant="outline">
@@ -2479,9 +2500,9 @@ export function TreasuryDashboard() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => loadPublicDemoScenario(publicDemoPreviewBalance, 'Default public demo')}
+                    onClick={() => loadPublicDemoScenario(publicDemoPreviewBalance, 'Verified sample')}
                   >
-                    Default demo
+                    Verified sample
                   </Button>
                   <Button
                     type="button"
@@ -2658,7 +2679,8 @@ export function TreasuryDashboard() {
                   <div className="mt-2 text-foreground">{circleStackSummary()}</div>
                   <div className="mt-2 text-xs text-muted-foreground">
                     This surface maps the Circle-ready path for Arc USDC, wallets, executor deployment, and cross-chain
-                    transfer planning.
+                    transfer planning. In public demo mode, Circle behaves as optional crosschain readiness rather than
+                    the main blocker.
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">

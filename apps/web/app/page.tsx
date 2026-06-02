@@ -68,10 +68,10 @@ const liveTiles = [
 ]
 
 const workingNotes = [
-  'This is the current working build, not a polished launch page.',
-  'The main job is to produce a readable treasury readiness report.',
+  'This is a verified Arc Testnet demo for reviewer proof, not an official Arc page.',
+  'The main job is to produce a readable treasury readiness report and proof trail.',
   'Live signing remains available, but it should never be required to understand the result.',
-  'The dashboard keeps a local maintenance log so updates can be written down as they happen.',
+  'The dashboard keeps a local proof log so updates can be written down as they happen.',
 ]
 
 const controlLoop = [
@@ -154,9 +154,7 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button asChild>
-              <a href="https://docs.arc.network" target="_blank" rel="noreferrer">
-                Arc docs
-              </a>
+              <Link href="/architects">Architect proof</Link>
             </Button>
           </div>
         </div>
@@ -168,7 +166,7 @@ export default function HomePage() {
           <div className="relative space-y-6">
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                Working build
+                {projectTrailSummary.buildLabel}
               </Badge>
               <Badge variant="success">Built for Arc treasury ops</Badge>
               <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
@@ -188,13 +186,19 @@ export default function HomePage() {
                 action pack, and only move into operator mode if they explicitly want live execution.
               </p>
               <p className="text-sm text-muted-foreground">{projectTrailSummary.headline}</p>
-              <p className="text-sm text-muted-foreground">Last hand-edited: {projectTrailSummary.lastReviewed}.</p>
+              <p className="text-sm text-muted-foreground">Last reviewed: {projectTrailSummary.lastReviewed}.</p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg">
                 <Link href="/dashboard">
                   Generate report
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
+                <Link href="/architects">
+                  Architect proof
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -237,14 +241,14 @@ export default function HomePage() {
             <CardHeader className="space-y-2 p-0">
               <div className="flex items-center justify-between gap-4">
                 <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
-                  Working build
+                  {projectTrailSummary.buildLabel}
                 </Badge>
                 <span className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Project status</span>
               </div>
               <CardTitle className="text-2xl">What is live right now</CardTitle>
               <CardDescription>
-                The page stays close to the actual build: report first, live operator mode second, and the dashboard
-                keeps a maintenance log so the site reads like something a person is still shaping.
+                The page stays close to the actual proof: report first, live operator mode second, and the dashboard
+                keeps a proof log so the site reads like a maintained builder contribution.
               </CardDescription>
             </CardHeader>
 
@@ -269,9 +273,10 @@ export default function HomePage() {
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-primary/10 p-4 text-sm leading-6 text-foreground">
-                The homepage is the public entry point. The robot brief explains what the installed agent does in this
-                project. The case study explains the replay path. The dashboard is where visitors can generate the
-                readiness report, compare sample states, and optionally hand control to the live operator.
+                The homepage is the public entry point. The architect proof page explains the deployment facts and
+                onchain status. The robot brief explains what the installed agent does in this project. The case
+                study explains the replay path. The dashboard is where visitors can generate the readiness report,
+                compare sample states, and optionally hand control to the live operator.
               </div>
             </CardContent>
           </Card>
@@ -292,7 +297,7 @@ export default function HomePage() {
                 ))}
               </div>
               <div className="mt-4 rounded-2xl border border-white/10 bg-background/45 p-4">
-                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Working notes</div>
+                <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Proof notes</div>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
                   {workingNotes.map((note) => (
                     <li key={note}>• {note}</li>
@@ -309,7 +314,7 @@ export default function HomePage() {
               </Badge>
               <CardTitle className="mt-3 text-2xl">What changed most recently</CardTitle>
               <CardDescription>
-                A compact trail of the latest edits, so the homepage looks like a maintained build instead of a frozen mockup.
+                A compact trail of the latest edits, so the homepage looks like a maintained demo instead of a frozen mockup.
               </CardDescription>
             </CardHeader>
 
@@ -383,10 +388,10 @@ export default function HomePage() {
                   Let visitors explore without a wallet, then move into live operator mode if needed.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Keep the builder story legible from GitHub to the live checker and the review notes.
+                  Keep the builder story legible from GitHub to the architect proof page and the review notes.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Surface the current work in progress without pretending the live operator path is automatic.
+                  Surface the report-first build without pretending the live operator path is automatic.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
                   Use the robot brief as the shortest path for someone checking what the agent does here.
@@ -397,9 +402,9 @@ export default function HomePage() {
 
           <Card className="border-white/10 bg-card/85 p-6">
             <CardHeader className="p-0">
-              <CardTitle>Open the working surface</CardTitle>
+              <CardTitle>Open the review surface</CardTitle>
               <CardDescription>
-                The homepage is the overview. The case study explains the replay path. The dashboard is where people
+                The homepage is the overview. The proof page explains the evidence. The dashboard is where people
                 actually generate the report.
               </CardDescription>
             </CardHeader>
@@ -413,6 +418,9 @@ export default function HomePage() {
                 </Button>
                 <Button asChild className="mt-3 w-full" size="lg" variant="outline">
                   <Link href="/operator">Open operator brief</Link>
+                </Button>
+                <Button asChild className="mt-3 w-full" size="lg" variant="outline">
+                  <Link href="/architects">Open architect proof</Link>
                 </Button>
                 <Button asChild className="mt-3 w-full" size="lg" variant="outline">
                   <Link href="/case-study">Open case study</Link>
