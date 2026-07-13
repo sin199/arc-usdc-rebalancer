@@ -7,6 +7,7 @@ The public demo is report first, execution second: visitors can generate a readi
 Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
 Operator brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
+Hackathon deck: [docs/arc-treasury-agent-deck.pptx](docs/arc-treasury-agent-deck.pptx)
 Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
 Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submission.md)
 
