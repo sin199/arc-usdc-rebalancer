@@ -31,7 +31,11 @@ import {
   arcAgentValidationTag,
   arcAgentValidatorAddress,
 } from './arc-agent'
-import { fetchCircleControlPlaneStatus, type CircleReadiness } from './circle-server'
+import {
+  fetchCircleControlPlaneStatus,
+  type CircleReadiness,
+} from './circle-server'
+import { conciseRpcError, withBoundedRetry } from './rpc-resilience'
 import { treasuryExecutorAddressConfig } from './treasury-executor'
 import { treasuryPolicyAddressConfig } from './treasury-policy'
 
@@ -149,11 +153,88 @@ export type ArcAgentBriefResult = {
     notes: string[]
     walletCount: number
   }
+  dataQuality: {
+    overall: 'live' | 'degraded'
+    sources: {
+      identity: ArcAgentBriefDataSource
+      policy: ArcAgentBriefDataSource
+      balance: ArcAgentBriefDataSource
+      validation: ArcAgentBriefDataSource
+      circle: ArcAgentBriefDataSource
+    }
+  }
+  warnings: string[]
   recommendation: {
     action: ArcAgentBriefRecommendationAction
     headline: string
     detail: string
     nextSteps: string[]
+  }
+}
+
+export type ArcAgentBriefDataSource = {
+  status: 'live' | 'cached' | 'configured' | 'unavailable' | 'not_configured'
+  observedAt?: string
+  detail: string
+}
+
+type RpcCacheEntry<T> = {
+  value: T
+  observedAt: string
+}
+
+const briefRpcCache: {
+  policy?: RpcCacheEntry<readonly [bigint, bigint, bigint]>
+  balance?: RpcCacheEntry<bigint>
+  validation?: RpcCacheEntry<ValidationStatus>
+} = {}
+
+async function readBriefRpcValue<T>(
+  key: keyof typeof briefRpcCache,
+  label: string,
+  operation: () => Promise<T>,
+): Promise<{
+  value: T | null
+  source: ArcAgentBriefDataSource
+  warning?: string
+}> {
+  try {
+    const value = await withBoundedRetry(operation)
+    const observedAt = new Date().toISOString()
+    briefRpcCache[key] = { value, observedAt } as never
+
+    return {
+      value,
+      source: {
+        status: 'live',
+        observedAt,
+        detail: `${label} read live from Arc Testnet.`,
+      },
+    }
+  } catch (error) {
+    const cached = briefRpcCache[key] as RpcCacheEntry<T> | undefined
+    const reason = conciseRpcError(error)
+
+    if (cached) {
+      return {
+        value: cached.value,
+        source: {
+          status: 'cached',
+          observedAt: cached.observedAt,
+          detail: `${label} uses the last successful in-memory snapshot.`,
+        },
+        warning: `${label} live read failed (${reason}) Using a cached snapshot from ${cached.observedAt}.`,
+      }
+    }
+
+    return {
+      value: null,
+      source: {
+        status: 'unavailable',
+        detail: `${label} is unavailable because ${reason}`,
+      },
+      warning: `${label} is unavailable. ${reason}`,
+    }
   }
 }
 
@@ -176,15 +257,28 @@ function requirePrivateKey(name: string): `0x${string}` {
 }
 
 function createArcAgentClients() {
-  const ownerAccount = privateKeyToAccount(requirePrivateKey('OWNER_PRIVATE_KEY'))
-  const validatorAccount = privateKeyToAccount(requirePrivateKey('VALIDATOR_PRIVATE_KEY'))
+  const ownerAccount = privateKeyToAccount(
+    requirePrivateKey('OWNER_PRIVATE_KEY'),
+  )
+  const validatorAccount = privateKeyToAccount(
+    requirePrivateKey('VALIDATOR_PRIVATE_KEY'),
+  )
 
-  if (ownerAccount.address.toLowerCase() !== arcAgentOwnerAddress.toLowerCase()) {
-    throw new Error(`OWNER_PRIVATE_KEY does not match the registered agent owner ${arcAgentOwnerAddress}.`)
+  if (
+    ownerAccount.address.toLowerCase() !== arcAgentOwnerAddress.toLowerCase()
+  ) {
+    throw new Error(
+      `OWNER_PRIVATE_KEY does not match the registered agent owner ${arcAgentOwnerAddress}.`,
+    )
   }
 
-  if (validatorAccount.address.toLowerCase() !== arcAgentValidatorAddress.toLowerCase()) {
-    throw new Error(`VALIDATOR_PRIVATE_KEY does not match the registered validator ${arcAgentValidatorAddress}.`)
+  if (
+    validatorAccount.address.toLowerCase() !==
+    arcAgentValidatorAddress.toLowerCase()
+  ) {
+    throw new Error(
+      `VALIDATOR_PRIVATE_KEY does not match the registered validator ${arcAgentValidatorAddress}.`,
+    )
   }
 
   const publicClient = createPublicClient({
@@ -212,7 +306,10 @@ function createArcAgentClients() {
   }
 }
 
-async function waitForReceipt(publicClient: ReturnType<typeof createPublicClient>, hash: `0x${string}`) {
+async function waitForReceipt(
+  publicClient: ReturnType<typeof createPublicClient>,
+  hash: `0x${string}`,
+) {
   return publicClient.waitForTransactionReceipt({
     hash,
     pollingInterval: 1000,
@@ -226,7 +323,8 @@ function createArcTestnetPublicClient() {
   })
 }
 
-function deriveArcAgentRecommendation(params: {
+export function deriveArcAgentRecommendation(params: {
+  circleAvailable: boolean
   circleNotes: string[]
   circleReadiness: CircleReadiness
   executorAddress?: `0x${string}`
@@ -235,13 +333,23 @@ function deriveArcAgentRecommendation(params: {
   balanceUsdc: number | null
   evaluation: ArcAgentBriefResult['treasury']['evaluation']
 }): ArcAgentBriefResult['recommendation'] {
-  const { circleNotes, circleReadiness, executorAddress, policyAddress, policy, balanceUsdc, evaluation } = params
+  const {
+    circleAvailable,
+    circleNotes,
+    circleReadiness,
+    executorAddress,
+    policyAddress,
+    policy,
+    balanceUsdc,
+    evaluation,
+  } = params
 
   if (!policyAddress) {
     return {
       action: 'load_policy',
       headline: 'Load the deployed TreasuryPolicy first.',
-      detail: 'The agent cannot make a treasury call until the policy contract address is configured.',
+      detail:
+        'The agent cannot make a treasury call until the policy contract address is configured.',
       nextSteps: [
         'Set TREASURY_POLICY_ADDRESS in the deployment environment.',
         'Broadcast the TreasuryPolicy contract if it has not been deployed yet.',
@@ -250,11 +358,26 @@ function deriveArcAgentRecommendation(params: {
     }
   }
 
+  if (!policy) {
+    return {
+      action: 'load_policy',
+      headline: 'Live TreasuryPolicy data is unavailable.',
+      detail:
+        'The policy contract is configured, but the agent could not verify its current policy band. No move should be executed from this brief.',
+      nextSteps: [
+        'Wait briefly for the Arc Testnet RPC limit to clear.',
+        'Refresh the live brief to retry the policy read.',
+        'Keep execution locked until the policy is verified.',
+      ],
+    }
+  }
+
   if (!executorAddress) {
     return {
       action: 'deploy_executor',
       headline: 'Deploy TreasuryExecutor before moving funds.',
-      detail: 'The policy is visible, but the treasury cannot execute USDC movement until the executor is deployed.',
+      detail:
+        'The policy is visible, but the treasury cannot execute USDC movement until the executor is deployed.',
       nextSteps: [
         'Deploy TreasuryExecutor from the owner wallet.',
         'Write TREASURY_EXECUTOR_ADDRESS into the environment.',
@@ -263,11 +386,29 @@ function deriveArcAgentRecommendation(params: {
     }
   }
 
-  if (!circleReadiness.apiKeyConfigured || !circleReadiness.entitySecretConfigured) {
+  if (!circleAvailable) {
+    return {
+      action: 'hold',
+      headline: 'Hold while Circle readiness is unavailable.',
+      detail:
+        'The treasury policy is readable, but the agent could not verify the Circle control plane. No move should be executed from this brief.',
+      nextSteps: [
+        'Refresh the brief to retry Circle readiness.',
+        'Confirm the developer wallet control plane before any operator action.',
+        'Keep live execution locked while the dependency is unavailable.',
+      ],
+    }
+  }
+
+  if (
+    !circleReadiness.apiKeyConfigured ||
+    !circleReadiness.entitySecretConfigured
+  ) {
     return {
       action: 'configure_circle',
       headline: 'Circle developer wallet secrets still need to be configured.',
-      detail: 'The Arc agent can still reason about policy, but the wallet and bridge rails are incomplete.',
+      detail:
+        'The Arc agent can still reason about policy, but the wallet and bridge rails are incomplete.',
       nextSteps: [
         'Set CIRCLE_API_KEY and CIRCLE_ENTITY_SECRET.',
         'Create or register a Circle wallet set.',
@@ -280,7 +421,8 @@ function deriveArcAgentRecommendation(params: {
     return {
       action: 'create_circle_wallet',
       headline: 'Create a Circle wallet set so the agent can operate.',
-      detail: 'The developer wallet control plane is ready enough to bootstrap, but the wallet set is not configured yet.',
+      detail:
+        'The developer wallet control plane is ready enough to bootstrap, but the wallet set is not configured yet.',
       nextSteps: [
         'Create the Circle wallet set from the dashboard.',
         'Provision a dev-controlled wallet on Arc Testnet.',
@@ -293,7 +435,8 @@ function deriveArcAgentRecommendation(params: {
     return {
       action: 'hold',
       headline: 'Treasury balance is still loading.',
-      detail: 'The agent can see the policy and Circle readiness, but the live treasury balance is not available yet.',
+      detail:
+        'The agent can see the policy and Circle readiness, but the live treasury balance is not available yet.',
       nextSteps: [
         'Wait for the executor balance read to resolve.',
         'Refresh the dashboard once the balance appears.',
@@ -375,8 +518,12 @@ export async function runArcAgentActivation(): Promise<ArcAgentActivationResult>
   const maxPriorityFeePerGas = 10_000_000_000n
   const activationNonce = `${Date.now()}`
   const requestURI = `${arcAgentMetadataUri}#activation-${activationNonce}`
-  const requestHash = keccak256(toHex(`arc_agent_activation_${arcAgentId.toString()}_${activationNonce}`))
-  const feedbackHash = keccak256(toHex(`arc_agent_feedback_${arcAgentId.toString()}_${activationNonce}`))
+  const requestHash = keccak256(
+    toHex(`arc_agent_activation_${arcAgentId.toString()}_${activationNonce}`),
+  )
+  const feedbackHash = keccak256(
+    toHex(`arc_agent_feedback_${arcAgentId.toString()}_${activationNonce}`),
+  )
   const zeroHash = `0x${'0'.repeat(64)}` as const
 
   const validationRequestTxHash = await ownerWalletClient.writeContract({
@@ -427,8 +574,16 @@ export async function runArcAgentActivation(): Promise<ArcAgentActivationResult>
     client: publicClient,
   })
 
-  const [validatorAddress, validationAgentId, response, responseHash, tag, lastUpdate] =
-    (await validationContract.read.getValidationStatus([requestHash])) as ValidationStatus
+  const [
+    validatorAddress,
+    validationAgentId,
+    response,
+    responseHash,
+    tag,
+    lastUpdate,
+  ] = (await validationContract.read.getValidationStatus([
+    requestHash,
+  ])) as ValidationStatus
 
   return {
     agentId: arcAgentId.toString(),
@@ -453,62 +608,101 @@ export async function runArcAgentActivation(): Promise<ArcAgentActivationResult>
   }
 }
 
-export async function runArcAgentBrief(requestHash?: `0x${string}`): Promise<ArcAgentBriefResult> {
+export async function runArcAgentBrief(
+  requestHash?: `0x${string}`,
+): Promise<ArcAgentBriefResult> {
   const publicClient = createArcTestnetPublicClient()
   const contractAddress = treasuryPolicyAddressConfig.address
   const executorAddress = treasuryExecutorAddressConfig.address
-  const config = await fetchCircleControlPlaneStatus({
-    walletSetId: undefined,
-  }).catch(() => null)
-
-  const policy = contractAddress
-    ? ((await publicClient.readContract({
-        address: contractAddress,
-        abi: treasuryPolicyContractAbi,
-        functionName: 'getPolicy',
-      })) as readonly [bigint, bigint, bigint])
-    : null
-
-  const balance = executorAddress
-    ? await publicClient.getBalance({
-        address: executorAddress,
-      })
-    : null
-
-  const balanceUsdc = balance === null ? null : Number(formatUnits(balance, arcUsdcDecimals))
-  const formattedPolicy = policy
-    ? {
-        minThreshold: Number(formatUnits(policy[0], arcTreasuryPolicyDecimals)),
-        targetBalance: Number(formatUnits(policy[1], arcTreasuryPolicyDecimals)),
-        maxRebalanceAmount: Number(formatUnits(policy[2], arcTreasuryPolicyDecimals)),
-      }
-    : null
-  const evaluation = balanceUsdc !== null && formattedPolicy ? evaluatePolicy(balanceUsdc, formattedPolicy) : null
-  const activeRequestHash =
-    requestHash ?? arcAgentValidationRequestHash
-  const identityContract = getContract({
-    address: arcAgentIdentityRegistryAddress,
-    abi: identityAbi,
-    client: publicClient,
-  })
-
-  const owner = await identityContract.read.ownerOf([arcAgentId])
-  const tokenURI = await identityContract.read.tokenURI([arcAgentId])
+  const activeRequestHash = requestHash ?? arcAgentValidationRequestHash
   const validationContract = getContract({
     address: arcAgentValidationRegistryAddress,
     abi: validationAbi,
     client: publicClient,
   })
+  const [circleResult, policyResult, balanceResult, validationResult] =
+    await Promise.all([
+      fetchCircleControlPlaneStatus({ walletSetId: undefined })
+        .then((value) => ({ value, error: null as unknown }))
+        .catch((error: unknown) => ({ value: null, error })),
+      contractAddress
+        ? readBriefRpcValue(
+            'policy',
+            'Treasury policy',
+            async () =>
+              (await publicClient.readContract({
+                address: contractAddress,
+                abi: treasuryPolicyContractAbi,
+                functionName: 'getPolicy',
+              })) as readonly [bigint, bigint, bigint],
+          )
+        : Promise.resolve({
+            value: null,
+            source: {
+              status: 'not_configured',
+              detail: 'TreasuryPolicy address is not configured.',
+            } satisfies ArcAgentBriefDataSource,
+            warning: undefined,
+          }),
+      executorAddress
+        ? readBriefRpcValue('balance', 'Executor balance', () =>
+            publicClient.getBalance({ address: executorAddress }),
+          )
+        : Promise.resolve({
+            value: null,
+            source: {
+              status: 'not_configured',
+              detail: 'TreasuryExecutor address is not configured.',
+            } satisfies ArcAgentBriefDataSource,
+            warning: undefined,
+          }),
+      readBriefRpcValue(
+        'validation',
+        'Agent validation',
+        async () =>
+          (await validationContract.read.getValidationStatus([
+            activeRequestHash,
+          ])) as ValidationStatus,
+      ),
+    ])
+
+  const config = circleResult.value
+  const policy = policyResult.value
+  const balance = balanceResult.value
+
+  const balanceUsdc =
+    balance === null ? null : Number(formatUnits(balance, arcUsdcDecimals))
+  const formattedPolicy = policy
+    ? {
+        minThreshold: Number(formatUnits(policy[0], arcTreasuryPolicyDecimals)),
+        targetBalance: Number(
+          formatUnits(policy[1], arcTreasuryPolicyDecimals),
+        ),
+        maxRebalanceAmount: Number(
+          formatUnits(policy[2], arcTreasuryPolicyDecimals),
+        ),
+      }
+    : null
+  const evaluation =
+    balanceUsdc !== null && formattedPolicy
+      ? evaluatePolicy(balanceUsdc, formattedPolicy)
+      : null
   const zeroHash = `0x${'0'.repeat(64)}` as const
-  const [validatorAddress, validationAgentId, response, responseHash, tag, lastUpdate] =
-    ((await validationContract.read.getValidationStatus([activeRequestHash]).catch(() => [
-      arcAgentValidatorAddress,
-      arcAgentId,
-      0,
-      zeroHash,
-      'pending',
-      0n,
-    ])) as ValidationStatus)
+  const [
+    validatorAddress,
+    validationAgentId,
+    response,
+    responseHash,
+    tag,
+    lastUpdate,
+  ] = (validationResult.value ?? [
+    arcAgentValidatorAddress,
+    arcAgentId,
+    0,
+    zeroHash,
+    'unavailable',
+    0n,
+  ]) as ValidationStatus
 
   const circleReadiness = config?.readiness ?? {
     apiKeyConfigured: false,
@@ -519,8 +713,25 @@ export async function runArcAgentBrief(requestHash?: `0x${string}`): Promise<Arc
   }
   const circleWalletSetId = config?.config?.walletSetId
   const circleNotes = config?.notes ?? []
+  const circleSource: ArcAgentBriefDataSource = config
+    ? {
+        status: 'live',
+        observedAt: new Date().toISOString(),
+        detail: 'Circle control-plane readiness read live.',
+      }
+    : {
+        status: 'unavailable',
+        detail: `Circle control-plane readiness is unavailable${circleResult.error ? `: ${conciseRpcError(circleResult.error)}` : '.'}`,
+      }
+  const warnings = [
+    policyResult.warning,
+    balanceResult.warning,
+    validationResult.warning,
+    config ? undefined : circleSource.detail,
+  ].filter((warning): warning is string => Boolean(warning))
   const recommendation = deriveArcAgentRecommendation({
     balanceUsdc,
+    circleAvailable: Boolean(config),
     circleNotes,
     circleReadiness,
     executorAddress,
@@ -538,11 +749,31 @@ export async function runArcAgentBrief(requestHash?: `0x${string}`): Promise<Arc
       walletSetId: circleWalletSetId,
     },
     generatedAt: new Date().toISOString(),
-    owner,
+    dataQuality: {
+      overall:
+        policyResult.source.status === 'live' &&
+        balanceResult.source.status === 'live' &&
+        validationResult.source.status === 'live' &&
+        circleSource.status === 'live'
+          ? 'live'
+          : 'degraded',
+      sources: {
+        balance: balanceResult.source,
+        circle: circleSource,
+        identity: {
+          status: 'configured',
+          detail:
+            'Identity uses the verified deployment configuration; it is not re-read for every brief.',
+        },
+        policy: policyResult.source,
+        validation: validationResult.source,
+      },
+    },
+    owner: arcAgentOwnerAddress,
     recommendation,
     requestHash: activeRequestHash,
     requestURI: `${arcAgentMetadataUri}#brief-${Date.now()}`,
-    tokenURI,
+    tokenURI: arcAgentMetadataUri,
     treasury: {
       balanceUsdc,
       contractAddress,
@@ -559,5 +790,6 @@ export async function runArcAgentBrief(requestHash?: `0x${string}`): Promise<Arc
       tag,
       validatorAddress,
     },
+    warnings,
   }
 }

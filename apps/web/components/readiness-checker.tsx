@@ -9,6 +9,7 @@ import {
   Copy,
   Download,
   FileText,
+  Bot,
   RefreshCcw,
   BadgeCheck,
   ShieldCheck,
@@ -81,6 +82,37 @@ type LiveExecutionStatus = {
   enabled: boolean
   guardMode: 'memory' | 'redis' | 'unavailable'
   maxAmountUsdc: number
+}
+
+type AgentBriefDataSource = {
+  status: 'live' | 'cached' | 'configured' | 'unavailable' | 'not_configured'
+  observedAt?: string
+  detail: string
+}
+
+type AgentBrief = {
+  generatedAt: string
+  dataQuality: {
+    overall: 'live' | 'degraded'
+    sources: Record<
+      'identity' | 'policy' | 'balance' | 'validation' | 'circle',
+      AgentBriefDataSource
+    >
+  }
+  recommendation: {
+    action:
+      | 'hold'
+      | 'top_up'
+      | 'trim'
+      | 'deploy_executor'
+      | 'configure_circle'
+      | 'create_circle_wallet'
+      | 'load_policy'
+    headline: string
+    detail: string
+    nextSteps: string[]
+  }
+  warnings: string[]
 }
 
 const initialPolicy = DEFAULT_TREASURY_POLICY
@@ -161,6 +193,28 @@ export function ReadinessChecker() {
       return (await response.json()) as LiveExecutionStatus
     },
     staleTime: 30_000,
+  })
+
+  const agentBriefQuery = useQuery<AgentBrief>({
+    queryKey: ['live-agent-brief'],
+    queryFn: async () => {
+      const response = await fetch('/api/arc-agent/brief', {
+        cache: 'no-store',
+      })
+      const payload = (await response.json()) as AgentBrief & { error?: string }
+
+      if (!response.ok) {
+        throw new Error(
+          payload.error ??
+            `Agent brief request failed with ${response.status}.`,
+        )
+      }
+
+      return payload
+    },
+    refetchOnWindowFocus: false,
+    retry: false,
+    staleTime: 10_000,
   })
 
   useEffect(() => {
@@ -552,6 +606,153 @@ export function ReadinessChecker() {
       />
 
       <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
+        <Card
+          className="border-primary/20 bg-primary/5"
+          data-testid="live-agent-brief"
+        >
+          <CardHeader className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Bot className="h-5 w-5 text-primary" />
+                <Badge
+                  variant={
+                    agentBriefQuery.isError
+                      ? 'warning'
+                      : agentBriefQuery.data?.dataQuality.overall === 'live'
+                        ? 'success'
+                        : 'outline'
+                  }
+                >
+                  {agentBriefQuery.isPending
+                    ? 'Checking live sources'
+                    : agentBriefQuery.isError
+                      ? 'Brief unavailable'
+                      : agentBriefQuery.data?.dataQuality.overall === 'live'
+                        ? 'Live sources'
+                        : 'Degraded safely'}
+                </Badge>
+                <Badge variant="outline">Execution locked</Badge>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                data-testid="refresh-agent-brief"
+                onClick={() => void agentBriefQuery.refetch()}
+                disabled={agentBriefQuery.isFetching}
+              >
+                <RefreshCcw
+                  className={`h-4 w-4 ${agentBriefQuery.isFetching ? 'animate-spin' : ''}`}
+                />
+                {agentBriefQuery.isFetching
+                  ? 'Running brief…'
+                  : 'Refresh brief'}
+              </Button>
+            </div>
+            <div>
+              <CardTitle className="text-xl">Live Agent Brief</CardTitle>
+              <CardDescription>
+                The robot checks policy, balance, validation, and Circle
+                readiness. Read failures degrade to a clearly marked safe
+                result; they never unlock fund movement.
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {agentBriefQuery.isPending ? (
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
+                Reading the live control plane and Arc Testnet…
+              </div>
+            ) : agentBriefQuery.isError ? (
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-sm font-medium text-foreground">
+                  The brief could not be generated.
+                </div>
+                <div className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {agentBriefQuery.error instanceof Error
+                    ? agentBriefQuery.error.message
+                    : 'Unknown Agent Brief error.'}
+                </div>
+              </div>
+            ) : agentBriefQuery.data ? (
+              <>
+                <div className="rounded-2xl border border-primary/25 bg-background/50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      variant={
+                        agentBriefQuery.data.recommendation.action === 'hold'
+                          ? 'success'
+                          : agentBriefQuery.data.recommendation.action ===
+                                'top_up' ||
+                              agentBriefQuery.data.recommendation.action ===
+                                'trim'
+                            ? 'outline'
+                            : 'warning'
+                      }
+                    >
+                      {agentBriefQuery.data.recommendation.action.replaceAll(
+                        '_',
+                        ' ',
+                      )}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      Generated{' '}
+                      {new Date(
+                        agentBriefQuery.data.generatedAt,
+                      ).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="mt-3 text-lg font-semibold text-foreground">
+                    {agentBriefQuery.data.recommendation.headline}
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {agentBriefQuery.data.recommendation.detail}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  {Object.entries(agentBriefQuery.data.dataQuality.sources).map(
+                    ([name, source]) => (
+                      <div
+                        key={name}
+                        className="min-w-0 rounded-2xl border border-white/10 bg-background/50 p-4"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                            {name}
+                          </span>
+                          <Badge
+                            variant={
+                              source.status === 'live' ? 'success' : 'outline'
+                            }
+                          >
+                            {source.status.replaceAll('_', ' ')}
+                          </Badge>
+                        </div>
+                        <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">
+                          {source.detail}
+                        </p>
+                      </div>
+                    ),
+                  )}
+                </div>
+
+                {agentBriefQuery.data.warnings.length > 0 ? (
+                  <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Data warnings
+                    </div>
+                    <ul className="mt-2 space-y-1 text-sm leading-6 text-foreground">
+                      {agentBriefQuery.data.warnings.map((warning) => (
+                        <li key={warning}>• {warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 lg:grid-cols-[1.06fr_0.94fr]">
           <Card className="border-white/10 bg-card/85">
             <CardHeader>
