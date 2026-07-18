@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { runTreasuryRobotBacktest } from '../src/backtest'
+import { runTreasuryRobotBacktest } from '@arc-usdc-rebalancer/shared'
 
 test('treasury robot passes deterministic backtest invariants', () => {
   const report = runTreasuryRobotBacktest()

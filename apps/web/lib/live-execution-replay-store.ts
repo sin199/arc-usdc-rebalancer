@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { Redis } from '@upstash/redis'
+import { getRedisClient, getRedisCredentials } from './redis-server'
 
 type ReplayState = {
   rateWindows: Map<string, number[]>
@@ -9,7 +9,6 @@ type ReplayState = {
 
 type ReplayGlobal = typeof globalThis & {
   __arcLiveExecutionReplayState?: ReplayState
-  __arcLiveExecutionRedis?: Redis
 }
 
 export type LiveExecutionGuardMode = 'redis' | 'memory' | 'unavailable'
@@ -27,10 +26,7 @@ const memoryState: ReplayState =
   })
 
 function redisConfigured() {
-  return Boolean(
-    process.env.UPSTASH_REDIS_REST_URL?.trim() &&
-    process.env.UPSTASH_REDIS_REST_TOKEN?.trim(),
-  )
+  return Boolean(getRedisCredentials())
 }
 
 function memoryGuardAllowed() {
@@ -49,15 +45,7 @@ export function getLiveExecutionGuardMode(): LiveExecutionGuardMode {
 }
 
 function getRedis() {
-  if (!redisConfigured()) {
-    return null
-  }
-
-  if (!replayGlobal.__arcLiveExecutionRedis) {
-    replayGlobal.__arcLiveExecutionRedis = Redis.fromEnv()
-  }
-
-  return replayGlobal.__arcLiveExecutionRedis
+  return getRedisClient()
 }
 
 function cleanupMemoryState(now: number, ttlMs: number) {

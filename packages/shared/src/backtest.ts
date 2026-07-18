@@ -1,13 +1,15 @@
 import {
   DEFAULT_TREASURY_POLICY,
   evaluatePolicy,
+  type TreasuryPolicy,
+} from './policy'
+import {
   selectTreasuryJobPlan,
   type RobotAvailability,
   type RobotSafetyConfig,
   type TreasuryJobRecord,
-  type TreasuryPolicy,
   type TreasurySnapshot,
-} from '@arc-usdc-rebalancer/shared'
+} from './robot'
 
 const policyAddress = '0x0000000000000000000000000000000000000001'
 const treasuryAddress = '0x0000000000000000000000000000000000000002'

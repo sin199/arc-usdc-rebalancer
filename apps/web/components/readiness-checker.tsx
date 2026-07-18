@@ -115,6 +115,46 @@ type AgentBrief = {
   warnings: string[]
 }
 
+type BacktestSummary = {
+  methodology: {
+    historicalDataUsed: boolean
+    note: string
+    transactionsSubmitted: number
+  }
+  balanceSweep: {
+    cases: number
+    decisionAgreementRate: number
+    decisionMismatches: number
+    capViolations: number
+    inBandFalsePositives: number
+  }
+  stressReplay: {
+    periods: number
+    targetDistanceImprovementRate: number
+    totalTurnoverUsdc: number
+  }
+  safetyGates: {
+    cases: number
+    passed: number
+    failed: unknown[]
+  }
+}
+
+type TreasuryHistoryResponse = {
+  configured: boolean
+  count: number
+  error?: string
+  points: Array<{
+    recordedAt: string
+    dataQuality: 'live' | 'degraded'
+    balanceUsdc: number | null
+    recommendation: {
+      action: string
+      headline: string
+    }
+  }>
+}
+
 const initialPolicy = DEFAULT_TREASURY_POLICY
 
 export function ReadinessChecker() {
@@ -215,6 +255,38 @@ export function ReadinessChecker() {
     refetchOnWindowFocus: false,
     retry: false,
     staleTime: 10_000,
+  })
+
+  const backtestQuery = useQuery<BacktestSummary>({
+    queryKey: ['treasury-backtest'],
+    queryFn: async () => {
+      const response = await fetch('/api/backtest')
+      if (!response.ok) {
+        throw new Error(`Backtest request failed with ${response.status}.`)
+      }
+      return (await response.json()) as BacktestSummary
+    },
+    retry: false,
+    staleTime: 60 * 60 * 1_000,
+  })
+
+  const treasuryHistoryQuery = useQuery<TreasuryHistoryResponse>({
+    queryKey: ['treasury-history'],
+    queryFn: async () => {
+      const response = await fetch('/api/treasury/history?limit=24', {
+        cache: 'no-store',
+      })
+      const payload = (await response.json()) as TreasuryHistoryResponse
+      if (!response.ok) {
+        throw new Error(
+          payload.error ?? `History request failed with ${response.status}.`,
+        )
+      }
+      return payload
+    },
+    refetchInterval: 60_000,
+    retry: false,
+    staleTime: 30_000,
   })
 
   useEffect(() => {
@@ -752,6 +824,156 @@ export function ReadinessChecker() {
             ) : null}
           </CardContent>
         </Card>
+
+        <div
+          className="grid gap-6 lg:grid-cols-2"
+          data-testid="operational-evidence"
+        >
+          <Card className="border-white/10 bg-card/85">
+            <CardHeader className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="success">Backtest verified</Badge>
+                <Badge variant="outline">0 transactions</Badge>
+              </div>
+              <CardTitle className="text-xl">Decision evidence</CardTitle>
+              <CardDescription>
+                One shared backtest powers the CLI, automated tests, and this
+                production evidence card.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {backtestQuery.isPending ? (
+                <div className="text-sm text-muted-foreground">
+                  Loading backtest evidence…
+                </div>
+              ) : backtestQuery.isError ? (
+                <div className="text-sm text-muted-foreground">
+                  Backtest evidence is temporarily unavailable.
+                </div>
+              ) : backtestQuery.data ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Balance cases
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-foreground">
+                      {backtestQuery.data.balanceSweep.cases.toLocaleString()}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {(
+                        backtestQuery.data.balanceSweep.decisionAgreementRate *
+                        100
+                      ).toFixed(2)}
+                      % agreement
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Safety gates
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-foreground">
+                      {backtestQuery.data.safetyGates.passed}/
+                      {backtestQuery.data.safetyGates.cases}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {backtestQuery.data.balanceSweep.capViolations} cap
+                      violations
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4 sm:col-span-2">
+                    <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Method boundary
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {backtestQuery.data.methodology.note}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/10 bg-card/85">
+            <CardHeader className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge
+                    variant={
+                      treasuryHistoryQuery.data?.configured
+                        ? 'success'
+                        : 'outline'
+                    }
+                  >
+                    {treasuryHistoryQuery.data?.configured
+                      ? 'History collecting'
+                      : 'History pending'}
+                  </Badge>
+                  <Badge variant="outline">Read only</Badge>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void treasuryHistoryQuery.refetch()}
+                  disabled={treasuryHistoryQuery.isFetching}
+                >
+                  <RefreshCcw
+                    className={`h-4 w-4 ${treasuryHistoryQuery.isFetching ? 'animate-spin' : ''}`}
+                  />
+                  Refresh history
+                </Button>
+              </div>
+              <CardTitle className="text-xl">Operational history</CardTitle>
+              <CardDescription>
+                Scheduled snapshots record only sanitized policy, balance,
+                recommendation, and source quality. No signing material is
+                stored.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {treasuryHistoryQuery.isError ? (
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
+                  {treasuryHistoryQuery.error instanceof Error
+                    ? treasuryHistoryQuery.error.message
+                    : 'Operational history is unavailable.'}
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Stored snapshots
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-foreground">
+                      {treasuryHistoryQuery.data?.count ?? 0}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                      Latest decision
+                    </div>
+                    <div className="mt-2 text-sm font-medium capitalize text-foreground">
+                      {treasuryHistoryQuery.data?.points[0]?.recommendation.action.replaceAll(
+                        '_',
+                        ' ',
+                      ) ?? 'Waiting for first snapshot'}
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {treasuryHistoryQuery.data?.points[0]
+                        ? new Date(
+                            treasuryHistoryQuery.data.points[0].recordedAt,
+                          ).toLocaleString()
+                        : 'Daily Vercel baseline; endpoint supports external scheduling.'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-muted-foreground">
+                Vercel Hobby supports one daily baseline run. The protected
+                collector endpoint can be called more frequently by an approved
+                scheduler without exposing the secret publicly.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-[1.06fr_0.94fr]">
           <Card className="border-white/10 bg-card/85">

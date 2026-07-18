@@ -1,4 +1,7 @@
-import { formatBacktestReport, runTreasuryRobotBacktest } from './backtest'
+import {
+  formatBacktestReport,
+  runTreasuryRobotBacktest,
+} from '@arc-usdc-rebalancer/shared'
 
 const report = runTreasuryRobotBacktest()
 

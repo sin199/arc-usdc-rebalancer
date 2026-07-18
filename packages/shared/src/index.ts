@@ -1,4 +1,5 @@
 export * from './activity'
+export * from './backtest'
 export * from './circle'
 export * from './arc'
 export * from './erc20'
