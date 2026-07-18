@@ -1,4 +1,10 @@
 {
+  "crons": [
+    {
+      "path": "/api/cron/treasury-snapshot",
+      "schedule": "0 0 * * *"
+    }
+  ],
   "installCommand": "pnpm -C ../.. install --frozen-lockfile",
   "buildCommand": "pnpm build"
 }

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
 
-export default function ArchitectsRedirectPage() {
-  redirect('/operator')
+export default function ArchitectsPage() {
+  redirect('/architecture')
 }

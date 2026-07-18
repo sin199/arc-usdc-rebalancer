@@ -48,3 +48,4 @@ packages/contracts/out/
 packages/contracts/broadcast/
 packages/contracts/lib/
 .vercel
+.env*.local

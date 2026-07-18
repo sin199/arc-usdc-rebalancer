@@ -6,12 +6,48 @@ export type ProjectReleaseNote = {
 }
 
 export const projectTrailSummary = {
-  buildLabel: 'Working build',
-  headline: 'Readiness checker first, operator brief second, optional live execution, with a visible release trail.',
-  lastReviewed: 'May 31, 2026',
+  buildLabel: 'Verified treasury reference build',
+  headline:
+    'A fail-closed Arc treasury reference stack with signed operator actions, deterministic verification, and an auditable V2 governance path.',
+  lastReviewed: 'July 18, 2026',
 }
 
 export const projectReleaseNotes: ProjectReleaseNote[] = [
+  {
+    date: 'July 18, 2026',
+    tag: 'security',
+    title: 'Hardened every sensitive operator action',
+    detail:
+      'Treasury execution, agent activation, executor deployment, and Circle wallet creation now require payload-bound wallet authorization. Production writes fail closed unless a durable replay and rate-limit store is available.',
+  },
+  {
+    date: 'July 18, 2026',
+    tag: 'architecture',
+    title: 'Added the reviewed V2 control path',
+    detail:
+      'The repository now includes tested, undeployed V2 policy and executor contracts with two-step ownership, pause, recipient allowlists, amount caps, eligibility checks, transfer wrappers, and reentrancy protection.',
+  },
+  {
+    date: 'July 18, 2026',
+    tag: 'verification',
+    title: 'Made the complete test path deterministic',
+    detail:
+      'Web authorization, worker policy behavior, and contract governance now run without depending on a rate-limited public RPC, while production readiness exposes the durable guard state explicitly.',
+  },
+  {
+    date: 'July 18, 2026',
+    tag: 'product',
+    title: 'Refocused public pages on the product',
+    detail:
+      'The public surfaces now lead with treasury decisions, system architecture, verifiable controls, and deployment evidence.',
+  },
+  {
+    date: 'June 2, 2026',
+    tag: 'review',
+    title: 'Added a system evidence page',
+    detail:
+      'The site now surfaces one architecture page with the production link, deployment hash, Arc Testnet addresses, current proof status, and screenshot checklist.',
+  },
   {
     date: 'May 31, 2026',
     tag: 'product',
@@ -45,7 +81,7 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     tag: 'navigation',
     title: 'Added a release notes page',
     detail:
-      'The site now has a dedicated notes surface for the current build, known gaps, and the most recent changes, instead of burying that context inside the dashboard.',
+      'The site now has a dedicated notes surface for the current demo, known gaps, and the most recent changes, instead of burying that context inside the dashboard.',
   },
   {
     date: 'May 20, 2026',
@@ -79,12 +115,18 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
 
 export const projectKnownGaps = [
   'Maintenance notes are browser-local until a shared backend is added.',
-  'Live settlement still depends on the operator wallet on Arc Testnet.',
-  'The report is strongest when live policy, Circle, and executor wiring are actually configured.',
-  'Robot value comes from the operator flow, not from the brief page alone.',
+  'Production live execution remains disabled until durable Upstash Redis replay protection is provisioned and verified.',
+  'The V2 contracts are tested reference code; deployment, multisig ownership, and migration remain pending formal review.',
+  'Any future live settlement still depends on an explicitly authorized operator wallet on Arc Testnet.',
+  'Circle wallet set is optional for the current proof and required only for live crosschain execution.',
 ]
 
 export const projectReferenceLinks = [
+  {
+    label: 'System architecture',
+    value: '/architecture',
+    href: '/architecture',
+  },
   {
     label: 'Operator brief',
     value: '/operator',

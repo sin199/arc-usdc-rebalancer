@@ -1,29 +1,37 @@
 export const operatorBriefSummary = {
-  headline: 'A public operator brief for the installed robot inside this Arc Testnet project.',
-  reviewGoal: 'Make it easy to see what the robot does, how to verify it, and which pieces are intentionally public.',
-  statusNote: 'The site is designed to explain the robot workflow. It does not claim a badge.',
+  headline:
+    'A public operator brief for the installed robot inside this Arc Testnet project.',
+  reviewGoal:
+    'Make it easy to see what the robot does, how to verify it, and which pieces are intentionally public.',
+  statusNote:
+    'The product is a public Arc Testnet reference system; live writes remain disabled until every production gate is reviewed.',
 }
 
 export const operatorBriefEvidence = [
   {
     label: 'Live demo',
-    value: 'Public dashboard with report-first treasury flow and live operator gating.',
+    value:
+      'Public dashboard with report-first treasury flow and live operator gating.',
   },
   {
     label: 'Arc surface',
-    value: 'Arc Testnet policy, executor, agent identity, and readiness checks in one flow.',
+    value:
+      'Arc Testnet policy, executor, agent identity, and readiness checks in one flow.',
   },
   {
     label: 'Robot surface',
-    value: 'Installed agent, brief generation, action pack, and execution trail in one flow.',
+    value:
+      'Installed agent, brief generation, action pack, and execution trail in one flow.',
   },
   {
     label: 'Circle surface',
-    value: 'Developer-controlled wallets and Gateway readiness kept visible in the same stack.',
+    value:
+      'Developer-controlled wallets and Gateway readiness kept visible in the same stack.',
   },
   {
     label: 'Execution',
-    value: 'Server-signer top-up and trim path with a self-healing executor deployment step.',
+    value:
+      'Wallet-authorized server execution, disabled by default and gated by an operator allowlist.',
   },
 ]
 
@@ -54,24 +62,5 @@ export const operatorBriefActions = [
     label: 'GitHub repo',
     href: 'https://github.com/sin199/arc-usdc-rebalancer',
     detail: 'Inspect the source and commit trail.',
-  },
-]
-
-export const operatorBriefOfficialDocs = [
-  {
-    label: 'Program overview',
-    href: 'https://community.arc.network/en/home/resources/architects-overview',
-  },
-  {
-    label: 'Tiers & benefits',
-    href: 'https://community.arc.network/home/resources/architects-tiers-and-benefits',
-  },
-  {
-    label: 'Roles',
-    href: 'https://community.arc.network/home/resources/architects-roles',
-  },
-  {
-    label: 'Contribution opportunities',
-    href: 'https://community.arc.network/en/public/resources/architects-contribution-opportunities',
   },
 ]

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAddress } from 'viem'
 import { runTreasuryExecution, type TreasuryExecutionAction } from '@/lib/treasury-execution-server'
+import { auditLiveExecution, authorizeLiveExecution } from '@/lib/live-execution-guard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,19 +16,17 @@ export async function POST(request: NextRequest) {
       action?: unknown
       amountUsdc?: unknown
       executorAddress?: unknown
-      recipient?: unknown
+      operatorAddress?: unknown
+      requestId?: unknown
+      timestamp?: unknown
     }
 
     const action = parseAction(body.action)
     const amountUsdc = Number(body.amountUsdc)
-    const executorAddress =
-      typeof body.executorAddress === 'string' && isAddress(body.executorAddress.trim())
-        ? (body.executorAddress.trim() as `0x${string}`)
-        : undefined
-    const recipient =
-      typeof body.recipient === 'string' && isAddress(body.recipient.trim())
-        ? (body.recipient.trim() as `0x${string}`)
-        : undefined
+    const executorAddress = typeof body.executorAddress === 'string' && isAddress(body.executorAddress.trim()) ? (body.executorAddress.trim() as `0x${string}`) : undefined
+    const operatorAddress = typeof body.operatorAddress === 'string' ? body.operatorAddress.trim() : ''
+    const requestId = typeof body.requestId === 'string' ? body.requestId.trim() : ''
+    const timestamp = Number(body.timestamp)
 
     if (!action) {
       return NextResponse.json({ error: 'Invalid or missing execution action.' }, { status: 400 })
@@ -37,16 +36,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Execution amount must be a positive number.' }, { status: 400 })
     }
 
+    const authorization = await authorizeLiveExecution(request, {
+      action,
+      amountUsdc,
+      executorAddress,
+      kind: 'execute',
+      operatorAddress,
+      requestId,
+      timestamp,
+    })
+
+    if (!authorization.ok) {
+      return authorization.response
+    }
+
     const result = await runTreasuryExecution({
       action,
       amountUsdc,
       executorAddress,
-      recipient,
+      recipient: authorization.authorization.operatorAddress,
+    })
+
+    auditLiveExecution('live_execution_completed', {
+      action,
+      amountUsdc,
+      requestId: authorization.authorization.requestId,
+      txHash: result.txHashes.execute,
     })
 
     return NextResponse.json(result, {
       headers: {
         'cache-control': 'no-store',
+        'x-request-id': authorization.authorization.requestId,
       },
     })
   } catch (error) {
