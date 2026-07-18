@@ -11,6 +11,7 @@ export async function GET() {
     {
       authorization: status.authorization,
       enabled: status.enabled,
+      guardMode: status.guardMode,
       maxAmountUsdc: status.maxAmountUsdc,
     },
     {

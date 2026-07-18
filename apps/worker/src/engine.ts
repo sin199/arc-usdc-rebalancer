@@ -1,4 +1,11 @@
-import { createPublicClient, defineChain, formatUnits, http, isAddress, type Address } from 'viem'
+import {
+  createPublicClient,
+  defineChain,
+  formatUnits,
+  http,
+  isAddress,
+  type Address,
+} from 'viem'
 import {
   arcTestnetChainId,
   arcTestnetExplorerUrl,
@@ -80,10 +87,15 @@ function buildAvailability(config: WorkerConfig): RobotAvailability {
 }
 
 function createLocalTxHash(jobId: string) {
-  return `0x${jobId.replace(/[^a-fA-F0-9]/g, '').padEnd(64, '0').slice(0, 64)}`
+  return `0x${jobId
+    .replace(/[^a-fA-F0-9]/g, '')
+    .padEnd(64, '0')
+    .slice(0, 64)}`
 }
 
-async function submitLocalExecution(job: TreasuryJobRecord): Promise<LocalExecutionResult> {
+async function submitLocalExecution(
+  job: TreasuryJobRecord,
+): Promise<LocalExecutionResult> {
   const txHash = createLocalTxHash(job.id)
 
   return {
@@ -106,7 +118,8 @@ function createFallbackSnapshot(config: WorkerConfig): TreasurySnapshot {
       maxRebalanceAmount: config.safety.maxExecutionAmountUsdc,
     },
     treasuryBalanceUsdc: config.balanceOverrideUsdc ?? 0,
-    balanceSource: config.balanceOverrideUsdc !== undefined ? 'override' : 'chain',
+    balanceSource:
+      config.balanceOverrideUsdc !== undefined ? 'override' : 'chain',
     balanceUpdatedAt: new Date().toISOString(),
     payoutRecipients: [],
   }
@@ -156,12 +169,20 @@ function createJobRiskChecks(
   snapshot: TreasurySnapshot,
 ): TreasuryJobCandidate['riskChecks'] {
   const dailySpent = sumRobotNotionalForDay(state.jobs, new Date())
-  const dailyRemaining = Math.max(0, state.safety.dailyNotionalCapUsdc - dailySpent)
-  const amountWithinMax = request.amountUsdc <= state.safety.maxExecutionAmountUsdc
+  const dailyRemaining = Math.max(
+    0,
+    state.safety.dailyNotionalCapUsdc - dailySpent,
+  )
+  const amountWithinMax =
+    request.amountUsdc <= state.safety.maxExecutionAmountUsdc
   const amountWithinDaily = request.amountUsdc <= dailyRemaining
   const allowlist = state.safety.destinationAllowlist
   const destinationAllowed =
-    allowlist.length === 0 || allowlist.some((allowed) => allowed.toLowerCase() === request.destinationAddress.toLowerCase())
+    allowlist.length === 0 ||
+    allowlist.some(
+      (allowed) =>
+        allowed.toLowerCase() === request.destinationAddress.toLowerCase(),
+    )
   const autoEnabled = config.availability.autoEnabled
 
   return [
@@ -220,7 +241,11 @@ function createJobRiskChecks(
     {
       code: 'SNAPSHOT_SOURCE',
       label: 'Snapshot source',
-      level: snapshot.balanceSource === 'chain' || snapshot.balanceSource === 'override' ? 'pass' : 'warn',
+      level:
+        snapshot.balanceSource === 'chain' ||
+        snapshot.balanceSource === 'override'
+          ? 'pass'
+          : 'warn',
       detail:
         snapshot.balanceSource === 'override'
           ? 'Current policy snapshot uses an override balance.'
@@ -229,9 +254,13 @@ function createJobRiskChecks(
   ]
 }
 
-function buildCreateJobCandidate(request: CreateJobRequest, snapshot: TreasurySnapshot): TreasuryJobCandidate {
+function buildCreateJobCandidate(
+  request: CreateJobRequest,
+  snapshot: TreasurySnapshot,
+): TreasuryJobCandidate {
   const destinationLabel = jobDestinationLabel(request.type)
-  const rationale = request.notes?.trim() || 'Created manually from the dashboard.'
+  const rationale =
+    request.notes?.trim() || 'Created manually from the dashboard.'
   const recipients =
     request.type === 'payout-batch'
       ? [
@@ -377,14 +406,20 @@ function buildDryRunJob(
     executorEnabled: false,
   })
 
-  return appendJobEvent(created, 'planned', 'Dry-run mode recorded the job without submission.', 'robot', {
-    result: 'Dry-run plan recorded. No transaction was submitted.',
-    executor: {
-      ...created.executor,
-      name: 'none',
-      enabled: false,
+  return appendJobEvent(
+    created,
+    'planned',
+    'Dry-run mode recorded the job without submission.',
+    'robot',
+    {
+      result: 'Dry-run plan recorded. No transaction was submitted.',
+      executor: {
+        ...created.executor,
+        name: 'none',
+        enabled: false,
+      },
     },
-  })
+  )
 }
 
 function buildManualApprovalJob(
@@ -404,23 +439,35 @@ function buildManualApprovalJob(
     executorEnabled: true,
   })
 
-  const planned = appendJobEvent(created, 'planned', 'Job plan recorded and queued for approval.', 'robot', {
-    result: 'Job plan recorded. Awaiting operator approval.',
-    executor: {
-      ...created.executor,
-      name: 'local',
-      enabled: true,
+  const planned = appendJobEvent(
+    created,
+    'planned',
+    'Job plan recorded and queued for approval.',
+    'robot',
+    {
+      result: 'Job plan recorded. Awaiting operator approval.',
+      executor: {
+        ...created.executor,
+        name: 'local',
+        enabled: true,
+      },
     },
-  })
+  )
 
-  return appendJobEvent(planned, 'awaiting-approval', 'Manual approval is required before submission.', 'operator', {
-    result: 'The job is waiting for operator approval.',
-    executor: {
-      ...planned.executor,
-      name: 'local',
-      enabled: true,
+  return appendJobEvent(
+    planned,
+    'awaiting-approval',
+    'Manual approval is required before submission.',
+    'operator',
+    {
+      result: 'The job is waiting for operator approval.',
+      executor: {
+        ...planned.executor,
+        name: 'local',
+        enabled: true,
+      },
     },
-  })
+  )
 }
 
 function buildAutoFailureJob(
@@ -440,18 +487,25 @@ function buildAutoFailureJob(
     executorEnabled: false,
   })
 
-  const planned = appendJobEvent(created, 'planned', 'Job plan recorded for auto execution.', 'robot', {
-    result: 'Job plan recorded. Auto execution was evaluated.',
-    executor: {
-      ...created.executor,
-      name: 'none',
-      enabled: false,
+  const planned = appendJobEvent(
+    created,
+    'planned',
+    'Job plan recorded for auto execution.',
+    'robot',
+    {
+      result: 'Job plan recorded. Auto execution was evaluated.',
+      executor: {
+        ...created.executor,
+        name: 'none',
+        enabled: false,
+      },
     },
-  })
+  )
 
-  const failureReason = config.availability.missingEnvVars.length > 0
-    ? `Auto execution blocked. Missing credentials: ${config.availability.missingEnvVars.join(', ')}`
-    : 'Auto execution is intentionally disabled in this build.'
+  const failureReason =
+    config.availability.missingEnvVars.length > 0
+      ? `Auto execution blocked. Missing credentials: ${config.availability.missingEnvVars.join(', ')}`
+      : 'Auto execution is intentionally disabled in this build.'
 
   return appendJobEvent(planned, 'failed', failureReason, 'system', {
     failureReason,
@@ -465,7 +519,10 @@ function buildAutoFailureJob(
   })
 }
 
-function buildStateWithFreshRobot(state: RobotRuntimeState, config: WorkerConfig): RobotRuntimeState {
+function buildStateWithFreshRobot(
+  state: RobotRuntimeState,
+  config: WorkerConfig,
+): RobotRuntimeState {
   return {
     ...state,
     mode: config.mode,
@@ -482,32 +539,47 @@ function buildStateWithFreshRobot(state: RobotRuntimeState, config: WorkerConfig
   }
 }
 
-export async function readRuntimeSnapshot(config: WorkerConfig): Promise<TreasurySnapshot> {
-  const publicClient = createPublicClient({
-    chain: arcTestnet,
-    transport: http(config.rpcUrl, {
-      retryCount: 3,
-    }),
-  })
+export async function readRuntimeSnapshot(
+  config: WorkerConfig,
+): Promise<TreasurySnapshot> {
+  const publicClient =
+    config.policyOverride && config.balanceOverrideUsdc !== undefined
+      ? null
+      : createPublicClient({
+          chain: arcTestnet,
+          transport: http(config.rpcUrl, {
+            retryCount: 3,
+          }),
+        })
 
-  const policyTuple = await publicClient.readContract({
-    abi: treasuryPolicyContractAbi,
-    address: config.policyAddress,
-    functionName: 'getPolicy',
-  })
+  const policy = config.policyOverride
+    ? config.policyOverride
+    : await (async () => {
+        if (!publicClient) {
+          throw new Error(
+            'Arc public client is unavailable for the policy snapshot.',
+          )
+        }
 
-  const policy = {
-    minThreshold: formatNumber(policyTuple[0]),
-    targetBalance: formatNumber(policyTuple[1]),
-    maxRebalanceAmount: formatNumber(policyTuple[2]),
-  }
+        const policyTuple = await publicClient.readContract({
+          abi: treasuryPolicyContractAbi,
+          address: config.policyAddress,
+          functionName: 'getPolicy',
+        })
+
+        return {
+          minThreshold: formatNumber(policyTuple[0]),
+          targetBalance: formatNumber(policyTuple[1]),
+          maxRebalanceAmount: formatNumber(policyTuple[2]),
+        }
+      })()
 
   const treasuryBalanceUsdc =
     config.balanceOverrideUsdc !== undefined
       ? config.balanceOverrideUsdc
       : Number(
           formatUnits(
-            await publicClient.readContract({
+            await publicClient!.readContract({
               abi: erc20Abi,
               address: arcUsdcAddress,
               functionName: 'balanceOf',
@@ -522,7 +594,10 @@ export async function readRuntimeSnapshot(config: WorkerConfig): Promise<Treasur
     treasuryAddress: config.treasuryAddress,
     policy,
     treasuryBalanceUsdc,
-    balanceSource: config.balanceOverrideUsdc !== undefined ? 'override' : 'chain',
+    balanceSource:
+      config.balanceOverrideUsdc !== undefined || config.policyOverride
+        ? 'override'
+        : 'chain',
     balanceUpdatedAt: new Date().toISOString(),
     payoutRecipients: config.payoutRecipients,
   }
@@ -556,9 +631,15 @@ export class RobotEngine {
   async createJob(request: CreateJobRequest) {
     return this.store.update(async (state) => {
       const freshState = buildStateWithFreshRobot(state, this.config)
-      const snapshot = freshState.snapshot ?? createFallbackSnapshot(this.config)
+      const snapshot =
+        freshState.snapshot ?? createFallbackSnapshot(this.config)
       const candidate = buildCreateJobCandidate(request, snapshot)
-      candidate.riskChecks = createJobRiskChecks(freshState, request, this.config, snapshot)
+      candidate.riskChecks = createJobRiskChecks(
+        freshState,
+        request,
+        this.config,
+        snapshot,
+      )
 
       const baseJob = buildJobRecord({
         id: crypto.randomUUID(),
@@ -570,23 +651,38 @@ export class RobotEngine {
         status: 'created',
         executorName: request.executionMode === 'dry-run' ? 'none' : 'local',
         executorEnabled: request.executionMode !== 'dry-run',
-        note: request.notes?.trim() ? `Operator note: ${request.notes.trim()}` : undefined,
+        note: request.notes?.trim()
+          ? `Operator note: ${request.notes.trim()}`
+          : undefined,
       })
 
-      let finalJob = appendJobEvent(baseJob, 'planned', 'Operator created the job from the dashboard.', 'operator', {
-        result:
-          request.executionMode === 'dry-run'
-            ? 'Dry-run plan recorded. No transaction was submitted.'
-            : request.executionMode === 'manual-approve'
-              ? 'Job plan recorded. Awaiting operator approval.'
-              : 'Auto execution was evaluated.',
-      })
+      let finalJob = appendJobEvent(
+        baseJob,
+        'planned',
+        'Operator created the job from the dashboard.',
+        'operator',
+        {
+          result:
+            request.executionMode === 'dry-run'
+              ? 'Dry-run plan recorded. No transaction was submitted.'
+              : request.executionMode === 'manual-approve'
+                ? 'Job plan recorded. Awaiting operator approval.'
+                : 'Auto execution was evaluated.',
+        },
+      )
 
       if (request.executionMode === 'manual-approve') {
-        finalJob = appendJobEvent(finalJob, 'awaiting-approval', 'Manual approval is required before submission.', 'operator', {
-          approvalRequired: true,
-          approvalReason: 'Manual approval is required before the job can be submitted.',
-        })
+        finalJob = appendJobEvent(
+          finalJob,
+          'awaiting-approval',
+          'Manual approval is required before submission.',
+          'operator',
+          {
+            approvalRequired: true,
+            approvalReason:
+              'Manual approval is required before the job can be submitted.',
+          },
+        )
       } else if (request.executionMode === 'auto') {
         if (this.config.availability.autoEnabled) {
           const localResult = await submitLocalExecution(finalJob)
@@ -611,20 +707,33 @@ export class RobotEngine {
             },
           )
 
-          finalJob = appendJobEvent(finalJob, 'confirmed', 'Local test executor confirmed the job.', 'executor', {
-            result: 'Confirmed by the local test executor.',
-          })
-        } else {
-          finalJob = appendJobEvent(finalJob, 'failed', 'Auto execution is unavailable in this environment.', 'system', {
-            failureReason: 'Auto execution is unavailable in this environment.',
-            result: 'Auto execution was not performed.',
-            executor: {
-              ...finalJob.executor,
-              name: 'none',
-              enabled: false,
-              error: 'Auto execution is unavailable in this environment.',
+          finalJob = appendJobEvent(
+            finalJob,
+            'confirmed',
+            'Local test executor confirmed the job.',
+            'executor',
+            {
+              result: 'Confirmed by the local test executor.',
             },
-          })
+          )
+        } else {
+          finalJob = appendJobEvent(
+            finalJob,
+            'failed',
+            'Auto execution is unavailable in this environment.',
+            'system',
+            {
+              failureReason:
+                'Auto execution is unavailable in this environment.',
+              result: 'Auto execution was not performed.',
+              executor: {
+                ...finalJob.executor,
+                name: 'none',
+                enabled: false,
+                error: 'Auto execution is unavailable in this environment.',
+              },
+            },
+          )
         }
       }
 
@@ -684,7 +793,12 @@ export class RobotEngine {
       this.config.mode === 'dry-run'
         ? buildDryRunJob(this.config, snapshot, candidate, triggerSource)
         : this.config.mode === 'manual-approve'
-          ? buildManualApprovalJob(this.config, snapshot, candidate, triggerSource)
+          ? buildManualApprovalJob(
+              this.config,
+              snapshot,
+              candidate,
+              triggerSource,
+            )
           : buildAutoFailureJob(this.config, snapshot, candidate, triggerSource)
 
     const updatedState: RobotRuntimeState = {
@@ -717,10 +831,16 @@ export class RobotEngine {
         throw new Error(`Job ${jobId} is not awaiting approval`)
       }
 
-      const approved = appendJobEvent(existing, 'approved', 'Operator approved the treasury job.', 'operator', {
-        approvalRequired: false,
-        approvalReason: 'Approved by operator.',
-      })
+      const approved = appendJobEvent(
+        existing,
+        'approved',
+        'Operator approved the treasury job.',
+        'operator',
+        {
+          approvalRequired: false,
+          approvalReason: 'Approved by operator.',
+        },
+      )
 
       const localResult = await submitLocalExecution(approved)
       const submitted = appendJobEvent(
@@ -783,10 +903,16 @@ export class RobotEngine {
         throw new Error(`Job ${jobId} is not awaiting approval`)
       }
 
-      const rejected = appendJobEvent(existing, 'rejected', 'Manual rejection received. The job will not be submitted.', 'operator', {
-        failureReason: 'Rejected by operator.',
-        approvalRequired: false,
-      })
+      const rejected = appendJobEvent(
+        existing,
+        'rejected',
+        'Manual rejection received. The job will not be submitted.',
+        'operator',
+        {
+          failureReason: 'Rejected by operator.',
+          approvalRequired: false,
+        },
+      )
 
       const jobs = sortJobsByNewest(replaceJob(state.jobs, rejected))
 
@@ -814,14 +940,24 @@ export class RobotEngine {
         throw new Error(`Job not found: ${jobId}`)
       }
 
-      if (existing.status === 'submitted' || existing.status === 'confirmed' || existing.status === 'failed') {
+      if (
+        existing.status === 'submitted' ||
+        existing.status === 'confirmed' ||
+        existing.status === 'failed'
+      ) {
         throw new Error(`Job ${jobId} can no longer be cancelled`)
       }
 
-      const cancelled = appendJobEvent(existing, 'cancelled', 'Manual cancellation received. The job will not continue.', 'operator', {
-        result: 'Cancelled by operator.',
-        approvalRequired: false,
-      })
+      const cancelled = appendJobEvent(
+        existing,
+        'cancelled',
+        'Manual cancellation received. The job will not continue.',
+        'operator',
+        {
+          result: 'Cancelled by operator.',
+          approvalRequired: false,
+        },
+      )
 
       const jobs = sortJobsByNewest(replaceJob(state.jobs, cancelled))
 
@@ -860,4 +996,7 @@ export async function createRobotEngineFromEnv(env = process.env) {
   return { engine, config }
 }
 
-export { RobotEngine as ExecutionEngine, createRobotEngineFromEnv as createExecutionEngineFromEnv }
+export {
+  RobotEngine as ExecutionEngine,
+  createRobotEngineFromEnv as createExecutionEngineFromEnv,
+}

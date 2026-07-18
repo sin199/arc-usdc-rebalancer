@@ -1,6 +1,8 @@
 # Arc USDC Rebalancer
 
-Verified Arc Testnet demo: readiness checker + operator brief + optional live execution.
+Official Arc Architect contribution: verified Arc Testnet readiness checker + operator brief + optional live execution.
+
+This is an independent community project built by an Official Arc Architect. It is not an official Arc product.
 
 The public demo is report first, execution second: visitors can generate a readiness report without a wallet, compare sample treasury states, copy markdown or an action pack, and only move into operator mode when the operator wallet, live policy, Circle readiness, and executor dependencies are ready.
 
@@ -20,7 +22,9 @@ Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submi
 - A copyable action pack with exact commands and payload context for an operator to review.
 - Live action controls that render only when the deployment flag, allowlisted operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
 - A dedicated architect proof page with deployment facts, Arcscan links, and current proof status.
-- Wallet-signed, allowlisted, amount-capped live requests with replay, rate-limit, and audit checks; server-signer writes are disabled by default.
+- Wallet-signed, allowlisted, amount-capped live requests with durable Redis replay protection, rate-limit, and audit checks; server-signer writes are disabled by default and fail closed without the durable guard.
+- Agent activation and Circle wallet creation use the same signed operator authorization boundary as treasury execution.
+- A V2 policy/executor reference stack adds onchain policy enforcement, pause, recipient allowlists, two-step ownership transfer, and executor caps without replacing the currently deployed contracts.
 - A treasury policy and executor flow on Arc Testnet.
 - An Arc agent identity and brief surfaced inside the dashboard.
 - Circle developer-controlled wallet and Gateway readiness for USDC routing.
@@ -67,8 +71,9 @@ flowchart LR
   UI --> Executor["TreasuryExecutor"]
   UI --> Circle["Circle wallets + Gateway"]
   UI --> Live["Live operator mode"]
-  Live --> Policy
-  Live --> Executor
+  Live --> Guard["Signed operator + durable replay guard"]
+  Guard --> Policy
+  Guard --> Executor
   Circle --> Executor
   Policy --> Arc["Arc Testnet"]
   Executor --> Arc
@@ -166,6 +171,9 @@ Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 - `LIVE_EXECUTION_MAX_AMOUNT_USDC` - per-request amount ceiling, default `200`
 - `LIVE_EXECUTION_RATE_LIMIT_PER_MINUTE` - best-effort per-operator instance limit, default `3`
 - `LIVE_EXECUTION_SIGNATURE_TTL_SECONDS` - signed request lifetime, default `60`
+- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - required durable Redis state for cross-instance replay and rate-limit protection
+- `LIVE_EXECUTION_REDIS_NAMESPACE` - optional Redis key namespace
+- `LIVE_EXECUTION_ALLOW_IN_MEMORY_GUARD` - explicit local-development fallback only; ignored as a production readiness substitute
 
 ### Contract deployment
 
@@ -176,6 +184,7 @@ Copy `packages/contracts/.env.example` to `packages/contracts/.env` and set:
 - `MIN_THRESHOLD_USDC`
 - `TARGET_BALANCE_USDC`
 - `MAX_REBALANCE_AMOUNT_USDC`
+- `EXECUTOR_MAX_AMOUNT_USDC` - V2 executor-level cap, expressed in whole USDC before the deploy script converts to 6 decimals
 
 ## Circle bootstrap
 
@@ -192,6 +201,8 @@ The command generates a new entity secret, registers it with Circle, creates an 
 Frontend deployment is Vercel-based and should use `apps/web` as the project root.
 
 The contract package is separate and can be deployed independently from the frontend.
+
+`pnpm contracts:deploy-v2` prepares a new V2 policy/executor stack. Do not run it until the initial owner/multisig and migration plan have been reviewed.
 
 ## Review path
 

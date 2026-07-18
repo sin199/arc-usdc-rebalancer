@@ -18,7 +18,8 @@
     "contracts:build": "cd packages/contracts && forge build",
     "contracts:test": "cd packages/contracts && forge test",
     "contracts:deploy": "cd packages/contracts && forge script script/DeployTreasuryPolicy.s.sol:DeployTreasuryPolicy --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY",
-    "contracts:deploy-executor": "cd packages/contracts && forge script script/DeployTreasuryExecutor.s.sol:DeployTreasuryExecutor --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY"
+    "contracts:deploy-executor": "cd packages/contracts && forge script script/DeployTreasuryExecutor.s.sol:DeployTreasuryExecutor --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY",
+    "contracts:deploy-v2": "cd packages/contracts && forge script script/DeployTreasuryStackV2.s.sol:DeployTreasuryStackV2 --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY"
   },
   "devDependencies": {
     "prettier": "^3.0.0"

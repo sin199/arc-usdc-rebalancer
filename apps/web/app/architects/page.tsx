@@ -12,7 +12,13 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { SiteHeader } from '@/components/site-header'
 import { architectProof } from '@/lib/architect-proof'
 import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
@@ -20,14 +26,14 @@ import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
 export const metadata: Metadata = {
   title: 'Arc USDC Rebalancer · architect proof',
   description:
-    'A single Arc Architects review page with deployment facts, Arcscan links, current proof status, and safety boundaries.',
+    'An Official Arc Architect contribution with deployment facts, Arcscan links, current proof status, and safety boundaries.',
 }
 
 const whatIBuilt = [
   'A public Arc Testnet treasury demo with a report-first readiness checker.',
   'A compact operator brief that explains how the installed robot is used in the project.',
   'Optional live execution that remains gated behind the wallet, policy, Circle, and executor checks.',
-  'A submission path that makes the proof easy to review without implying official Arc endorsement.',
+  'An Official Arc Architect contribution path that keeps independent-project boundaries explicit.',
 ]
 
 const whyItMatters = [
@@ -109,7 +115,7 @@ export default function ArchitectsPage() {
       <SiteHeader
         eyebrow="Architect proof"
         title="Arc USDC Rebalancer"
-        description="One page for Arc Architects review: deployment facts, proof status, and the boundaries that stay visible."
+        description="An Official Arc Architect contribution: deployment facts, proof status, and visible safety boundaries in one place."
         ctaHref="/dashboard"
         ctaLabel="Open dashboard"
       />
@@ -118,22 +124,35 @@ export default function ArchitectsPage() {
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+              <Badge
+                variant="outline"
+                className="border-white/15 bg-white/5 text-foreground"
+              >
                 Verified Arc Testnet demo
               </Badge>
               <Badge variant="success">Report first</Badge>
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+              <Badge
+                variant="outline"
+                className="border-white/15 bg-white/5 text-foreground"
+              >
                 Optional live execution
               </Badge>
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                No official Arc endorsement
+              <Badge
+                variant="outline"
+                className="border-white/15 bg-white/5 text-foreground"
+              >
+                Independent project
               </Badge>
             </div>
-            <CardTitle className="text-3xl">A completed builder contribution for Arc review</CardTitle>
+            <CardTitle className="text-3xl">
+              Built as an Official Arc Architect contribution
+            </CardTitle>
             <CardDescription className="max-w-3xl text-base leading-7">
-              The site proves a report-first treasury flow on Arc Testnet. Visitors can review the evidence without a
-              wallet, and live execution only appears when the operator wallet, live policy, Circle wallet set, and
-              executor configuration are all ready.
+              The builder is an Official Arc Architect; this remains an
+              independent community project. The site proves a report-first
+              treasury flow on Arc Testnet, and live execution only appears when
+              the operator wallet, live policy, Circle wallet set, executor, and
+              durable replay guard are all ready.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -145,8 +164,12 @@ export default function ArchitectsPage() {
                 rel={item.href.startsWith('http') ? 'noreferrer' : undefined}
                 className="rounded-2xl border border-white/10 bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/70"
               >
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.label}</div>
-                <div className="mt-2 break-all text-sm leading-6 text-foreground">{item.value}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  {item.label}
+                </div>
+                <div className="mt-2 break-all text-sm leading-6 text-foreground">
+                  {item.value}
+                </div>
                 <div className="mt-2 inline-flex items-center gap-1 text-xs text-primary">
                   Open
                   <ExternalLink className="h-3.5 w-3.5" />
@@ -163,11 +186,16 @@ export default function ArchitectsPage() {
                 <Sparkles className="h-5 w-5 text-primary" />
                 <CardTitle>What I built</CardTitle>
               </div>
-              <CardDescription>The surface is intentionally short and readable.</CardDescription>
+              <CardDescription>
+                The surface is intentionally short and readable.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {whatIBuilt.map((line) => (
-                <div key={line} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
+                <div
+                  key={line}
+                  className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground"
+                >
                   {line}
                 </div>
               ))}
@@ -180,11 +208,17 @@ export default function ArchitectsPage() {
                 <BadgeCheck className="h-5 w-5 text-primary" />
                 <CardTitle>Why it matters for Arc</CardTitle>
               </div>
-              <CardDescription>The reviewer should be able to see the contribution without guessing the angle.</CardDescription>
+              <CardDescription>
+                The reviewer should be able to see the contribution without
+                guessing the angle.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {whyItMatters.map((line) => (
-                <div key={line} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
+                <div
+                  key={line}
+                  className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground"
+                >
                   {line}
                 </div>
               ))}
@@ -199,11 +233,18 @@ export default function ArchitectsPage() {
                 <Waves className="h-5 w-5 text-primary" />
                 <CardTitle>Arc surfaces used</CardTitle>
               </div>
-              <CardDescription>The proof references the same live surfaces the site exposes in the demo.</CardDescription>
+              <CardDescription>
+                The proof references the same live surfaces the site exposes in
+                the demo.
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {surfaceItems.map((item) => (
-                <Badge key={item} variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                <Badge
+                  key={item}
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-foreground"
+                >
                   {item}
                 </Badge>
               ))}
@@ -216,11 +257,16 @@ export default function ArchitectsPage() {
                 <Wallet className="h-5 w-5 text-primary" />
                 <CardTitle>Visitor and operator flow</CardTitle>
               </div>
-              <CardDescription>Preview mode stays useful without a wallet. Live mode is explicit.</CardDescription>
+              <CardDescription>
+                Preview mode stays useful without a wallet. Live mode is
+                explicit.
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Public visitor flow</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Public visitor flow
+                </div>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-foreground">
                   {visitorFlow.map((line) => (
                     <div key={line}>• {line}</div>
@@ -228,7 +274,9 @@ export default function ArchitectsPage() {
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Operator flow</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Operator flow
+                </div>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-foreground">
                   {operatorFlow.map((line) => (
                     <div key={line}>• {line}</div>
@@ -246,18 +294,25 @@ export default function ArchitectsPage() {
                 <ShieldCheck className="h-5 w-5 text-primary" />
                 <CardTitle>Current onchain proof status</CardTitle>
               </div>
-              <CardDescription>{architectProof.currentOnchainProofStatus.label}</CardDescription>
+              <CardDescription>
+                {architectProof.currentOnchainProofStatus.label}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
                 {architectProof.currentOnchainProofStatus.summary}
               </div>
               <div className="grid gap-3">
-                {architectProof.currentOnchainProofStatus.details.map((line) => (
-                  <div key={line} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
-                    {line}
-                  </div>
-                ))}
+                {architectProof.currentOnchainProofStatus.details.map(
+                  (line) => (
+                    <div
+                      key={line}
+                      className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground"
+                    >
+                      {line}
+                    </div>
+                  ),
+                )}
               </div>
             </CardContent>
           </Card>
@@ -268,11 +323,16 @@ export default function ArchitectsPage() {
                 <FileText className="h-5 w-5 text-primary" />
                 <CardTitle>Safety boundaries</CardTitle>
               </div>
-              <CardDescription>These are the guardrails the public demo keeps visible.</CardDescription>
+              <CardDescription>
+                These are the guardrails the public demo keeps visible.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {architectProof.safetyBoundaries.map((line) => (
-                <div key={line} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
+                <div
+                  key={line}
+                  className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground"
+                >
                   {line}
                 </div>
               ))}
@@ -284,36 +344,65 @@ export default function ArchitectsPage() {
           <Card className="border-white/10 bg-card/85">
             <CardHeader>
               <CardTitle>Deployment evidence</CardTitle>
-              <CardDescription>The reviewer can validate the live deployment without leaving this page.</CardDescription>
+              <CardDescription>
+                The reviewer can validate the live deployment without leaving
+                this page.
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-2">
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Production URL</div>
-                <div className="mt-2 break-all text-sm text-foreground">{architectProof.productionUrl}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Production URL
+                </div>
+                <div className="mt-2 break-all text-sm text-foreground">
+                  {architectProof.productionUrl}
+                </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Latest deployment URL</div>
-                <div className="mt-2 break-all text-sm text-foreground">{architectProof.latestDeploymentUrl}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Latest deployment URL
+                </div>
+                <div className="mt-2 break-all text-sm text-foreground">
+                  {architectProof.latestDeploymentUrl}
+                </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Deployment hash</div>
-                <div className="mt-2 break-all text-sm text-foreground">{architectProof.deploymentHash}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Deployment hash
+                </div>
+                <div className="mt-2 break-all text-sm text-foreground">
+                  {architectProof.deploymentHash}
+                </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Main commit</div>
-                <div className="mt-2 break-all text-sm text-foreground">{architectProof.mainCommit}</div>
-                <div className="mt-1 text-xs text-muted-foreground">Branch {architectProof.mainBranch}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Main commit
+                </div>
+                <div className="mt-2 break-all text-sm text-foreground">
+                  {architectProof.mainCommit}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Branch {architectProof.mainBranch}
+                </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Arc Testnet chain ID</div>
-                <div className="mt-2 text-sm text-foreground">{architectProof.arcTestnetChainId}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Arc Testnet chain ID
+                </div>
+                <div className="mt-2 text-sm text-foreground">
+                  {architectProof.arcTestnetChainId}
+                </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Agent proof</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Agent proof
+                </div>
                 <div className="mt-2 text-sm text-foreground">
                   #{arcAgentId.toString()} / {arcAgentValidationTag}
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">Arc Testnet-linked identity</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  Arc Testnet-linked identity
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -321,7 +410,10 @@ export default function ArchitectsPage() {
           <Card className="border-white/10 bg-card/85">
             <CardHeader>
               <CardTitle>Arcscan links</CardTitle>
-              <CardDescription>Address pages for the contracts and agent registries used by the demo.</CardDescription>
+              <CardDescription>
+                Address pages for the contracts and agent registries used by the
+                demo.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {architectProof.arcscanLinks.map((link) => (
@@ -332,8 +424,12 @@ export default function ArchitectsPage() {
                   rel="noreferrer"
                   className="block rounded-2xl border border-white/10 bg-background/50 p-4 transition-colors hover:border-primary/30 hover:bg-background/70"
                 >
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{link.label}</div>
-                  <div className="mt-2 break-all text-sm text-foreground">{link.value}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {link.label}
+                  </div>
+                  <div className="mt-2 break-all text-sm text-foreground">
+                    {link.value}
+                  </div>
                 </a>
               ))}
             </CardContent>
@@ -344,11 +440,17 @@ export default function ArchitectsPage() {
           <Card className="border-white/10 bg-card/85">
             <CardHeader>
               <CardTitle>Screenshot checklist</CardTitle>
-              <CardDescription>Use these when capturing the public demo for Arc review or social sharing.</CardDescription>
+              <CardDescription>
+                Use these when capturing the public demo for Arc review or
+                social sharing.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {architectProof.screenshotChecklist.map((line) => (
-                <div key={line} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
+                <div
+                  key={line}
+                  className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground"
+                >
                   {line}
                 </div>
               ))}
@@ -358,19 +460,26 @@ export default function ArchitectsPage() {
           <Card className="border-white/10 bg-card/85">
             <CardHeader>
               <CardTitle>Suggested Arc House post</CardTitle>
-              <CardDescription>Ready to paste, with the proof framing kept short and plain.</CardDescription>
+              <CardDescription>
+                Ready to paste, with the proof framing kept short and plain.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Title</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Title
+                </div>
                 <div className="mt-2 text-sm font-medium text-foreground">
-                  Arc USDC Rebalancer: report-first treasury operations on Arc Testnet
+                  Arc USDC Rebalancer: report-first treasury operations on Arc
+                  Testnet
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Body</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Body
+                </div>
                 <pre className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-{`I built a public treasury-ops demo on Arc Testnet.
+                  {`I built a public treasury-ops demo on Arc Testnet.
 
 Arc USDC Rebalancer is a readiness checker + operator brief + optional live execution surface. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy a markdown report or action pack. Live execution only appears when the operator wallet, live policy, Circle readiness, executor, and actionable report are all ready.
 
@@ -397,7 +506,11 @@ Repo: ${architectProof.githubRepoUrl}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button asChild>
-                  <a href={architectProof.arcHousePostUrl} target="_blank" rel="noreferrer">
+                  <a
+                    href={architectProof.arcHousePostUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     Open Arc House post link
                     <ArrowRight className="h-4 w-4" />
                   </a>
@@ -413,7 +526,9 @@ Repo: ${architectProof.githubRepoUrl}
         <Card className="border-white/10 bg-card/85">
           <CardHeader>
             <CardTitle>Short social post</CardTitle>
-            <CardDescription>Short enough to paste into X without extra editing.</CardDescription>
+            <CardDescription>
+              Short enough to paste into X without extra editing.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">

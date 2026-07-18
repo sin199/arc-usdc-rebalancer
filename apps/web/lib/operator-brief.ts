@@ -1,29 +1,37 @@
 export const operatorBriefSummary = {
-  headline: 'A public operator brief for the installed robot inside this Arc Testnet project.',
-  reviewGoal: 'Make it easy to see what the robot does, how to verify it, and which pieces are intentionally public.',
-  statusNote: 'The site is designed to explain the robot workflow. It does not claim a badge.',
+  headline:
+    'A public operator brief for the installed robot inside this Arc Testnet project.',
+  reviewGoal:
+    'Make it easy to see what the robot does, how to verify it, and which pieces are intentionally public.',
+  statusNote:
+    'Built by an Official Arc Architect as an independent community contribution; the site is not an official Arc product.',
 }
 
 export const operatorBriefEvidence = [
   {
     label: 'Live demo',
-    value: 'Public dashboard with report-first treasury flow and live operator gating.',
+    value:
+      'Public dashboard with report-first treasury flow and live operator gating.',
   },
   {
     label: 'Arc surface',
-    value: 'Arc Testnet policy, executor, agent identity, and readiness checks in one flow.',
+    value:
+      'Arc Testnet policy, executor, agent identity, and readiness checks in one flow.',
   },
   {
     label: 'Robot surface',
-    value: 'Installed agent, brief generation, action pack, and execution trail in one flow.',
+    value:
+      'Installed agent, brief generation, action pack, and execution trail in one flow.',
   },
   {
     label: 'Circle surface',
-    value: 'Developer-controlled wallets and Gateway readiness kept visible in the same stack.',
+    value:
+      'Developer-controlled wallets and Gateway readiness kept visible in the same stack.',
   },
   {
     label: 'Execution',
-    value: 'Wallet-authorized server execution, disabled by default and gated by an operator allowlist.',
+    value:
+      'Wallet-authorized server execution, disabled by default and gated by an operator allowlist.',
   },
 ]
 

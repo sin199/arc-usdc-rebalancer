@@ -11,7 +11,13 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { SiteHeader } from '@/components/site-header'
 import {
   operatorBriefActions,
@@ -56,17 +62,26 @@ export default function OperatorPage() {
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+              <Badge
+                variant="outline"
+                className="border-white/15 bg-white/5 text-foreground"
+              >
                 {projectTrailSummary.buildLabel}
               </Badge>
               <Badge variant="success">Operator brief</Badge>
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+              <Badge
+                variant="outline"
+                className="border-white/15 bg-white/5 text-foreground"
+              >
                 Not a badge claim
               </Badge>
             </div>
-            <CardTitle className="text-3xl">{operatorBriefSummary.headline}</CardTitle>
+            <CardTitle className="text-3xl">
+              {operatorBriefSummary.headline}
+            </CardTitle>
             <CardDescription className="max-w-3xl text-base leading-7">
-              {operatorBriefSummary.reviewGoal} {operatorBriefSummary.statusNote}
+              {operatorBriefSummary.reviewGoal}{' '}
+              {operatorBriefSummary.statusNote}
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
@@ -76,9 +91,11 @@ export default function OperatorPage() {
                 Suggested operator note
               </div>
               <p className="mt-3 text-sm leading-7 text-foreground">
-                This repository packages a public Arc Testnet treasury demo with a live agent brief, report-first
-                execution flow, developer-controlled wallets readiness, and visible maintenance notes. The brief is
-                meant to help a human understand how the installed robot is being used in this project.
+                This repository packages a public Arc Testnet treasury demo with
+                a live agent brief, report-first execution flow,
+                developer-controlled wallets readiness, and visible maintenance
+                notes. The brief is meant to help a human understand how the
+                installed robot is being used in this project.
               </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-background/50 p-5">
@@ -87,8 +104,9 @@ export default function OperatorPage() {
                 Boundary
               </div>
               <p className="mt-3 text-sm leading-7 text-foreground">
-                The site explains the robot workflow. It does not claim a badge, a role, or any exception from Arc
-                rules.
+                This is an independent contribution built by an Official Arc
+                Architect. It is not an official Arc product and does not
+                receive any exception from Arc rules.
               </p>
             </div>
           </CardContent>
@@ -102,14 +120,22 @@ export default function OperatorPage() {
                 <CardTitle>What this brief proves</CardTitle>
               </div>
               <CardDescription>
-                A reviewer should be able to read this page and know exactly what to inspect next.
+                A reviewer should be able to read this page and know exactly
+                what to inspect next.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {operatorBriefEvidence.map((item) => (
-                <div key={item.label} className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{item.label}</div>
-                  <div className="mt-2 text-sm leading-6 text-foreground">{item.value}</div>
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-white/10 bg-background/50 p-4"
+                >
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {item.label}
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-foreground">
+                    {item.value}
+                  </div>
                 </div>
               ))}
             </CardContent>
@@ -122,12 +148,16 @@ export default function OperatorPage() {
                 <CardTitle>How the project frames the robot</CardTitle>
               </div>
               <CardDescription>
-                These are the public facts the project keeps visible alongside the installed robot.
+                These are the public facts the project keeps visible alongside
+                the installed robot.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {docsContext.map((line) => (
-                <div key={line} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
+                <div
+                  key={line}
+                  className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground"
+                >
                   {line}
                 </div>
               ))}
@@ -142,11 +172,16 @@ export default function OperatorPage() {
                 <CheckCircle2 className="h-5 w-5 text-primary" />
                 <CardTitle>Checklist</CardTitle>
               </div>
-              <CardDescription>Use this checklist to judge the build on its own terms.</CardDescription>
+              <CardDescription>
+                Use this checklist to judge the build on its own terms.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {operatorBriefChecklist.map((item) => (
-                <div key={item} className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
+                <div
+                  key={item}
+                  className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground"
+                >
                   {item}
                 </div>
               ))}
@@ -159,16 +194,24 @@ export default function OperatorPage() {
                 <BadgeCheck className="h-5 w-5 text-primary" />
                 <CardTitle>What to inspect in order</CardTitle>
               </div>
-              <CardDescription>Keep the path short so the evidence reads like a real project brief.</CardDescription>
+              <CardDescription>
+                Keep the path short so the evidence reads like a real project
+                brief.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {reviewerSteps.map((step, index) => (
-                <div key={step} className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div
+                  key={step}
+                  className="rounded-2xl border border-white/10 bg-background/50 p-4"
+                >
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-sm font-semibold text-primary">
                       0{index + 1}
                     </div>
-                    <div className="text-sm leading-6 text-foreground">{step}</div>
+                    <div className="text-sm leading-6 text-foreground">
+                      {step}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -179,15 +222,22 @@ export default function OperatorPage() {
         <Card className="border-white/10 bg-card/85">
           <CardHeader>
             <CardTitle>Evidence trail</CardTitle>
-            <CardDescription>The same story should be visible in the repo, the live site, and the notes.</CardDescription>
+            <CardDescription>
+              The same story should be visible in the repo, the live site, and
+              the notes.
+            </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2">
             {operatorBriefActions.map((action) => {
               const isExternal = action.href.startsWith('http')
               const linkContent = (
                 <>
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{action.label}</div>
-                  <div className="mt-2 text-sm text-foreground">{action.detail}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    {action.label}
+                  </div>
+                  <div className="mt-2 text-sm text-foreground">
+                    {action.detail}
+                  </div>
                 </>
               )
 
@@ -217,7 +267,10 @@ export default function OperatorPage() {
         <Card className="border-white/10 bg-card/85">
           <CardHeader>
             <CardTitle>Open the review surface</CardTitle>
-            <CardDescription>Move from the brief to the live demo without hunting through the site.</CardDescription>
+            <CardDescription>
+              Move from the brief to the live demo without hunting through the
+              site.
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild>

@@ -10,6 +10,7 @@ import {
   useDisconnect,
   usePublicClient,
   useReadContract,
+  useSignMessage,
   useWalletClient,
   useSwitchChain,
   useWriteContract,
@@ -54,7 +55,13 @@ import {
 } from '@arc-usdc-rebalancer/shared'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
@@ -88,6 +95,10 @@ import {
   arcAgentValidatorAddress,
 } from '@/lib/arc-agent'
 import { projectTrailSummary } from '@/lib/project-trail'
+import {
+  buildLiveExecutionMessage,
+  hashLiveExecutionPayload,
+} from '@/lib/live-execution-auth'
 
 type TreasuryPolicyUpdatedLog = {
   args: {
@@ -300,7 +311,9 @@ type ArcAgentBriefResult = {
   }
 }
 
-function formatArcAgentRecommendationAction(action: ArcAgentBriefResult['recommendation']['action']) {
+function formatArcAgentRecommendationAction(
+  action: ArcAgentBriefResult['recommendation']['action'],
+) {
   switch (action) {
     case 'hold':
       return 'Hold'
@@ -395,19 +408,22 @@ const seedBuildNotes: BuildNote[] = [
   {
     id: 'seed-public-demo',
     title: 'Keep public demo first',
-    detail: 'Visitors should understand the treasury flow before they ever need a wallet or operator mode.',
+    detail:
+      'Visitors should understand the treasury flow before they ever need a wallet or operator mode.',
     createdAt: '2026-05-20T09:00:00.000Z',
   },
   {
     id: 'seed-live-operator',
     title: 'Leave live signing visible',
-    detail: 'The live Arc Testnet path should stay obvious, but it should never be the only way into the site.',
+    detail:
+      'The live Arc Testnet path should stay obvious, but it should never be the only way into the site.',
     createdAt: '2026-05-20T09:10:00.000Z',
   },
   {
     id: 'seed-builder-trail',
     title: 'Keep a builder trail',
-    detail: 'Reference links and small maintenance notes make the project feel actively worked on.',
+    detail:
+      'Reference links and small maintenance notes make the project feel actively worked on.',
     createdAt: '2026-05-20T09:20:00.000Z',
   },
 ]
@@ -419,12 +435,17 @@ export function TreasuryDashboard() {
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain()
   const publicClient = usePublicClient({ chainId: arcTestnet.id })
   const { data: walletClient } = useWalletClient({ chainId: arcTestnet.id })
+  const { signMessageAsync } = useSignMessage()
   const { writeContractAsync, isPending: isWriting } = useWriteContract()
   const contractAddress = treasuryPolicyAddressConfig.address
-  const [localExecutorAddress, setLocalExecutorAddress] = useState<string | undefined>()
-  const executorAddress = treasuryExecutorAddressConfig.address ?? localExecutorAddress
+  const [localExecutorAddress, setLocalExecutorAddress] = useState<
+    string | undefined
+  >()
+  const executorAddress =
+    treasuryExecutorAddressConfig.address ?? localExecutorAddress
   const walletOnArc = isConnected && chainId === arcTestnet.id
-  const walletSummary = isConnected && address ? truncateAddress(address) : 'No wallet connected'
+  const walletSummary =
+    isConnected && address ? truncateAddress(address) : 'No wallet connected'
 
   const walletBalanceQuery = useBalance({
     address,
@@ -434,7 +455,9 @@ export function TreasuryDashboard() {
     },
   })
 
-  const treasuryBalanceAddress = (executorAddress ?? address) as Address | undefined
+  const treasuryBalanceAddress = (executorAddress ?? address) as
+    | Address
+    | undefined
   const treasuryBalanceQuery = useBalance({
     address: treasuryBalanceAddress,
     chainId: arcTestnet.id,
@@ -484,7 +507,9 @@ export function TreasuryDashboard() {
     staleTime: 5_000,
   })
 
-  const [draftPolicy, setDraftPolicy] = useState<TreasuryPolicy>(DEFAULT_TREASURY_POLICY)
+  const [draftPolicy, setDraftPolicy] = useState<TreasuryPolicy>(
+    DEFAULT_TREASURY_POLICY,
+  )
   const [activity, setActivity] = useState<ActivityEntry[]>([])
   const [simulationMessage, setSimulationMessage] = useState<string>(
     'Verified sample ready. Try the At target, Below minimum, or Above target scenarios, or connect a wallet for live signing.',
@@ -492,9 +517,10 @@ export function TreasuryDashboard() {
   const [stablecoinTestMessage, setStablecoinTestMessage] = useState<string>(
     'Run the stablecoin robot test to inspect the public demo or live USDC policy state.',
   )
-  const [stablecoinExecutionMessage, setStablecoinExecutionMessage] = useState<string>(
-    'Server signer execution will submit the current policy to chain.',
-  )
+  const [stablecoinExecutionMessage, setStablecoinExecutionMessage] =
+    useState<string>(
+      'Server signer execution will submit the current policy to chain.',
+    )
   const [executorDeployMessage, setExecutorDeployMessage] = useState<string>(
     'Deploy TreasuryExecutor in live mode, or simulate it in public demo mode.',
   )
@@ -504,38 +530,55 @@ export function TreasuryDashboard() {
   const [circleCreateMessage, setCircleCreateMessage] = useState<string>(
     'Circle wallet creation will provision a dev-controlled wallet on Arc Testnet.',
   )
-  const [localArcAgentValidationRequestHash, setLocalArcAgentValidationRequestHash] = useState<
-    string | undefined
-  >()
+  const [
+    localArcAgentValidationRequestHash,
+    setLocalArcAgentValidationRequestHash,
+  ] = useState<string | undefined>()
   const [arcAgentWakeMessage, setArcAgentWakeMessage] = useState<string>(
     'Wake the agent to run a fresh reputation and validation round.',
   )
   const [arcAgentWakeInFlight, setArcAgentWakeInFlight] = useState(false)
-  const [lastArcAgentActivation, setLastArcAgentActivation] = useState<ArcAgentActivationResult | null>(null)
+  const [lastArcAgentActivation, setLastArcAgentActivation] =
+    useState<ArcAgentActivationResult | null>(null)
   const [arcAgentBriefMessage, setArcAgentBriefMessage] = useState<string>(
     'Run a brief to turn the agent state into a concrete operational step.',
   )
   const [arcAgentBriefInFlight, setArcAgentBriefInFlight] = useState(false)
-  const [lastArcAgentBrief, setLastArcAgentBrief] = useState<ArcAgentBriefResult | null>(null)
+  const [lastArcAgentBrief, setLastArcAgentBrief] =
+    useState<ArcAgentBriefResult | null>(null)
   const [agentTakeoverMessage, setAgentTakeoverMessage] = useState<string>(
     'Run the takeover cycle to let the agent refresh Circle, load policy, brief, and act from one place.',
   )
   const [agentTakeoverInFlight, setAgentTakeoverInFlight] = useState(false)
-  const [lastAgentTakeoverAt, setLastAgentTakeoverAt] = useState<string | null>(null)
-  const [localCircleWalletSetId, setLocalCircleWalletSetId] = useState<string | undefined>()
-  const [circleWalletCreationInFlight, setCircleWalletCreationInFlight] = useState(false)
-  const [lastValidationError, setLastValidationError] = useState<string | null>(null)
+  const [lastAgentTakeoverAt, setLastAgentTakeoverAt] = useState<string | null>(
+    null,
+  )
+  const [localCircleWalletSetId, setLocalCircleWalletSetId] = useState<
+    string | undefined
+  >()
+  const [circleWalletCreationInFlight, setCircleWalletCreationInFlight] =
+    useState(false)
+  const [lastValidationError, setLastValidationError] = useState<string | null>(
+    null,
+  )
   const [submissionInFlight, setSubmissionInFlight] = useState(false)
-  const [executorDeploymentInFlight, setExecutorDeploymentInFlight] = useState(false)
+  const [executorDeploymentInFlight, setExecutorDeploymentInFlight] =
+    useState(false)
   const [demoPolicy, setDemoPolicy] = useState<TreasuryPolicy | null>(null)
-  const [demoTreasuryBalance, setDemoTreasuryBalance] = useState<number | null>(null)
+  const [demoTreasuryBalance, setDemoTreasuryBalance] = useState<number | null>(
+    null,
+  )
   const [buildNotes, setBuildNotes] = useState<BuildNote[]>(seedBuildNotes)
   const [buildNotesHydrated, setBuildNotesHydrated] = useState(false)
-  const [buildNoteTitle, setBuildNoteTitle] = useState(seedBuildNotes[0]?.title ?? '')
+  const [buildNoteTitle, setBuildNoteTitle] = useState(
+    seedBuildNotes[0]?.title ?? '',
+  )
   const [buildNoteDetail, setBuildNoteDetail] = useState('')
   const chainPolicyInitializedRef = useRef(false)
-  const configuredCircleWalletSetId = process.env.NEXT_PUBLIC_CIRCLE_WALLET_SET_ID?.trim() || undefined
-  const circleWalletSetId = configuredCircleWalletSetId ?? localCircleWalletSetId
+  const configuredCircleWalletSetId =
+    process.env.NEXT_PUBLIC_CIRCLE_WALLET_SET_ID?.trim() || undefined
+  const circleWalletSetId =
+    configuredCircleWalletSetId ?? localCircleWalletSetId
   const activeArcAgentValidationRequestHash = (
     localArcAgentValidationRequestHash?.startsWith('0x')
       ? localArcAgentValidationRequestHash
@@ -555,13 +598,19 @@ export function TreasuryDashboard() {
         searchParams.set('depositor', address)
       }
 
-      const response = await fetch(`/api/circle/status?${searchParams.toString()}`, {
-        cache: 'no-store',
-      })
+      const response = await fetch(
+        `/api/circle/status?${searchParams.toString()}`,
+        {
+          cache: 'no-store',
+        },
+      )
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}))
-        throw new Error(error.error ?? `Circle status request failed with ${response.status}.`)
+        throw new Error(
+          error.error ??
+            `Circle status request failed with ${response.status}.`,
+        )
       }
 
       return (await response.json()) as CircleControlPlaneStatus
@@ -606,30 +655,42 @@ export function TreasuryDashboard() {
     },
   })
 
-  const liveChainPolicy = policyQuery.data ? formatTreasuryPolicyFromUnits(policyQuery.data) : null
+  const liveChainPolicy = policyQuery.data
+    ? formatTreasuryPolicyFromUnits(policyQuery.data)
+    : null
   const ownerAddress = ownerQuery.data
-  const ownerWalletBalance = walletBalanceQuery.data ? Number(walletBalanceQuery.data.formatted ?? 0) : null
+  const ownerWalletBalance = walletBalanceQuery.data
+    ? Number(walletBalanceQuery.data.formatted ?? 0)
+    : null
   const connectedWalletIsOwner =
     address !== undefined &&
     ownerAddress !== undefined &&
     address.toLowerCase() === ownerAddress.toLowerCase()
-  const liveOperatorAvailable = Boolean(isConnected && walletOnArc && connectedWalletIsOwner)
+  const liveOperatorAvailable = Boolean(
+    isConnected && walletOnArc && connectedWalletIsOwner,
+  )
   const publicDemoMode = !liveOperatorAvailable
-  const chainPolicy = liveOperatorAvailable ? liveChainPolicy : demoPolicy ?? liveChainPolicy
+  const chainPolicy = liveOperatorAvailable
+    ? liveChainPolicy
+    : (demoPolicy ?? liveChainPolicy)
 
   const currentPolicy = chainPolicy ?? draftPolicy
   const publicDemoPreviewBalance = currentPolicy.targetBalance
   const treasuryBalance = liveOperatorAvailable
     ? Number(treasuryBalanceQuery.data?.formatted ?? 0)
-    : demoTreasuryBalance ?? publicDemoPreviewBalance
+    : (demoTreasuryBalance ?? publicDemoPreviewBalance)
   const evaluation = evaluatePolicy(treasuryBalance, currentPolicy)
   const stablecoinExecutionFloor = 0.01
   const stablecoinExecutionRequestedAmount =
-    evaluation && evaluation.amount > 0 ? evaluation.amount : stablecoinExecutionFloor
+    evaluation && evaluation.amount > 0
+      ? evaluation.amount
+      : stablecoinExecutionFloor
   const stablecoinExecutionAction: 'top_up' | 'trim' =
     evaluation?.action === 'trim' && evaluation.amount > 0 ? 'trim' : 'top_up'
   const stablecoinExecutionAmount =
-    stablecoinExecutionAction === 'top_up' && liveOperatorAvailable && ownerWalletBalance !== null
+    stablecoinExecutionAction === 'top_up' &&
+    liveOperatorAvailable &&
+    ownerWalletBalance !== null
       ? Math.min(stablecoinExecutionRequestedAmount, ownerWalletBalance)
       : stablecoinExecutionRequestedAmount
   const stablecoinExecutionIsCapped =
@@ -637,13 +698,16 @@ export function TreasuryDashboard() {
     liveOperatorAvailable &&
     ownerWalletBalance !== null &&
     stablecoinExecutionRequestedAmount > ownerWalletBalance
-  const hasUnsavedChanges = Boolean(chainPolicy) && !policiesEqual(draftPolicy, chainPolicy as TreasuryPolicy)
+  const hasUnsavedChanges =
+    Boolean(chainPolicy) &&
+    !policiesEqual(draftPolicy, chainPolicy as TreasuryPolicy)
   const stablecoinBalance = treasuryBalance
-  const stablecoinRobotStatus: StablecoinRobotStatus = !contractAddress && !publicDemoMode
-    ? 'wait'
-    : evaluation?.status === 'healthy'
-      ? 'pass'
-      : 'warn'
+  const stablecoinRobotStatus: StablecoinRobotStatus =
+    !contractAddress && !publicDemoMode
+      ? 'wait'
+      : evaluation?.status === 'healthy'
+        ? 'pass'
+        : 'warn'
   const stablecoinRobotReasonCodes = publicDemoMode
     ? ['PUBLIC_DEMO_MODE', ...(evaluation?.reasonCodes ?? ['POLICY_READ_ONLY'])]
     : !contractAddress
@@ -657,19 +721,28 @@ export function TreasuryDashboard() {
             : [...(evaluation?.reasonCodes ?? ['POLICY_READ_ONLY'])]
   const stablecoinRobotExecutionReady = Boolean(
     !submissionInFlight &&
-      formatValidationError(draftPolicy) === null &&
-      (publicDemoMode || (contractAddress && chainPolicy && executorAddress && liveOperatorAvailable)),
+    formatValidationError(draftPolicy) === null &&
+    (publicDemoMode ||
+      (contractAddress &&
+        chainPolicy &&
+        executorAddress &&
+        liveOperatorAvailable)),
   )
-  const stablecoinRobotExecutionReason = !contractAddress && !publicDemoMode
-    ? 'Set TREASURY_POLICY_ADDRESS before executing live.'
-    : !chainPolicy
-      ? 'Load the deployed policy before executing live.'
-      : liveOperatorAvailable && !walletOnArc
-        ? 'Switch the wallet to Arc Testnet before live execution.'
-        : liveOperatorAvailable && !executorAddress
-          ? 'Set TREASURY_EXECUTOR_ADDRESS before live execution.'
-          : formatValidationError(draftPolicy) ?? (publicDemoMode ? 'Public demo mode is ready.' : 'Execution is temporarily blocked.')
-  const stablecoinEvaluationMessage = evaluation?.message ?? 'Treasury balance is outside the healthy band.'
+  const stablecoinRobotExecutionReason =
+    !contractAddress && !publicDemoMode
+      ? 'Set TREASURY_POLICY_ADDRESS before executing live.'
+      : !chainPolicy
+        ? 'Load the deployed policy before executing live.'
+        : liveOperatorAvailable && !walletOnArc
+          ? 'Switch the wallet to Arc Testnet before live execution.'
+          : liveOperatorAvailable && !executorAddress
+            ? 'Set TREASURY_EXECUTOR_ADDRESS before live execution.'
+            : (formatValidationError(draftPolicy) ??
+              (publicDemoMode
+                ? 'Public demo mode is ready.'
+                : 'Execution is temporarily blocked.'))
+  const stablecoinEvaluationMessage =
+    evaluation?.message ?? 'Treasury balance is outside the healthy band.'
   const stablecoinRobotSummary =
     stablecoinRobotStatus === 'pass'
       ? 'USDC balance is inside the healthy policy band.'
@@ -711,7 +784,7 @@ export function TreasuryDashboard() {
       detail:
         evaluation?.status === 'healthy'
           ? 'Treasury balance sits inside the policy band.'
-          : evaluation?.message ?? 'Awaiting live policy evaluation.',
+          : (evaluation?.message ?? 'Awaiting live policy evaluation.'),
     },
     {
       label: 'Execution amount',
@@ -789,14 +862,24 @@ export function TreasuryDashboard() {
   const arcAgentValidationTagValue = arcAgentValidation?.[4]
   const arcAgentValidationLastUpdate = arcAgentValidation?.[5]
   const arcAgentOwnerMatches =
-    typeof arcAgentOwner === 'string' && arcAgentOwner.toLowerCase() === arcAgentOwnerAddress.toLowerCase()
+    typeof arcAgentOwner === 'string' &&
+    arcAgentOwner.toLowerCase() === arcAgentOwnerAddress.toLowerCase()
   const arcAgentInstalled = Boolean(arcAgentOwner)
   const arcAgentVerified = arcAgentValidationResponse === 100
-  const arcAgentStatusTone: 'success' | 'warning' = arcAgentVerified ? 'success' : 'warning'
-  const arcAgentStatusLabel = arcAgentVerified ? 'VERIFIED' : arcAgentInstalled ? 'INSTALLED' : 'CHECK'
+  const arcAgentStatusTone: 'success' | 'warning' = arcAgentVerified
+    ? 'success'
+    : 'warning'
+  const arcAgentStatusLabel = arcAgentVerified
+    ? 'VERIFIED'
+    : arcAgentInstalled
+      ? 'INSTALLED'
+      : 'CHECK'
 
   useEffect(() => {
-    const storedActivity = readJson<ActivityEntry[]>(ACTIVITY_LOG_STORAGE_KEY, [])
+    const storedActivity = readJson<ActivityEntry[]>(
+      ACTIVITY_LOG_STORAGE_KEY,
+      [],
+    )
     const initialActivity =
       storedActivity.length > 0
         ? storedActivity
@@ -809,7 +892,10 @@ export function TreasuryDashboard() {
                   ? 'TreasuryPolicy address loaded and ready for Arc Testnet reads.'
                   : 'Set TREASURY_POLICY_ADDRESS to load the deployed TreasuryPolicy contract.',
               createdAt: new Date().toISOString(),
-              tone: treasuryPolicyAddressConfig.status === 'configured' ? 'success' : 'warning',
+              tone:
+                treasuryPolicyAddressConfig.status === 'configured'
+                  ? 'success'
+                  : 'warning',
             } satisfies ActivityEntry,
           ]
 
@@ -818,8 +904,13 @@ export function TreasuryDashboard() {
   }, [])
 
   useEffect(() => {
-    const storedBuildNotes = readJson<BuildNote[]>(BUILD_NOTES_STORAGE_KEY, seedBuildNotes)
-    setBuildNotes(storedBuildNotes.length > 0 ? storedBuildNotes : seedBuildNotes)
+    const storedBuildNotes = readJson<BuildNote[]>(
+      BUILD_NOTES_STORAGE_KEY,
+      seedBuildNotes,
+    )
+    setBuildNotes(
+      storedBuildNotes.length > 0 ? storedBuildNotes : seedBuildNotes,
+    )
     setBuildNotesHydrated(true)
   }, [])
 
@@ -851,7 +942,9 @@ export function TreasuryDashboard() {
   }, [chainPolicy])
 
   useEffect(() => {
-    const storedExecutor = window.localStorage.getItem(treasuryExecutorLocalStorageKey)
+    const storedExecutor = window.localStorage.getItem(
+      treasuryExecutorLocalStorageKey,
+    )
     if (storedExecutor && !treasuryExecutorAddressConfig.address) {
       setLocalExecutorAddress(storedExecutor)
     }
@@ -862,12 +955,20 @@ export function TreasuryDashboard() {
       return
     }
 
-    window.localStorage.setItem(treasuryExecutorLocalStorageKey, localExecutorAddress)
+    window.localStorage.setItem(
+      treasuryExecutorLocalStorageKey,
+      localExecutorAddress,
+    )
   }, [localExecutorAddress])
 
   useEffect(() => {
-    const storedWalletSetId = window.localStorage.getItem(circleWalletSetLocalStorageKey)
-    if (storedWalletSetId && !process.env.NEXT_PUBLIC_CIRCLE_WALLET_SET_ID?.trim()) {
+    const storedWalletSetId = window.localStorage.getItem(
+      circleWalletSetLocalStorageKey,
+    )
+    if (
+      storedWalletSetId &&
+      !process.env.NEXT_PUBLIC_CIRCLE_WALLET_SET_ID?.trim()
+    ) {
       setLocalCircleWalletSetId(storedWalletSetId)
     }
   }, [])
@@ -877,11 +978,16 @@ export function TreasuryDashboard() {
       return
     }
 
-    window.localStorage.setItem(circleWalletSetLocalStorageKey, localCircleWalletSetId)
+    window.localStorage.setItem(
+      circleWalletSetLocalStorageKey,
+      localCircleWalletSetId,
+    )
   }, [localCircleWalletSetId])
 
   useEffect(() => {
-    const storedArcAgentValidationRequestHash = window.localStorage.getItem(arcAgentValidationStorageKey)
+    const storedArcAgentValidationRequestHash = window.localStorage.getItem(
+      arcAgentValidationStorageKey,
+    )
     if (storedArcAgentValidationRequestHash?.startsWith('0x')) {
       setLocalArcAgentValidationRequestHash(storedArcAgentValidationRequestHash)
     }
@@ -892,7 +998,10 @@ export function TreasuryDashboard() {
       return
     }
 
-    window.localStorage.setItem(arcAgentValidationStorageKey, localArcAgentValidationRequestHash)
+    window.localStorage.setItem(
+      arcAgentValidationStorageKey,
+      localArcAgentValidationRequestHash,
+    )
   }, [localArcAgentValidationRequestHash])
 
   function pushActivity(entry: Omit<ActivityEntry, 'id' | 'createdAt'>) {
@@ -916,7 +1025,8 @@ export function TreasuryDashboard() {
     if (!title || !detail) {
       pushActivity({
         title: 'Build note blocked',
-        detail: 'Add both a title and a detail before saving the maintenance note.',
+        detail:
+          'Add both a title and a detail before saving the maintenance note.',
         tone: 'warning',
       })
       return
@@ -946,21 +1056,26 @@ export function TreasuryDashboard() {
     setBuildNoteDetail('')
     pushActivity({
       title: 'Build notes reset',
-      detail: 'Restored the seeded maintenance notes for the current browser session.',
+      detail:
+        'Restored the seeded maintenance notes for the current browser session.',
       tone: 'neutral',
     })
   }
 
   async function handleConnect(): Promise<Address | null> {
     const injectedConnector =
-      connectors.find((connector) => /metamask/i.test(connector.name) || connector.id === 'metaMask') ??
+      connectors.find(
+        (connector) =>
+          /metamask/i.test(connector.name) || connector.id === 'metaMask',
+      ) ??
       connectors.find((connector) => connector.type === 'injected') ??
       connectors[0]
 
     if (!injectedConnector) {
       pushActivity({
         title: 'No injected wallet found',
-        detail: 'Install an injected wallet such as MetaMask or Rabby, then refresh the page.',
+        detail:
+          'Install an injected wallet such as MetaMask or Rabby, then refresh the page.',
         tone: 'warning',
       })
       return null
@@ -974,7 +1089,9 @@ export function TreasuryDashboard() {
         detail: `Connected through ${injectedConnector.name} and ready for Arc Testnet.`,
         tone: 'success',
       })
-      setSimulationMessage('Wallet connected. Review the live policy or use public demo mode to explore the dashboard.')
+      setSimulationMessage(
+        'Wallet connected. Review the live policy or use public demo mode to explore the dashboard.',
+      )
       return connectedAddress ?? null
     } catch {
       pushActivity({
@@ -988,7 +1105,9 @@ export function TreasuryDashboard() {
 
   function handleDisconnect() {
     disconnect()
-    setSimulationMessage('Wallet disconnected. Public demo mode stays available without a wallet.')
+    setSimulationMessage(
+      'Wallet disconnected. Public demo mode stays available without a wallet.',
+    )
     pushActivity({
       title: 'Wallet disconnected',
       detail: 'The dashboard cleared the active wallet connection.',
@@ -1030,7 +1149,8 @@ export function TreasuryDashboard() {
     } catch {
       pushActivity({
         title: 'Clipboard unavailable',
-        detail: 'The browser blocked clipboard access, so the address was not copied.',
+        detail:
+          'The browser blocked clipboard access, so the address was not copied.',
         tone: 'warning',
       })
     }
@@ -1055,7 +1175,9 @@ export function TreasuryDashboard() {
 
   async function handleRefreshChainPolicy() {
     if (!contractAddress) {
-      setLastValidationError('Set TREASURY_POLICY_ADDRESS before loading the deployed policy.')
+      setLastValidationError(
+        'Set TREASURY_POLICY_ADDRESS before loading the deployed policy.',
+      )
       pushActivity({
         title: 'Policy refresh blocked',
         detail: 'The deployed TreasuryPolicy address is missing or invalid.',
@@ -1094,18 +1216,25 @@ export function TreasuryDashboard() {
 
     if (!liveOperatorAvailable) {
       setDemoPolicy(draftPolicy)
-      setSimulationMessage('Public demo mode: policy draft saved locally for this browser session.')
+      setSimulationMessage(
+        'Public demo mode: policy draft saved locally for this browser session.',
+      )
       pushActivity({
         title: 'Policy update simulated',
-        detail: 'Public demo mode accepted the draft locally. Connect the live operator wallet for a live chain update.',
+        detail:
+          'Public demo mode accepted the draft locally. Connect the live operator wallet for a live chain update.',
         tone: 'success',
       })
       return true
     }
 
     if (!contractAddress) {
-      setSimulationMessage('Set TREASURY_POLICY_ADDRESS before submitting a live policy update.')
-      setLastValidationError('Deployed TreasuryPolicy address is missing or invalid.')
+      setSimulationMessage(
+        'Set TREASURY_POLICY_ADDRESS before submitting a live policy update.',
+      )
+      setLastValidationError(
+        'Deployed TreasuryPolicy address is missing or invalid.',
+      )
       return false
     }
 
@@ -1132,7 +1261,9 @@ export function TreasuryDashboard() {
         tone: 'neutral',
       })
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+      })
       const nextPolicy = draftPolicy
 
       setSimulationMessage(
@@ -1191,7 +1322,12 @@ export function TreasuryDashboard() {
     pushActivity({
       title: 'Stablecoin robot test',
       detail: `${stablecoinRobotSummary} Reasons: ${stablecoinRobotReasonCodes.join(', ')}. Execution amount ${formatUsdc(stablecoinExecutionAmount)} USDC.`,
-      tone: stablecoinRobotStatus === 'pass' ? 'success' : stablecoinRobotStatus === 'warn' ? 'warning' : 'neutral',
+      tone:
+        stablecoinRobotStatus === 'pass'
+          ? 'success'
+          : stablecoinRobotStatus === 'warn'
+            ? 'warning'
+            : 'neutral',
     })
 
     setStablecoinTestMessage(
@@ -1204,9 +1340,14 @@ export function TreasuryDashboard() {
       return false
     }
 
-    const amountUnits = parseUnits(String(stablecoinExecutionAmount), arcUsdcDecimals)
+    const amountUnits = parseUnits(
+      String(stablecoinExecutionAmount),
+      arcUsdcDecimals,
+    )
     if (amountUnits <= 0n || !evaluation) {
-      setStablecoinExecutionMessage('Execution skipped. No rebalance amount is required.')
+      setStablecoinExecutionMessage(
+        'Execution skipped. No rebalance amount is required.',
+      )
       return false
     }
 
@@ -1222,7 +1363,10 @@ export function TreasuryDashboard() {
           `Public demo mode: ${stablecoinExecutionAction === 'top_up' ? 'top-up' : 'trim'} simulated locally. No onchain transaction was sent.`,
         )
         pushActivity({
-          title: stablecoinExecutionAction === 'top_up' ? 'Stablecoin top-up simulated' : 'Stablecoin trim simulated',
+          title:
+            stablecoinExecutionAction === 'top_up'
+              ? 'Stablecoin top-up simulated'
+              : 'Stablecoin trim simulated',
           detail: `Public demo mode adjusted the treasury preview by ${formatUsdc(stablecoinExecutionAmount)} USDC.`,
           tone: 'success',
         })
@@ -1237,16 +1381,39 @@ export function TreasuryDashboard() {
 
     try {
       setSubmissionInFlight(true)
-      setStablecoinExecutionMessage(`Submitting ${formatUsdc(stablecoinExecutionAmount)} USDC via the server signer...`)
+      setStablecoinExecutionMessage(
+        `Submitting ${formatUsdc(stablecoinExecutionAmount)} USDC via the server signer...`,
+      )
+
+      const requestId = crypto.randomUUID()
+      const timestamp = Date.now()
+      const intent = {
+        action: stablecoinExecutionAction,
+        amountUsdc: stablecoinExecutionAmount,
+        executorAddress: executorAddress ?? undefined,
+        kind: 'execute' as const,
+        operatorAddress: address ?? '',
+        origin: window.location.origin,
+        requestId,
+        timestamp,
+      }
+      const signature = await signMessageAsync({
+        message: buildLiveExecutionMessage(intent),
+      })
 
       const response = await fetch('/api/treasury/execute', {
         body: JSON.stringify({
           action: stablecoinExecutionAction,
           amountUsdc: stablecoinExecutionAmount,
+          executorAddress: executorAddress ?? undefined,
+          operatorAddress: address,
+          requestId,
+          timestamp,
         }),
         cache: 'no-store',
         headers: {
           'content-type': 'application/json',
+          'x-operator-signature': signature,
         },
         method: 'POST',
       })
@@ -1266,7 +1433,9 @@ export function TreasuryDashboard() {
       }
 
       if (!response.ok) {
-        throw new Error(payload.error ?? `Treasury execution failed with ${response.status}.`)
+        throw new Error(
+          payload.error ?? `Treasury execution failed with ${response.status}.`,
+        )
       }
 
       const executedAction = payload.action ?? stablecoinExecutionAction
@@ -1277,9 +1446,14 @@ export function TreasuryDashboard() {
           ? stablecoinBalance + executedAmount
           : Math.max(0, stablecoinBalance - executedAmount)
 
-      setStablecoinExecutionMessage(payload.summary ?? 'Execution confirmed via the server signer.')
+      setStablecoinExecutionMessage(
+        payload.summary ?? 'Execution confirmed via the server signer.',
+      )
       pushActivity({
-        title: executedAction === 'top_up' ? 'Stablecoin top-up executed' : 'Stablecoin trim executed',
+        title:
+          executedAction === 'top_up'
+            ? 'Stablecoin top-up executed'
+            : 'Stablecoin trim executed',
         detail: `${payload.summary ?? `Live operator signer submitted ${formatUsdc(executedAmount)} USDC.`}${executeHash ? ` Tx ${formatTx(executeHash)}.` : ''}`,
         tone: 'success',
       })
@@ -1293,7 +1467,9 @@ export function TreasuryDashboard() {
       const message = error instanceof Error ? error.message : 'Unknown error'
 
       if (liveOperatorAvailable) {
-        setStablecoinExecutionMessage(`Server signer unavailable, falling back to the live operator wallet: ${message}`)
+        setStablecoinExecutionMessage(
+          `Server signer unavailable, falling back to the live operator wallet: ${message}`,
+        )
         const fallbackExecuted = await handleExecuteStablecoinPolicyViaWallet()
         if (fallbackExecuted) {
           return true
@@ -1317,25 +1493,37 @@ export function TreasuryDashboard() {
     let activeExecutorAddress = executorAddress ?? null
 
     if (!activeWalletAddress) {
-      setStablecoinExecutionMessage('Connecting the live operator wallet before execution...')
+      setStablecoinExecutionMessage(
+        'Connecting the live operator wallet before execution...',
+      )
       activeWalletAddress = await handleConnect()
       if (!activeWalletAddress) {
-        setStablecoinExecutionMessage('Execution blocked: connect the live operator wallet first.')
+        setStablecoinExecutionMessage(
+          'Execution blocked: connect the live operator wallet first.',
+        )
         return false
       }
     }
 
     if (!walletOnArc) {
-      setStablecoinExecutionMessage('Switching the wallet to Arc Testnet before execution...')
+      setStablecoinExecutionMessage(
+        'Switching the wallet to Arc Testnet before execution...',
+      )
       const switched = await handleSwitchChain()
       if (!switched) {
-        setStablecoinExecutionMessage('Execution blocked: switch the wallet to Arc Testnet first.')
+        setStablecoinExecutionMessage(
+          'Execution blocked: switch the wallet to Arc Testnet first.',
+        )
         return false
       }
     }
 
-    if (!ownerAddress || activeWalletAddress.toLowerCase() !== ownerAddress.toLowerCase()) {
-      const reason = 'Only the live operator wallet can execute the policy update.'
+    if (
+      !ownerAddress ||
+      activeWalletAddress.toLowerCase() !== ownerAddress.toLowerCase()
+    ) {
+      const reason =
+        'Only the live operator wallet can execute the policy update.'
       setStablecoinExecutionMessage(reason)
       pushActivity({
         title: 'Stablecoin execution blocked',
@@ -1346,24 +1534,35 @@ export function TreasuryDashboard() {
     }
 
     if (!activeExecutorAddress) {
-      setStablecoinExecutionMessage('Deploying TreasuryExecutor before execution...')
+      setStablecoinExecutionMessage(
+        'Deploying TreasuryExecutor before execution...',
+      )
       activeExecutorAddress = activeWalletAddress
         ? await deployExecutorForWallet(activeWalletAddress)
         : await handleDeployExecutor()
       if (!activeExecutorAddress) {
-        setStablecoinExecutionMessage('Execution blocked: deploy TreasuryExecutor first.')
+        setStablecoinExecutionMessage(
+          'Execution blocked: deploy TreasuryExecutor first.',
+        )
         return false
       }
     }
 
     if (!publicClient || !activeExecutorAddress) {
-      setStablecoinExecutionMessage('Execution failed. Treasury executor address or public client is unavailable.')
+      setStablecoinExecutionMessage(
+        'Execution failed. Treasury executor address or public client is unavailable.',
+      )
       return false
     }
 
-    const amountUnits = parseUnits(String(stablecoinExecutionAmount), arcUsdcDecimals)
+    const amountUnits = parseUnits(
+      String(stablecoinExecutionAmount),
+      arcUsdcDecimals,
+    )
     if (amountUnits <= 0n || !evaluation) {
-      setStablecoinExecutionMessage('Execution skipped. No rebalance amount is required.')
+      setStablecoinExecutionMessage(
+        'Execution skipped. No rebalance amount is required.',
+      )
       return false
     }
 
@@ -1371,7 +1570,9 @@ export function TreasuryDashboard() {
       setSubmissionInFlight(true)
 
       if (stablecoinExecutionAction === 'top_up') {
-        setStablecoinExecutionMessage(`Approving ${formatUsdc(stablecoinExecutionAmount)} USDC for the treasury executor...`)
+        setStablecoinExecutionMessage(
+          `Approving ${formatUsdc(stablecoinExecutionAmount)} USDC for the treasury executor...`,
+        )
         const approveHash = await writeContractAsync({
           abi: erc20ContractAbi,
           address: arcUsdcAddress,
@@ -1388,7 +1589,9 @@ export function TreasuryDashboard() {
 
         await publicClient.waitForTransactionReceipt({ hash: approveHash })
 
-        setStablecoinExecutionMessage(`Depositing ${formatUsdc(stablecoinExecutionAmount)} USDC into the treasury executor...`)
+        setStablecoinExecutionMessage(
+          `Depositing ${formatUsdc(stablecoinExecutionAmount)} USDC into the treasury executor...`,
+        )
         const topUpHash = await writeContractAsync({
           abi: treasuryExecutorContractAbi,
           address: activeExecutorAddress as Address,
@@ -1408,13 +1611,18 @@ export function TreasuryDashboard() {
           `Top-up confirmed. ${formatUsdc(stablecoinExecutionAmount)} USDC moved into the treasury executor.`,
         )
       } else {
-        setStablecoinExecutionMessage(`Withdrawing ${formatUsdc(stablecoinExecutionAmount)} USDC from the treasury executor...`)
+        setStablecoinExecutionMessage(
+          `Withdrawing ${formatUsdc(stablecoinExecutionAmount)} USDC from the treasury executor...`,
+        )
         const trimHash = await writeContractAsync({
           abi: treasuryExecutorContractAbi,
           address: activeExecutorAddress as Address,
           chainId: arcTestnet.id,
           functionName: 'executeTrim',
-          args: [(activeWalletAddress ?? activeExecutorAddress) as Address, amountUnits],
+          args: [
+            (activeWalletAddress ?? activeExecutorAddress) as Address,
+            amountUnits,
+          ],
         })
 
         await publicClient.waitForTransactionReceipt({ hash: trimHash })
@@ -1453,9 +1661,16 @@ export function TreasuryDashboard() {
     }
   }
 
-  async function deployExecutorForWallet(activeWalletAddress: Address): Promise<Address | null> {
-    if (!ownerAddress || activeWalletAddress.toLowerCase() !== ownerAddress.toLowerCase()) {
-      setExecutorDeployMessage('Only the live operator wallet should deploy TreasuryExecutor.')
+  async function deployExecutorForWallet(
+    activeWalletAddress: Address,
+  ): Promise<Address | null> {
+    if (
+      !ownerAddress ||
+      activeWalletAddress.toLowerCase() !== ownerAddress.toLowerCase()
+    ) {
+      setExecutorDeployMessage(
+        'Only the live operator wallet should deploy TreasuryExecutor.',
+      )
       return null
     }
 
@@ -1465,13 +1680,17 @@ export function TreasuryDashboard() {
     }
 
     if (executorAddress) {
-      setExecutorDeployMessage(`TreasuryExecutor already configured at ${truncateAddress(executorAddress)}.`)
+      setExecutorDeployMessage(
+        `TreasuryExecutor already configured at ${truncateAddress(executorAddress)}.`,
+      )
       return executorAddress as Address
     }
 
     try {
       setExecutorDeploymentInFlight(true)
-      setExecutorDeployMessage('Submitting TreasuryExecutor deployment transaction...')
+      setExecutorDeployMessage(
+        'Submitting TreasuryExecutor deployment transaction...',
+      )
 
       const txHash = await walletClient.deployContract({
         abi: treasuryExecutorContractAbi,
@@ -1481,14 +1700,20 @@ export function TreasuryDashboard() {
         args: [arcUsdcAddress],
       })
 
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash })
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+      })
       const deployedAddress = receipt.contractAddress
       if (!deployedAddress) {
-        throw new Error('Deployment transaction did not return a contract address.')
+        throw new Error(
+          'Deployment transaction did not return a contract address.',
+        )
       }
 
       setLocalExecutorAddress(deployedAddress)
-      setExecutorDeployMessage(`TreasuryExecutor deployed at ${deployedAddress}. Execution is now enabled in this browser.`)
+      setExecutorDeployMessage(
+        `TreasuryExecutor deployed at ${deployedAddress}. Execution is now enabled in this browser.`,
+      )
       pushActivity({
         title: 'TreasuryExecutor deployed',
         detail: `Contract deployed to ${truncateAddress(deployedAddress)} from the live operator wallet.`,
@@ -1511,7 +1736,8 @@ export function TreasuryDashboard() {
   }
 
   async function handleDeployExecutor(): Promise<Address | null> {
-    const demoExecutorAddress = '0x00000000000000000000000000000000deadbeef' as Address
+    const demoExecutorAddress =
+      '0x00000000000000000000000000000000deadbeef' as Address
 
     if (!liveOperatorAvailable) {
       setExecutorDeployMessage(
@@ -1529,7 +1755,9 @@ export function TreasuryDashboard() {
     let activeWalletAddress = address ?? null
 
     if (!isConnected) {
-      setExecutorDeployMessage('Connect the live operator wallet before deploying TreasuryExecutor.')
+      setExecutorDeployMessage(
+        'Connect the live operator wallet before deploying TreasuryExecutor.',
+      )
       activeWalletAddress = await handleConnect()
       if (!activeWalletAddress) {
         return null
@@ -1537,7 +1765,9 @@ export function TreasuryDashboard() {
     }
 
     if (!walletOnArc) {
-      setExecutorDeployMessage('Switch the wallet to Arc Testnet before deploying TreasuryExecutor.')
+      setExecutorDeployMessage(
+        'Switch the wallet to Arc Testnet before deploying TreasuryExecutor.',
+      )
       const switched = await handleSwitchChain()
       if (!switched) {
         return null
@@ -1554,9 +1784,12 @@ export function TreasuryDashboard() {
   async function handleRefreshCircleStatus() {
     try {
       await circleStatusQuery.refetch()
-      setCircleStatusMessage('Circle control plane refreshed from the live API.')
+      setCircleStatusMessage(
+        'Circle control plane refreshed from the live API.',
+      )
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Circle refresh error.'
+      const message =
+        error instanceof Error ? error.message : 'Unknown Circle refresh error.'
       setCircleStatusMessage(`Circle control plane refresh failed: ${message}`)
     }
   }
@@ -1572,7 +1805,8 @@ export function TreasuryDashboard() {
         )
         pushActivity({
           title: 'Circle wallet simulated',
-          detail: 'Public demo mode staged a local Circle wallet set for the dashboard preview.',
+          detail:
+            'Public demo mode staged a local Circle wallet set for the dashboard preview.',
           tone: 'success',
         })
         void circleStatusQuery.refetch().catch(() => undefined)
@@ -1581,17 +1815,37 @@ export function TreasuryDashboard() {
 
       setCircleCreateMessage('Submitting Circle wallet creation request...')
 
+      const requestId = crypto.randomUUID()
+      const timestamp = Date.now()
+      const walletRequest = {
+        accountType: 'EOA' as const,
+        blockchain: 'ARC-TESTNET' as const,
+        walletName: 'Arc Treasury Operator',
+        walletSetId: circleWalletSetId ?? null,
+        walletSetName: 'Arc Treasury Control Plane',
+      }
+      const signature = await signMessageAsync({
+        message: buildLiveExecutionMessage({
+          kind: 'create_circle_wallet',
+          operatorAddress: address ?? '',
+          origin: window.location.origin,
+          payloadHash: hashLiveExecutionPayload(walletRequest),
+          requestId,
+          timestamp,
+        }),
+      })
+
       const response = await fetch('/api/circle/wallets', {
         body: JSON.stringify({
-          accountType: 'EOA',
-          blockchain: 'ARC-TESTNET',
-          walletName: 'Arc Treasury Operator',
-          walletSetId: circleWalletSetId,
-          walletSetName: 'Arc Treasury Control Plane',
+          ...walletRequest,
+          operatorAddress: address,
+          requestId,
+          timestamp,
         }),
         cache: 'no-store',
         headers: {
           'content-type': 'application/json',
+          'x-operator-signature': signature,
         },
         method: 'POST',
       })
@@ -1604,15 +1858,21 @@ export function TreasuryDashboard() {
       }
 
       if (!response.ok) {
-        const missing = payload.missing?.length ? ` Missing: ${payload.missing.join(', ')}.` : ''
-        throw new Error(`${payload.error ?? `Circle wallet creation failed with ${response.status}.`}${missing}`)
+        const missing = payload.missing?.length
+          ? ` Missing: ${payload.missing.join(', ')}.`
+          : ''
+        throw new Error(
+          `${payload.error ?? `Circle wallet creation failed with ${response.status}.`}${missing}`,
+        )
       }
 
       if (payload.walletSetId) {
         setLocalCircleWalletSetId(payload.walletSetId)
       }
 
-      const walletLabel = payload.wallets?.[0]?.address ? truncateAddress(payload.wallets[0].address) : 'created'
+      const walletLabel = payload.wallets?.[0]?.address
+        ? truncateAddress(payload.wallets[0].address)
+        : 'created'
       setCircleCreateMessage(
         `Circle wallet ${walletLabel} is ready${payload.walletSetId ? ` in wallet set ${truncateAddress(payload.walletSetId, 8, 6)}` : ''}.`,
       )
@@ -1625,7 +1885,10 @@ export function TreasuryDashboard() {
       })
       await circleStatusQuery.refetch()
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Circle wallet creation error.'
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown Circle wallet creation error.'
       setCircleCreateMessage(`Circle wallet creation failed: ${message}`)
       pushActivity({
         title: 'Circle developer wallet failed',
@@ -1637,26 +1900,58 @@ export function TreasuryDashboard() {
     }
   }
 
-  async function handleWakeArcAgent(options?: { runBrief?: boolean }): Promise<ArcAgentActivationResult | null> {
+  async function handleWakeArcAgent(options?: {
+    runBrief?: boolean
+  }): Promise<ArcAgentActivationResult | null> {
     try {
       setArcAgentWakeInFlight(true)
-      setArcAgentWakeMessage('Submitting a fresh reputation and validation round from the dashboard...')
+      setArcAgentWakeMessage(
+        'Submitting a fresh reputation and validation round from the dashboard...',
+      )
+
+      const requestId = crypto.randomUUID()
+      const timestamp = Date.now()
+      const signature = await signMessageAsync({
+        message: buildLiveExecutionMessage({
+          kind: 'activate_agent',
+          operatorAddress: address ?? '',
+          origin: window.location.origin,
+          requestId,
+          timestamp,
+        }),
+      })
 
       const response = await fetch('/api/arc-agent/activate', {
+        body: JSON.stringify({
+          operatorAddress: address,
+          requestId,
+          timestamp,
+        }),
         cache: 'no-store',
+        headers: {
+          'content-type': 'application/json',
+          'x-operator-signature': signature,
+        },
         method: 'POST',
       })
 
-      const payload = (await response.json().catch(() => ({}))) as Partial<ArcAgentActivationResult> & {
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as Partial<ArcAgentActivationResult> & {
         error?: string
       }
 
       if (!response.ok) {
-        throw new Error(payload.error ?? `Arc agent activation failed with ${response.status}.`)
+        throw new Error(
+          payload.error ??
+            `Arc agent activation failed with ${response.status}.`,
+        )
       }
 
       if (!payload.requestHash || !payload.validationStatus) {
-        throw new Error('Arc agent activation did not return the expected onchain state.')
+        throw new Error(
+          'Arc agent activation did not return the expected onchain state.',
+        )
       }
 
       const activation = payload as ArcAgentActivationResult
@@ -1672,13 +1967,19 @@ export function TreasuryDashboard() {
         )} submitted for agent ${activation.agentId}.`,
         tone: 'success',
       })
-      await Promise.all([arcAgentOwnerQuery.refetch(), arcAgentTokenUriQuery.refetch()])
+      await Promise.all([
+        arcAgentOwnerQuery.refetch(),
+        arcAgentTokenUriQuery.refetch(),
+      ])
       if (options?.runBrief !== false) {
         await handleRunArcAgentBrief(activation.requestHash)
       }
       return activation
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Arc agent activation error.'
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown Arc agent activation error.'
       setArcAgentWakeMessage(`Activation failed: ${message}`)
       pushActivity({
         title: 'Arc agent activation failed',
@@ -1694,29 +1995,42 @@ export function TreasuryDashboard() {
   async function handleRunArcAgentBrief(requestHash?: `0x${string}`) {
     try {
       setArcAgentBriefInFlight(true)
-      setArcAgentBriefMessage('Loading a live operational brief from Arc Testnet...')
+      setArcAgentBriefMessage(
+        'Loading a live operational brief from Arc Testnet...',
+      )
 
       const params = new URLSearchParams()
-      const activeRequestHash = requestHash ?? activeArcAgentValidationRequestHash
+      const activeRequestHash =
+        requestHash ?? activeArcAgentValidationRequestHash
 
       if (activeRequestHash) {
         params.set('requestHash', activeRequestHash)
       }
 
-      const response = await fetch(`/api/arc-agent/brief${params.toString() ? `?${params.toString()}` : ''}`, {
-        cache: 'no-store',
-      })
+      const response = await fetch(
+        `/api/arc-agent/brief${params.toString() ? `?${params.toString()}` : ''}`,
+        {
+          cache: 'no-store',
+        },
+      )
 
-      const payload = (await response.json().catch(() => ({}))) as Partial<ArcAgentBriefResult> & {
+      const payload = (await response
+        .json()
+        .catch(() => ({}))) as Partial<ArcAgentBriefResult> & {
         error?: string
       }
 
       if (!response.ok) {
-        throw new Error(payload.error ?? `Arc agent brief request failed with ${response.status}.`)
+        throw new Error(
+          payload.error ??
+            `Arc agent brief request failed with ${response.status}.`,
+        )
       }
 
       if (!payload.recommendation || !payload.validationStatus) {
-        throw new Error('Arc agent brief did not return the expected operational state.')
+        throw new Error(
+          'Arc agent brief did not return the expected operational state.',
+        )
       }
 
       const brief = payload as ArcAgentBriefResult
@@ -1731,7 +2045,10 @@ export function TreasuryDashboard() {
       })
       return brief
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown Arc agent brief error.'
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown Arc agent brief error.'
       setArcAgentBriefMessage(`Brief failed: ${message}`)
       pushActivity({
         title: 'Arc agent brief failed',
@@ -1744,12 +2061,16 @@ export function TreasuryDashboard() {
     }
   }
 
-  async function handleActOnArcAgentBrief(briefOverride?: ArcAgentBriefResult | null): Promise<boolean> {
+  async function handleActOnArcAgentBrief(
+    briefOverride?: ArcAgentBriefResult | null,
+  ): Promise<boolean> {
     const activeBrief = briefOverride ?? lastArcAgentBrief
     const recommendation = activeBrief?.recommendation.action
 
     if (!recommendation) {
-      setArcAgentBriefMessage('Run a brief first so the dashboard can determine the next action.')
+      setArcAgentBriefMessage(
+        'Run a brief first so the dashboard can determine the next action.',
+      )
       return false
     }
 
@@ -1758,7 +2079,9 @@ export function TreasuryDashboard() {
     }
 
     if (recommendation === 'hold') {
-      setArcAgentBriefMessage('The agent recommends holding. The site is already inside the policy band.')
+      setArcAgentBriefMessage(
+        'The agent recommends holding. The site is already inside the policy band.',
+      )
       pushActivity({
         title: 'Arc agent brief held',
         detail: 'No execution was needed after the takeover cycle.',
@@ -1803,15 +2126,21 @@ export function TreasuryDashboard() {
       return true
     }
 
-    setArcAgentBriefMessage(`Recommendation ${recommendation} is not mapped to an executable action yet.`)
+    setArcAgentBriefMessage(
+      `Recommendation ${recommendation} is not mapped to an executable action yet.`,
+    )
     return false
   }
 
-  async function handleActOnArcAgentBriefInDemo(brief: ArcAgentBriefResult): Promise<boolean> {
+  async function handleActOnArcAgentBriefInDemo(
+    brief: ArcAgentBriefResult,
+  ): Promise<boolean> {
     const recommendation = brief.recommendation.action
 
     if (recommendation === 'hold') {
-      setArcAgentBriefMessage('Public demo mode: the agent recommends holding, and the preview stays in band.')
+      setArcAgentBriefMessage(
+        'Public demo mode: the agent recommends holding, and the preview stays in band.',
+      )
       pushActivity({
         title: 'Arc agent brief held',
         detail: 'Public demo mode did not need to move any funds.',
@@ -1839,7 +2168,10 @@ export function TreasuryDashboard() {
         `Public demo mode: ${formatArcAgentRecommendationAction(recommendation)} simulated locally.`,
       )
       pushActivity({
-        title: recommendation === 'top_up' ? 'Stablecoin top-up simulated' : 'Stablecoin trim simulated',
+        title:
+          recommendation === 'top_up'
+            ? 'Stablecoin top-up simulated'
+            : 'Stablecoin trim simulated',
         detail: `Public demo mode adjusted the treasury preview by ${formatUsdc(stablecoinExecutionAmount)} USDC.`,
         tone: 'success',
       })
@@ -1869,7 +2201,9 @@ export function TreasuryDashboard() {
       return true
     }
 
-    setArcAgentBriefMessage(`Public demo mode: recommendation ${recommendation} is not mapped yet.`)
+    setArcAgentBriefMessage(
+      `Public demo mode: recommendation ${recommendation} is not mapped yet.`,
+    )
     return false
   }
 
@@ -1896,12 +2230,16 @@ export function TreasuryDashboard() {
           setAgentTakeoverMessage('Switching the wallet to Arc Testnet...')
           const switched = await handleSwitchChain()
           if (!switched) {
-            setAgentTakeoverMessage('Takeover blocked: switch the wallet to Arc Testnet first.')
+            setAgentTakeoverMessage(
+              'Takeover blocked: switch the wallet to Arc Testnet first.',
+            )
             return
           }
         }
       } else {
-        setAgentTakeoverMessage('Public demo mode: running the takeover cycle without a live wallet.')
+        setAgentTakeoverMessage(
+          'Public demo mode: running the takeover cycle without a live wallet.',
+        )
       }
 
       setAgentTakeoverMessage('Refreshing Circle status and policy band...')
@@ -1924,10 +2262,14 @@ export function TreasuryDashboard() {
         return
       }
 
-      setAgentTakeoverMessage(`Acting on ${formatArcAgentRecommendationAction(brief.recommendation.action)}...`)
+      setAgentTakeoverMessage(
+        `Acting on ${formatArcAgentRecommendationAction(brief.recommendation.action)}...`,
+      )
       const executed = await handleActOnArcAgentBrief(brief)
       if (!executed) {
-        setAgentTakeoverMessage(`Takeover paused: ${brief.recommendation.headline}`)
+        setAgentTakeoverMessage(
+          `Takeover paused: ${brief.recommendation.headline}`,
+        )
         return
       }
 
@@ -1940,7 +2282,8 @@ export function TreasuryDashboard() {
         tone: 'success',
       })
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown takeover error.'
+      const message =
+        error instanceof Error ? error.message : 'Unknown takeover error.'
       setAgentTakeoverMessage(`Takeover failed: ${message}`)
       pushActivity({
         title: 'Agent takeover failed',
@@ -1963,53 +2306,66 @@ export function TreasuryDashboard() {
             ? 'Public demo mode'
             : 'Awaiting wallet'
   const usingDemoPolicy = demoPolicy !== null
-  const policySyncBadge =
-    usingDemoPolicy
-      ? 'Synced in demo'
-      : chainPolicy && policiesEqual(draftPolicy, chainPolicy)
-        ? 'Synced with chain'
-        : chainPolicy
-          ? 'Draft differs'
-          : 'Draft only'
+  const policySyncBadge = usingDemoPolicy
+    ? 'Synced in demo'
+    : chainPolicy && policiesEqual(draftPolicy, chainPolicy)
+      ? 'Synced with chain'
+      : chainPolicy
+        ? 'Draft differs'
+        : 'Draft only'
   const policySyncVariant = usingDemoPolicy
     ? 'outline'
     : chainPolicy
-      ? (policiesEqual(draftPolicy, chainPolicy) ? 'success' : 'warning')
+      ? policiesEqual(draftPolicy, chainPolicy)
+        ? 'success'
+        : 'warning'
       : 'outline'
   const policyCardTitle = usingDemoPolicy
     ? 'Demo policy preview'
     : chainPolicy
       ? 'Current policy from chain'
       : 'Current policy unavailable'
-  const policyCardDescription =
-    usingDemoPolicy
-      ? 'Public demo mode is showing a local preview of the policy band.'
-      : treasuryPolicyAddressConfig.status === 'configured'
-        ? 'Read the deployed TreasuryPolicy contract on Arc Testnet.'
-        : 'Set TREASURY_POLICY_ADDRESS to read the deployed TreasuryPolicy contract.'
+  const policyCardDescription = usingDemoPolicy
+    ? 'Public demo mode is showing a local preview of the policy band.'
+    : treasuryPolicyAddressConfig.status === 'configured'
+      ? 'Read the deployed TreasuryPolicy contract on Arc Testnet.'
+      : 'Set TREASURY_POLICY_ADDRESS to read the deployed TreasuryPolicy contract.'
   const contractAddressLabel =
     treasuryPolicyAddressConfig.status === 'configured'
       ? truncateAddress(contractAddress ?? '')
       : treasuryPolicyAddressConfig.status === 'invalid'
         ? 'Invalid contract address'
         : 'Contract address missing'
-  const ownerLabel = ownerAddress ? truncateAddress(ownerAddress) : 'Loading owner'
+  const ownerLabel = ownerAddress
+    ? truncateAddress(ownerAddress)
+    : 'Loading owner'
   const latestEvent = latestPolicyEventQuery.data
-  const latestEventLabel = latestEvent ? `Block ${latestEvent.blockNumber?.toString() ?? 'unknown'}` : 'No update event yet'
+  const latestEventLabel = latestEvent
+    ? `Block ${latestEvent.blockNumber?.toString() ?? 'unknown'}`
+    : 'No update event yet'
   const circleControlPlane = circleStatusQuery.data
   const circleReadiness = circleControlPlane?.readiness
   const circleLiveWallets = circleControlPlane?.wallets ?? []
   const circleGatewayInfo = circleControlPlane?.gatewayInfo
   const circleGatewayBalances = circleControlPlane?.gatewayBalances
-  const circleLiveWalletSetId = circleControlPlane?.config?.walletSetId ?? circleWalletSetId
+  const circleLiveWalletSetId =
+    circleControlPlane?.config?.walletSetId ?? circleWalletSetId
   const circleGatewayDomainCount = circleGatewayInfo?.domains?.length ?? 0
-  const circleApiReady = Boolean(circleReadiness?.apiKeyConfigured && circleReadiness?.entitySecretConfigured)
-  const circleWalletReady = Boolean(circleLiveWalletSetId && circleLiveWallets.length > 0)
+  const circleApiReady = Boolean(
+    circleReadiness?.apiKeyConfigured &&
+    circleReadiness?.entitySecretConfigured,
+  )
+  const circleWalletReady = Boolean(
+    circleLiveWalletSetId && circleLiveWallets.length > 0,
+  )
   const circleGatewayReady = Boolean(circleGatewayInfo?.version)
-  const circleGatewayBalanceLabel = circleGatewayBalances?.balances?.[0]?.balance
+  const circleGatewayBalanceLabel = circleGatewayBalances?.balances?.[0]
+    ?.balance
     ? `${circleGatewayBalances.balances[0].balance} USDC`
     : 'No Gateway balance returned yet'
-  const agentTakeoverReady = Boolean(contractAddress && circleApiReady && currentPolicy)
+  const agentTakeoverReady = Boolean(
+    contractAddress && circleApiReady && currentPolicy,
+  )
   const agentTakeoverStatusLabel = !contractAddress
     ? 'Policy missing'
     : !circleApiReady
@@ -2031,98 +2387,145 @@ export function TreasuryDashboard() {
       <div className="sticky top-4 z-20">
         <div className="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 lg:px-8">
           <div className="rounded-3xl border border-white/10 bg-background/90 p-4 shadow-[0_20px_60px_-32px_rgba(15,23,42,0.85)] backdrop-blur">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Quick actions</div>
-              <div className="mt-1 text-sm text-muted-foreground">
-                Visitors can start in verified public demo mode. Connect an operator wallet only if you want live signing.
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Quick actions
+                </div>
+                <div className="mt-1 text-sm text-muted-foreground">
+                  Visitors can start in verified public demo mode. Connect an
+                  operator wallet only if you want live signing.
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-foreground"
+                >
+                  {projectTrailSummary.buildLabel}
+                </Badge>
+                <Badge variant={publicDemoMode ? 'success' : 'outline'}>
+                  {publicDemoMode ? 'Public demo' : 'Wallet ready'}
+                </Badge>
+                <Badge
+                  variant={
+                    walletOnArc || publicDemoMode ? 'success' : 'warning'
+                  }
+                >
+                  {walletOnArc
+                    ? 'Arc Testnet'
+                    : publicDemoMode
+                      ? 'Wallet optional'
+                      : 'Switch needed'}
+                </Badge>
+                <Badge variant={executorAddress ? 'success' : 'warning'}>
+                  {executorAddress
+                    ? 'Executor ready'
+                    : publicDemoMode
+                      ? 'Demo executor'
+                      : 'Executor missing'}
+                </Badge>
+                <Badge
+                  variant={
+                    stablecoinRobotExecutionReady || publicDemoMode
+                      ? 'success'
+                      : 'warning'
+                  }
+                >
+                  {stablecoinRobotExecutionReady
+                    ? 'Execution ready'
+                    : publicDemoMode
+                      ? 'Demo execution ready'
+                      : 'Execution blocked'}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-foreground"
+                >
+                  Last reviewed {projectTrailSummary.lastReviewed}
+                </Badge>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                {projectTrailSummary.buildLabel}
-              </Badge>
-              <Badge variant={publicDemoMode ? 'success' : 'outline'}>{publicDemoMode ? 'Public demo' : 'Wallet ready'}</Badge>
-              <Badge variant={walletOnArc || publicDemoMode ? 'success' : 'warning'}>
-                {walletOnArc ? 'Arc Testnet' : publicDemoMode ? 'Wallet optional' : 'Switch needed'}
-              </Badge>
-              <Badge variant={executorAddress ? 'success' : 'warning'}>
-                {executorAddress ? 'Executor ready' : publicDemoMode ? 'Demo executor' : 'Executor missing'}
-              </Badge>
-              <Badge variant={stablecoinRobotExecutionReady || publicDemoMode ? 'success' : 'warning'}>
-                {stablecoinRobotExecutionReady
-                  ? 'Execution ready'
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => void handleRunAgentTakeover()}
+                disabled={agentTakeoverInFlight}
+              >
+                <Bot className="h-4 w-4" />
+                {agentTakeoverInFlight
+                  ? 'Taking over…'
                   : publicDemoMode
-                    ? 'Demo execution ready'
-                    : 'Execution blocked'}
-              </Badge>
-              <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
-                Last reviewed {projectTrailSummary.lastReviewed}
-              </Badge>
+                    ? 'Run public demo'
+                    : 'Run takeover cycle'}
+              </Button>
+              {!isConnected ? (
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => void handleConnect()}
+                  disabled={isConnecting}
+                >
+                  <Wallet className="h-4 w-4" />
+                  {isConnecting ? 'Connecting…' : 'Connect operator wallet'}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="w-full"
+                  variant="secondary"
+                  onClick={handleDisconnect}
+                >
+                  Disconnect
+                </Button>
+              )}
+              <Button
+                type="button"
+                className="w-full"
+                variant="outline"
+                onClick={() => void handleSwitchChain()}
+                disabled={!isConnected || isSwitching}
+              >
+                <RefreshCcw className="h-4 w-4" />
+                {isSwitching ? 'Switching…' : 'Switch to Arc Testnet'}
+              </Button>
+              {!executorAddress ? (
+                <Button
+                  type="button"
+                  className="w-full"
+                  variant="secondary"
+                  onClick={() => void handleDeployExecutor()}
+                  disabled={executorDeploymentInFlight}
+                >
+                  <FileText className="h-4 w-4" />
+                  {executorDeploymentInFlight
+                    ? 'Deploying…'
+                    : 'Deploy executor'}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  className="w-full"
+                  variant="secondary"
+                  onClick={() => void handleDeployExecutor()}
+                  disabled={executorDeploymentInFlight}
+                >
+                  <FileText className="h-4 w-4" />
+                  {executorDeploymentInFlight
+                    ? 'Deploying…'
+                    : 'Recheck executor'}
+                </Button>
+              )}
+              <Button className="w-full" variant="outline" asChild>
+                <Link href="/operator">
+                  <ExternalLink className="h-4 w-4" />
+                  Open operator brief
+                </Link>
+              </Button>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => void handleRunAgentTakeover()}
-              disabled={agentTakeoverInFlight}
-            >
-              <Bot className="h-4 w-4" />
-              {agentTakeoverInFlight ? 'Taking over…' : publicDemoMode ? 'Run public demo' : 'Run takeover cycle'}
-            </Button>
-            {!isConnected ? (
-              <Button type="button" className="w-full" onClick={() => void handleConnect()} disabled={isConnecting}>
-                <Wallet className="h-4 w-4" />
-                {isConnecting ? 'Connecting…' : 'Connect operator wallet'}
-              </Button>
-            ) : (
-              <Button type="button" className="w-full" variant="secondary" onClick={handleDisconnect}>
-                Disconnect
-              </Button>
-            )}
-            <Button
-              type="button"
-              className="w-full"
-              variant="outline"
-              onClick={() => void handleSwitchChain()}
-              disabled={!isConnected || isSwitching}
-            >
-              <RefreshCcw className="h-4 w-4" />
-              {isSwitching ? 'Switching…' : 'Switch to Arc Testnet'}
-            </Button>
-            {!executorAddress ? (
-              <Button
-                type="button"
-                className="w-full"
-                variant="secondary"
-                onClick={() => void handleDeployExecutor()}
-                disabled={executorDeploymentInFlight}
-              >
-                <FileText className="h-4 w-4" />
-                {executorDeploymentInFlight ? 'Deploying…' : 'Deploy executor'}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                className="w-full"
-                variant="secondary"
-                onClick={() => void handleDeployExecutor()}
-                disabled={executorDeploymentInFlight}
-              >
-                <FileText className="h-4 w-4" />
-                {executorDeploymentInFlight ? 'Deploying…' : 'Recheck executor'}
-              </Button>
-            )}
-            <Button className="w-full" variant="outline" asChild>
-              <Link href="/operator">
-                <ExternalLink className="h-4 w-4" />
-                Open operator brief
-              </Link>
-            </Button>
-          </div>
         </div>
-      </div>
       </div>
 
       <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-8 sm:px-6 lg:px-8">
@@ -2139,9 +2542,13 @@ export function TreasuryDashboard() {
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={agentTakeoverReady ? 'success' : 'warning'}>{agentTakeoverStatusLabel}</Badge>
+                <Badge variant={agentTakeoverReady ? 'success' : 'warning'}>
+                  {agentTakeoverStatusLabel}
+                </Badge>
                 <Badge variant="outline">
-                  {lastAgentTakeoverAt ? `Last run ${formatTimestamp(lastAgentTakeoverAt)}` : 'No takeover run yet'}
+                  {lastAgentTakeoverAt
+                    ? `Last run ${formatTimestamp(lastAgentTakeoverAt)}`
+                    : 'No takeover run yet'}
                 </Badge>
                 <Badge variant={circleApiReady ? 'success' : 'warning'}>
                   {circleApiReady ? 'Circle ready' : 'Circle incomplete'}
@@ -2152,7 +2559,9 @@ export function TreasuryDashboard() {
               </div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Wallet</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Wallet
+                  </div>
                   <div className="mt-2 text-foreground">
                     {isConnected
                       ? truncateAddress(address ?? '')
@@ -2160,20 +2569,40 @@ export function TreasuryDashboard() {
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Network</div>
-                  <div className="mt-2 text-foreground">{walletOnArc || publicDemoMode ? 'Arc Testnet' : 'Switch required'}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Network
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {walletOnArc || publicDemoMode
+                      ? 'Arc Testnet'
+                      : 'Switch required'}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Policy</div>
-                  <div className="mt-2 text-foreground">{contractAddress ? 'Loaded' : 'Missing'}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Policy
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {contractAddress ? 'Loaded' : 'Missing'}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Circle</div>
-                  <div className="mt-2 text-foreground">{circleApiReady || publicDemoMode ? 'Ready' : 'Incomplete'}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Circle
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {circleApiReady || publicDemoMode ? 'Ready' : 'Incomplete'}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Executor</div>
-                  <div className="mt-2 text-foreground">{executorAddress || publicDemoMode ? 'Live or demo ready' : 'Deploy or simulate'}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Executor
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {executorAddress || publicDemoMode
+                      ? 'Live or demo ready'
+                      : 'Deploy or simulate'}
+                  </div>
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
@@ -2186,13 +2615,27 @@ export function TreasuryDashboard() {
                   disabled={agentTakeoverInFlight}
                 >
                   <Bot className="h-4 w-4" />
-                  {agentTakeoverInFlight ? 'Taking over…' : publicDemoMode ? 'Run public demo' : 'Run takeover cycle'}
+                  {agentTakeoverInFlight
+                    ? 'Taking over…'
+                    : publicDemoMode
+                      ? 'Run public demo'
+                      : 'Run takeover cycle'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => void handleWakeArcAgent()} disabled={arcAgentWakeInFlight}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handleWakeArcAgent()}
+                  disabled={arcAgentWakeInFlight}
+                >
                   <RefreshCcw className="h-4 w-4" />
                   {arcAgentWakeInFlight ? 'Waking…' : 'Wake agent'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => void handleRunArcAgentBrief()} disabled={arcAgentBriefInFlight}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void handleRunArcAgentBrief()}
+                  disabled={arcAgentBriefInFlight}
+                >
                   <FileText className="h-4 w-4" />
                   {arcAgentBriefInFlight ? 'Briefing…' : 'Run brief'}
                 </Button>
@@ -2214,29 +2657,41 @@ export function TreasuryDashboard() {
           <Card className="lg:col-span-12 border-primary/20 bg-primary/5">
             <CardHeader className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-primary/25 bg-primary/10 text-primary">
+                <Badge
+                  variant="outline"
+                  className="border-primary/25 bg-primary/10 text-primary"
+                >
                   Public demo first
                 </Badge>
                 <Badge variant="outline">Builder evidence</Badge>
               </div>
-              <CardTitle className="text-lg">Start with the demo path</CardTitle>
+              <CardTitle className="text-lg">
+                Start with the demo path
+              </CardTitle>
               <CardDescription>
-                Visitors should begin in public demo mode, then inspect the brief and evidence before they ever touch
-                live signing.
+                Visitors should begin in public demo mode, then inspect the
+                brief and evidence before they ever touch live signing.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid gap-4 md:grid-cols-3">
                 {publicLaunchPath.map((item) => (
-                  <div key={item.step} className="rounded-3xl border border-white/10 bg-background/50 p-5">
+                  <div
+                    key={item.step}
+                    className="rounded-3xl border border-white/10 bg-background/50 p-5"
+                  >
                     <div className="flex items-center justify-between gap-4">
-                      <span className="font-display text-3xl font-semibold tracking-tight text-primary">{item.step}</span>
+                      <span className="font-display text-3xl font-semibold tracking-tight text-primary">
+                        {item.step}
+                      </span>
                       <div className="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent" />
                     </div>
                     <div className="mt-4 font-display text-xl font-semibold tracking-tight text-foreground">
                       {item.title}
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.description}</p>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                      {item.description}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -2245,7 +2700,12 @@ export function TreasuryDashboard() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => loadPublicDemoScenario(publicDemoPreviewBalance, 'Verified sample')}
+                  onClick={() =>
+                    loadPublicDemoScenario(
+                      publicDemoPreviewBalance,
+                      'Verified sample',
+                    )
+                  }
                 >
                   Verified sample
                 </Button>
@@ -2253,7 +2713,10 @@ export function TreasuryDashboard() {
                   type="button"
                   variant="outline"
                   onClick={() =>
-                    loadPublicDemoScenario(Math.max(0, currentPolicy.minThreshold - 25), 'Below-minimum scenario')
+                    loadPublicDemoScenario(
+                      Math.max(0, currentPolicy.minThreshold - 25),
+                      'Below-minimum scenario',
+                    )
                   }
                 >
                   Below minimum
@@ -2261,7 +2724,12 @@ export function TreasuryDashboard() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => loadPublicDemoScenario(currentPolicy.targetBalance, 'At-target scenario')}
+                  onClick={() =>
+                    loadPublicDemoScenario(
+                      currentPolicy.targetBalance,
+                      'At-target scenario',
+                    )
+                  }
                 >
                   At target
                 </Button>
@@ -2270,7 +2738,8 @@ export function TreasuryDashboard() {
                   variant="outline"
                   onClick={() =>
                     loadPublicDemoScenario(
-                      currentPolicy.targetBalance + currentPolicy.maxRebalanceAmount,
+                      currentPolicy.targetBalance +
+                        currentPolicy.maxRebalanceAmount,
                       'Above-target scenario',
                     )
                   }
@@ -2288,8 +2757,12 @@ export function TreasuryDashboard() {
                     target="_blank"
                     rel="noreferrer"
                   >
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{link.label}</div>
-                    <div className="mt-2 break-all text-sm text-foreground">{link.value}</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      {link.label}
+                    </div>
+                    <div className="mt-2 break-all text-sm text-foreground">
+                      {link.value}
+                    </div>
                     <div className="mt-2 inline-flex items-center gap-1 text-xs text-primary">
                       Open
                       <ExternalLink className="h-3.5 w-3.5" />
@@ -2303,29 +2776,48 @@ export function TreasuryDashboard() {
           <Card className="lg:col-span-12 border-white/10 bg-card/85">
             <CardHeader className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                <Badge
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-foreground"
+                >
                   Proof notes
                 </Badge>
-                <Badge variant="outline" className="border-white/15 bg-white/5 text-foreground">
+                <Badge
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-foreground"
+                >
                   Hand-edited
                 </Badge>
               </div>
-              <CardTitle className="text-lg">What I am leaving visible while the proof is still being reviewed</CardTitle>
+              <CardTitle className="text-lg">
+                What I am leaving visible while the proof is still being
+                reviewed
+              </CardTitle>
               <CardDescription>
-                Short notes from the current pass. They are intentionally plain so the review trail stays readable.
+                Short notes from the current pass. They are intentionally plain
+                so the review trail stays readable.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-3 md:grid-cols-3">
                 {workingNotes.map((note) => (
-                  <div key={note.label} className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{note.label}</div>
-                    <div className="mt-2 text-sm leading-6 text-foreground">{note.value}</div>
+                  <div
+                    key={note.label}
+                    className="rounded-2xl border border-white/10 bg-background/50 p-4"
+                  >
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      {note.label}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-foreground">
+                      {note.value}
+                    </div>
                   </div>
                 ))}
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Why the page reads this way</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Why the page reads this way
+                </div>
                 <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
                   {buildTrailNotes.map((note) => (
                     <li key={note}>• {note}</li>
@@ -2338,28 +2830,56 @@ export function TreasuryDashboard() {
           <Card className="lg:col-span-4">
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
-                <CardDescription>{publicDemoMode ? 'Visitor access' : 'Connected wallet'}</CardDescription>
+                <CardDescription>
+                  {publicDemoMode ? 'Visitor access' : 'Connected wallet'}
+                </CardDescription>
                 <CardTitle className="mt-1 text-lg">{walletSummary}</CardTitle>
               </div>
               <Wallet className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={isConnected ? 'success' : 'outline'}>{isConnected ? 'Connected' : 'Disconnected'}</Badge>
-                <Badge variant={walletOnArc ? 'success' : 'warning'}>
-                  {isConnected ? (walletOnArc ? 'Arc Testnet' : 'Switch needed') : 'No wallet'}
+                <Badge variant={isConnected ? 'success' : 'outline'}>
+                  {isConnected ? 'Connected' : 'Disconnected'}
                 </Badge>
-                <Badge variant={connectedWalletIsOwner ? 'success' : ownerAddress ? 'warning' : 'outline'}>
-                  {ownerAddress ? (connectedWalletIsOwner ? 'Live operator' : 'Public demo') : 'Operator loading'}
+                <Badge variant={walletOnArc ? 'success' : 'warning'}>
+                  {isConnected
+                    ? walletOnArc
+                      ? 'Arc Testnet'
+                      : 'Switch needed'
+                    : 'No wallet'}
+                </Badge>
+                <Badge
+                  variant={
+                    connectedWalletIsOwner
+                      ? 'success'
+                      : ownerAddress
+                        ? 'warning'
+                        : 'outline'
+                  }
+                >
+                  {ownerAddress
+                    ? connectedWalletIsOwner
+                      ? 'Live operator'
+                      : 'Public demo'
+                    : 'Operator loading'}
                 </Badge>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Wallet balance</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Wallet balance
+                </div>
                 <div className="mt-2 text-foreground">
-                  {walletBalanceQuery.data ? `${formatUsdc(Number(walletBalanceQuery.data.formatted ?? 0))} USDC` : 'Public demo mode'}
+                  {walletBalanceQuery.data
+                    ? `${formatUsdc(Number(walletBalanceQuery.data.formatted ?? 0))} USDC`
+                    : 'Public demo mode'}
                 </div>
               </div>
-              <div>{isConnected ? `Active account ${address}` : 'No wallet is required to explore the public demo.'}</div>
+              <div>
+                {isConnected
+                  ? `Active account ${address}`
+                  : 'No wallet is required to explore the public demo.'}
+              </div>
             </CardContent>
           </Card>
 
@@ -2367,37 +2887,53 @@ export function TreasuryDashboard() {
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>{policyCardTitle}</CardDescription>
-                <CardTitle className="mt-1 text-lg">{policySyncBadge}</CardTitle>
+                <CardTitle className="mt-1 text-lg">
+                  {policySyncBadge}
+                </CardTitle>
               </div>
               <FileText className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid gap-3 text-sm sm:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Min</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Min
+                  </div>
                   <div className="mt-2 text-foreground">
-                    {chainPolicy ? `${formatUsdc(chainPolicy.minThreshold)} USDC` : '—'}
+                    {chainPolicy
+                      ? `${formatUsdc(chainPolicy.minThreshold)} USDC`
+                      : '—'}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Target
+                  </div>
                   <div className="mt-2 text-foreground">
-                    {chainPolicy ? `${formatUsdc(chainPolicy.targetBalance)} USDC` : '—'}
+                    {chainPolicy
+                      ? `${formatUsdc(chainPolicy.targetBalance)} USDC`
+                      : '—'}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Max
+                  </div>
                   <div className="mt-2 text-foreground">
-                    {chainPolicy ? `${formatUsdc(chainPolicy.maxRebalanceAmount)} USDC` : '—'}
+                    {chainPolicy
+                      ? `${formatUsdc(chainPolicy.maxRebalanceAmount)} USDC`
+                      : '—'}
                   </div>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                 <Badge variant={policySyncVariant}>{policySyncBadge}</Badge>
                 <span>Contract {contractAddressLabel}</span>
-                    <span>Onchain owner {ownerLabel}</span>
+                <span>Onchain owner {ownerLabel}</span>
               </div>
-              <div className="text-sm text-muted-foreground">{policyCardDescription}</div>
+              <div className="text-sm text-muted-foreground">
+                {policyCardDescription}
+              </div>
             </CardContent>
           </Card>
 
@@ -2405,7 +2941,9 @@ export function TreasuryDashboard() {
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Latest PolicyUpdated event</CardDescription>
-                <CardTitle className="mt-1 text-lg">{latestEventLabel}</CardTitle>
+                <CardTitle className="mt-1 text-lg">
+                  {latestEventLabel}
+                </CardTitle>
               </div>
               <Activity className="h-5 w-5 text-primary" />
             </CardHeader>
@@ -2414,31 +2952,58 @@ export function TreasuryDashboard() {
                 <>
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="success">Latest</Badge>
-                    <Badge variant="outline">Onchain owner {truncateAddress(latestEvent.args.owner)}</Badge>
+                    <Badge variant="outline">
+                      Onchain owner {truncateAddress(latestEvent.args.owner)}
+                    </Badge>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Min</div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        Min
+                      </div>
                       <div className="mt-2 text-foreground">
-                        {formatUsdc(formatTreasuryPolicyAmount(latestEvent.args.minThreshold))} USDC
+                        {formatUsdc(
+                          formatTreasuryPolicyAmount(
+                            latestEvent.args.minThreshold,
+                          ),
+                        )}{' '}
+                        USDC
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target</div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        Target
+                      </div>
                       <div className="mt-2 text-foreground">
-                        {formatUsdc(formatTreasuryPolicyAmount(latestEvent.args.targetBalance))} USDC
+                        {formatUsdc(
+                          formatTreasuryPolicyAmount(
+                            latestEvent.args.targetBalance,
+                          ),
+                        )}{' '}
+                        USDC
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Max</div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        Max
+                      </div>
                       <div className="mt-2 text-foreground">
-                        {formatUsdc(formatTreasuryPolicyAmount(latestEvent.args.maxRebalanceAmount))} USDC
+                        {formatUsdc(
+                          formatTreasuryPolicyAmount(
+                            latestEvent.args.maxRebalanceAmount,
+                          ),
+                        )}{' '}
+                        USDC
                       </div>
                     </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Transaction</div>
-                    <div className="mt-2 break-all text-foreground">{formatTx(latestEvent.transactionHash)}</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Transaction
+                    </div>
+                    <div className="mt-2 break-all text-foreground">
+                      {formatTx(latestEvent.transactionHash)}
+                    </div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       Block {latestEvent.blockNumber?.toString() ?? 'unknown'}
                     </div>
@@ -2446,8 +3011,9 @@ export function TreasuryDashboard() {
                 </>
               ) : (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
-                  No `PolicyUpdated` event has been observed yet. The latest event will appear after the first live
-                  operator update on Arc Testnet.
+                  No `PolicyUpdated` event has been observed yet. The latest
+                  event will appear after the first live operator update on Arc
+                  Testnet.
                 </div>
               )}
             </CardContent>
@@ -2466,7 +3032,9 @@ export function TreasuryDashboard() {
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Balance</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Balance
+                  </div>
                   <div className="mt-2 text-foreground">
                     {isConnected
                       ? `${formatUsdc(Number(treasuryBalanceQuery.data?.formatted ?? 0))} USDC`
@@ -2474,16 +3042,30 @@ export function TreasuryDashboard() {
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Action</div>
-                  <div className="mt-2 text-foreground">{evaluation?.action ?? 'hold'}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Action
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {evaluation?.action ?? 'hold'}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Amount</div>
-                  <div className="mt-2 text-foreground">{evaluation ? `${formatUsdc(evaluation.amount)} USDC` : '--'}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Amount
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {evaluation
+                      ? `${formatUsdc(evaluation.amount)} USDC`
+                      : '--'}
+                  </div>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={evaluation?.status === 'healthy' ? 'success' : 'warning'}>
+                <Badge
+                  variant={
+                    evaluation?.status === 'healthy' ? 'success' : 'warning'
+                  }
+                >
                   {currentStatusLabel}
                 </Badge>
                 {evaluation?.reasonCodes.map((reasonCode) => (
@@ -2498,7 +3080,12 @@ export function TreasuryDashboard() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => loadPublicDemoScenario(publicDemoPreviewBalance, 'Verified sample')}
+                    onClick={() =>
+                      loadPublicDemoScenario(
+                        publicDemoPreviewBalance,
+                        'Verified sample',
+                      )
+                    }
                   >
                     Verified sample
                   </Button>
@@ -2507,7 +3094,10 @@ export function TreasuryDashboard() {
                     size="sm"
                     variant="outline"
                     onClick={() =>
-                      loadPublicDemoScenario(Math.max(0, currentPolicy.minThreshold - 25), 'Below-minimum scenario')
+                      loadPublicDemoScenario(
+                        Math.max(0, currentPolicy.minThreshold - 25),
+                        'Below-minimum scenario',
+                      )
                     }
                   >
                     Below minimum
@@ -2516,7 +3106,12 @@ export function TreasuryDashboard() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => loadPublicDemoScenario(currentPolicy.targetBalance, 'At-target scenario')}
+                    onClick={() =>
+                      loadPublicDemoScenario(
+                        currentPolicy.targetBalance,
+                        'At-target scenario',
+                      )
+                    }
                   >
                     At target
                   </Button>
@@ -2526,7 +3121,8 @@ export function TreasuryDashboard() {
                     variant="outline"
                     onClick={() =>
                       loadPublicDemoScenario(
-                        currentPolicy.targetBalance + currentPolicy.maxRebalanceAmount,
+                        currentPolicy.targetBalance +
+                          currentPolicy.maxRebalanceAmount,
                         'Above-target scenario',
                       )
                     }
@@ -2536,7 +3132,10 @@ export function TreasuryDashboard() {
                 </div>
               ) : null}
               <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" onClick={() => void handleSimulateRebalance()}>
+                <Button
+                  variant="outline"
+                  onClick={() => void handleSimulateRebalance()}
+                >
                   <ArrowRightLeft className="h-4 w-4" />
                   Simulate rebalance
                 </Button>
@@ -2551,7 +3150,9 @@ export function TreasuryDashboard() {
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Stablecoin robot test</CardDescription>
-                <CardTitle className="mt-1 text-lg">{stablecoinRobotStatus.toUpperCase()}</CardTitle>
+                <CardTitle className="mt-1 text-lg">
+                  {stablecoinRobotStatus.toUpperCase()}
+                </CardTitle>
               </div>
               <Wallet className="h-5 w-5 text-primary" />
             </CardHeader>
@@ -2566,30 +3167,50 @@ export function TreasuryDashboard() {
                 </Badge>
                 <Badge variant="outline">Rule-based decision</Badge>
                 <Badge variant="outline">{`Risk ${stablecoinRobotStatus === 'pass' ? 'LOW' : stablecoinRobotStatus === 'warn' ? 'MEDIUM' : 'HIGH'}`}</Badge>
-                <Badge variant={stablecoinRobotExecutionReady ? 'success' : 'warning'}>
-                  {stablecoinRobotExecutionReady ? 'Execution ready' : 'Execution blocked'}
+                <Badge
+                  variant={
+                    stablecoinRobotExecutionReady ? 'success' : 'warning'
+                  }
+                >
+                  {stablecoinRobotExecutionReady
+                    ? 'Execution ready'
+                    : 'Execution blocked'}
                 </Badge>
                 <Badge variant="outline">
-                  {executorAddress ? `Executor ${truncateAddress(executorAddress)}` : 'Executor missing'}
+                  {executorAddress
+                    ? `Executor ${truncateAddress(executorAddress)}`
+                    : 'Executor missing'}
                 </Badge>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Treasury balance</div>
-                  <div className="mt-2 text-foreground">{formatUsdc(stablecoinBalance)} USDC</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Execution amount</div>
-                  <div className="mt-2 text-foreground">{`${formatUsdc(stablecoinExecutionAmount)} USDC`}</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Target</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Treasury balance
+                  </div>
                   <div className="mt-2 text-foreground">
-                    {currentPolicy ? `${formatUsdc(currentPolicy.targetBalance)} USDC` : '—'}
+                    {formatUsdc(stablecoinBalance)} USDC
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Band</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Execution amount
+                  </div>
+                  <div className="mt-2 text-foreground">{`${formatUsdc(stablecoinExecutionAmount)} USDC`}</div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Target
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {currentPolicy
+                      ? `${formatUsdc(currentPolicy.targetBalance)} USDC`
+                      : '—'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Band
+                  </div>
                   <div className="mt-2 text-foreground">
                     {currentPolicy
                       ? `${formatUsdc(currentPolicy.minThreshold)} / ${formatUsdc(currentPolicy.targetBalance)} / ${formatUsdc(currentPolicy.maxRebalanceAmount)}`
@@ -2606,12 +3227,21 @@ export function TreasuryDashboard() {
               </div>
               <div className="grid gap-2">
                 {stablecoinRobotChecks.map((check) => (
-                  <div key={check.label} className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div
+                    key={check.label}
+                    className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-background/50 p-3"
+                  >
                     <div>
-                      <div className="font-medium text-foreground">{check.label}</div>
-                      <div className="text-xs text-muted-foreground">{check.detail}</div>
+                      <div className="font-medium text-foreground">
+                        {check.label}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {check.detail}
+                      </div>
                     </div>
-                    <Badge variant={check.passed ? 'success' : 'warning'}>{check.passed ? 'OK' : 'Check'}</Badge>
+                    <Badge variant={check.passed ? 'success' : 'warning'}>
+                      {check.passed ? 'OK' : 'Check'}
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -2637,15 +3267,23 @@ export function TreasuryDashboard() {
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Circle line</CardDescription>
-                <CardTitle className="mt-1 text-lg">USDC, Arc, wallets, executor, and bridge</CardTitle>
+                <CardTitle className="mt-1 text-lg">
+                  USDC, Arc, wallets, executor, and bridge
+                </CardTitle>
               </div>
               <ArrowRightLeft className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={robotStatusVariant(circleStackStatus)}>{circleStackStatusLabel}</Badge>
-                <Badge variant="outline">{circleWalletModeLabel(circleStackConfig.walletMode)}</Badge>
-                <Badge variant="outline">{circleTransferModeLabel(circleStackConfig.transferMode)}</Badge>
+                <Badge variant={robotStatusVariant(circleStackStatus)}>
+                  {circleStackStatusLabel}
+                </Badge>
+                <Badge variant="outline">
+                  {circleWalletModeLabel(circleStackConfig.walletMode)}
+                </Badge>
+                <Badge variant="outline">
+                  {circleTransferModeLabel(circleStackConfig.transferMode)}
+                </Badge>
                 <Badge variant={walletOnArc ? 'success' : 'warning'}>
                   {walletOnArc ? 'Arc Testnet ready' : 'Arc switch needed'}
                 </Badge>
@@ -2655,34 +3293,57 @@ export function TreasuryDashboard() {
               </div>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Wallet mode</div>
-                  <div className="mt-2 text-foreground">{circleWalletModeLabel(circleStackConfig.walletMode)}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Wallet mode
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {circleWalletModeLabel(circleStackConfig.walletMode)}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Bridge rail</div>
-                  <div className="mt-2 text-foreground">{circleTransferModeLabel(circleStackConfig.transferMode)}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Bridge rail
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {circleTransferModeLabel(circleStackConfig.transferMode)}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Source chain</div>
-                  <div className="mt-2 text-foreground">{circleStackConfig.sourceChain}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Source chain
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {circleStackConfig.sourceChain}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Destination chain</div>
-                  <div className="mt-2 text-foreground">{circleStackConfig.destinationChain}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Destination chain
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {circleStackConfig.destinationChain}
+                  </div>
                 </div>
               </div>
               <div className="grid gap-3 xl:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Operational path</div>
-                  <div className="mt-2 text-foreground">{circleStackSummary()}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Operational path
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {circleStackSummary()}
+                  </div>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    This surface maps the Circle-ready path for Arc USDC, wallets, executor deployment, and cross-chain
-                    transfer planning. In public demo mode, Circle behaves as optional crosschain readiness rather than
-                    the main blocker.
+                    This surface maps the Circle-ready path for Arc USDC,
+                    wallets, executor deployment, and cross-chain transfer
+                    planning. In public demo mode, Circle behaves as optional
+                    crosschain readiness rather than the main blocker.
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Readiness checks</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Readiness checks
+                  </div>
                   <div className="mt-3 grid gap-2">
                     {circleStackChecks.map((check) => (
                       <div
@@ -2690,10 +3351,16 @@ export function TreasuryDashboard() {
                         className="flex items-start justify-between gap-3 rounded-2xl border border-white/10 bg-background/50 p-3"
                       >
                         <div>
-                          <div className="font-medium text-foreground">{check.label}</div>
-                          <div className="text-xs text-muted-foreground">{check.detail}</div>
+                          <div className="font-medium text-foreground">
+                            {check.label}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {check.detail}
+                          </div>
                         </div>
-                        <Badge variant={check.passed ? 'success' : 'warning'}>{check.passed ? 'OK' : 'Check'}</Badge>
+                        <Badge variant={check.passed ? 'success' : 'warning'}>
+                          {check.passed ? 'OK' : 'Check'}
+                        </Badge>
                       </div>
                     ))}
                   </div>
@@ -2701,7 +3368,11 @@ export function TreasuryDashboard() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {circleSkillCatalog.map((skill) => (
-                  <Badge key={skill.name} variant="outline" title={skill.description}>
+                  <Badge
+                    key={skill.name}
+                    variant="outline"
+                    title={skill.description}
+                  >
                     {skill.name}
                   </Badge>
                 ))}
@@ -2710,9 +3381,12 @@ export function TreasuryDashboard() {
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Live Circle APIs</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Live Circle APIs
+                    </div>
                     <div className="mt-1 text-foreground">
-                      Create developer-controlled wallets and read live Gateway state from Circle’s testnet APIs.
+                      Create developer-controlled wallets and read live Gateway
+                      state from Circle’s testnet APIs.
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -2723,15 +3397,21 @@ export function TreasuryDashboard() {
                       {circleWalletReady ? 'Wallets live' : 'No wallet yet'}
                     </Badge>
                     <Badge variant={circleGatewayReady ? 'success' : 'outline'}>
-                      {circleGatewayReady ? 'Gateway online' : 'Gateway pending'}
+                      {circleGatewayReady
+                        ? 'Gateway online'
+                        : 'Gateway pending'}
                     </Badge>
                   </div>
                 </div>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Wallet set</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Wallet set
+                    </div>
                     <div className="mt-2 text-foreground">
-                      {circleLiveWalletSetId ? truncateAddress(circleLiveWalletSetId, 12, 8) : 'Create or configure a wallet set'}
+                      {circleLiveWalletSetId
+                        ? truncateAddress(circleLiveWalletSetId, 12, 8)
+                        : 'Create or configure a wallet set'}
                     </div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       {circleControlPlane?.walletSet?.custodyType
@@ -2740,8 +3420,12 @@ export function TreasuryDashboard() {
                     </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Gateway balance</div>
-                    <div className="mt-2 text-foreground">{circleGatewayBalanceLabel}</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Gateway balance
+                    </div>
+                    <div className="mt-2 text-foreground">
+                      {circleGatewayBalanceLabel}
+                    </div>
                     <div className="mt-1 text-xs text-muted-foreground">
                       {circleGatewayDomainCount > 0
                         ? `${circleGatewayDomainCount} supported domains on Gateway v${circleGatewayInfo?.version ?? 'latest'}`
@@ -2751,47 +3435,75 @@ export function TreasuryDashboard() {
                 </div>
                 <div className="mt-4 grid gap-3 xl:grid-cols-2">
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Created wallets</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Created wallets
+                    </div>
                     <div className="mt-3 grid gap-2">
                       {circleLiveWallets.length > 0 ? (
                         circleLiveWallets.map((wallet, index) => (
                           <div
-                            key={wallet.id ?? wallet.address ?? `wallet-${index}`}
+                            key={
+                              wallet.id ?? wallet.address ?? `wallet-${index}`
+                            }
                             className="rounded-2xl border border-white/10 bg-background/50 p-3"
                           >
                             <div className="font-medium text-foreground">
                               {wallet.name ?? wallet.address ?? 'Wallet'}
                             </div>
                             <div className="mt-1 text-xs text-muted-foreground">
-                              {wallet.address ? truncateAddress(wallet.address, 10, 8) : 'Address pending'} ·{' '}
-                              {wallet.blockchain ?? 'Unknown blockchain'}
+                              {wallet.address
+                                ? truncateAddress(wallet.address, 10, 8)
+                                : 'Address pending'}{' '}
+                              · {wallet.blockchain ?? 'Unknown blockchain'}
                             </div>
                           </div>
                         ))
                       ) : (
                         <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
-                          No Circle wallets have been created in this wallet set yet.
+                          No Circle wallets have been created in this wallet set
+                          yet.
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Gateway domains</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Gateway domains
+                    </div>
                     <div className="mt-3 grid gap-2">
-                      {Array.isArray(circleGatewayInfo?.domains) && circleGatewayInfo.domains.length > 0 ? (
-                        circleGatewayInfo.domains.slice(0, 4).map((domain, index) => (
-                          <div
-                            key={`${domain.domain}-${domain.network ?? 'network'}-${index}`}
-                            className="rounded-2xl border border-white/10 bg-background/50 p-3"
-                          >
-                            <div className="font-medium text-foreground">
-                              {domain.chain ?? 'Chain'} · {domain.network ?? 'Network'}
+                      {Array.isArray(circleGatewayInfo?.domains) &&
+                      circleGatewayInfo.domains.length > 0 ? (
+                        circleGatewayInfo.domains
+                          .slice(0, 4)
+                          .map((domain, index) => (
+                            <div
+                              key={`${domain.domain}-${domain.network ?? 'network'}-${index}`}
+                              className="rounded-2xl border border-white/10 bg-background/50 p-3"
+                            >
+                              <div className="font-medium text-foreground">
+                                {domain.chain ?? 'Chain'} ·{' '}
+                                {domain.network ?? 'Network'}
+                              </div>
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                Domain {domain.domain ?? '—'} · Wallet{' '}
+                                {domain.walletContract?.address
+                                  ? truncateAddress(
+                                      domain.walletContract.address,
+                                      8,
+                                      6,
+                                    )
+                                  : '—'}{' '}
+                                · Minter{' '}
+                                {domain.minterContract?.address
+                                  ? truncateAddress(
+                                      domain.minterContract.address,
+                                      8,
+                                      6,
+                                    )
+                                  : '—'}
+                              </div>
                             </div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              Domain {domain.domain ?? '—'} · Wallet {domain.walletContract?.address ? truncateAddress(domain.walletContract.address, 8, 6) : '—'} · Minter {domain.minterContract?.address ? truncateAddress(domain.minterContract.address, 8, 6) : '—'}
-                            </div>
-                          </div>
-                        ))
+                          ))
                       ) : (
                         <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-4 text-sm text-muted-foreground">
                           Gateway domains will appear after the API responds.
@@ -2801,9 +3513,15 @@ export function TreasuryDashboard() {
                   </div>
                 </div>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Button type="button" variant="outline" onClick={() => void handleRefreshCircleStatus()}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void handleRefreshCircleStatus()}
+                  >
                     <RefreshCcw className="h-4 w-4" />
-                    {circleStatusQuery.isFetching ? 'Refreshing…' : 'Refresh Circle status'}
+                    {circleStatusQuery.isFetching
+                      ? 'Refreshing…'
+                      : 'Refresh Circle status'}
                   </Button>
                   <Button
                     type="button"
@@ -2811,11 +3529,15 @@ export function TreasuryDashboard() {
                     disabled={!circleApiReady || circleWalletCreationInFlight}
                   >
                     <Wallet className="h-4 w-4" />
-                    {circleWalletCreationInFlight ? 'Creating…' : 'Create dev wallet'}
+                    {circleWalletCreationInFlight
+                      ? 'Creating…'
+                      : 'Create dev wallet'}
                   </Button>
                 </div>
                 <div className="mt-4 rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
-                  {circleStatusQuery.isFetching ? 'Loading live Circle state…' : circleStatusMessage}
+                  {circleStatusQuery.isFetching
+                    ? 'Loading live Circle state…'
+                    : circleStatusMessage}
                 </div>
                 <div className="mt-3 rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
                   {circleCreateMessage}
@@ -2846,18 +3568,32 @@ export function TreasuryDashboard() {
             <CardHeader className="flex-row items-start justify-between space-y-0">
               <div>
                 <CardDescription>Arc agent</CardDescription>
-                <CardTitle className="mt-1 text-lg">Onchain identity applied to this website</CardTitle>
+                <CardTitle className="mt-1 text-lg">
+                  Onchain identity applied to this website
+                </CardTitle>
               </div>
               <ShieldCheck className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-muted-foreground">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={arcAgentStatusTone === 'success' ? 'success' : 'warning'}>{arcAgentStatusLabel}</Badge>
+                <Badge
+                  variant={
+                    arcAgentStatusTone === 'success' ? 'success' : 'warning'
+                  }
+                >
+                  {arcAgentStatusLabel}
+                </Badge>
                 <Badge variant="outline">{`Agent ${arcAgentId.toString()}`}</Badge>
                 <Badge variant={arcAgentOwnerMatches ? 'success' : 'warning'}>
-                  {arcAgentOwnerMatches ? 'Onchain owner verified' : 'Onchain owner check'}
+                  {arcAgentOwnerMatches
+                    ? 'Onchain owner verified'
+                    : 'Onchain owner check'}
                 </Badge>
-                <Badge variant={arcAgentValidationResponse === 100 ? 'success' : 'outline'}>
+                <Badge
+                  variant={
+                    arcAgentValidationResponse === 100 ? 'success' : 'outline'
+                  }
+                >
                   {arcAgentValidationResponse === 100
                     ? `Validation ${arcAgentValidationTag}`
                     : 'Validation pending'}
@@ -2865,19 +3601,33 @@ export function TreasuryDashboard() {
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Onchain owner</div>
-                  <div className="mt-2 text-foreground">{arcAgentOwner ?? 'Loading onchain owner...'}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Onchain owner
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {arcAgentOwner ?? 'Loading onchain owner...'}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Validator</div>
-                  <div className="mt-2 text-foreground">{arcAgentValidationValidator ?? arcAgentValidatorAddress}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Validator
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {arcAgentValidationValidator ?? arcAgentValidatorAddress}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Metadata URI</div>
-                  <div className="mt-2 break-all text-foreground">{arcAgentTokenUri}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Metadata URI
+                  </div>
+                  <div className="mt-2 break-all text-foreground">
+                    {arcAgentTokenUri}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Validation</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Validation
+                  </div>
                   <div className="mt-2 text-foreground">
                     {arcAgentValidation
                       ? `${arcAgentValidationResponse} · ${arcAgentValidationTagValue} · block ${arcAgentValidationLastUpdate?.toString()}`
@@ -2886,43 +3636,74 @@ export function TreasuryDashboard() {
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
-                This site now surfaces the registered Arc agent onchain state directly from Arc Testnet, so the UI and
-                the agent share the same trust anchor.
+                This site now surfaces the registered Arc agent onchain state
+                directly from Arc Testnet, so the UI and the agent share the
+                same trust anchor.
               </div>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Validation hash</div>
-                  <div className="mt-2 break-all text-foreground">{truncateAddress(activeArcAgentValidationRequestHash, 10, 8)}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Validation hash
+                  </div>
+                  <div className="mt-2 break-all text-foreground">
+                    {truncateAddress(
+                      activeArcAgentValidationRequestHash,
+                      10,
+                      8,
+                    )}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reputation tag</div>
-                  <div className="mt-2 text-foreground">{arcAgentActivationReputationTag}</div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Activation status</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Reputation tag
+                  </div>
                   <div className="mt-2 text-foreground">
-                    {arcAgentWakeInFlight ? 'Waking agent...' : arcAgentWakeMessage}
+                    {arcAgentActivationReputationTag}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Activation status
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {arcAgentWakeInFlight
+                      ? 'Waking agent...'
+                      : arcAgentWakeMessage}
                   </div>
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Operational brief</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Operational brief
+                  </div>
                   <div className="mt-2 text-foreground">
-                    {arcAgentBriefInFlight ? 'Briefing agent...' : arcAgentBriefMessage}
+                    {arcAgentBriefInFlight
+                      ? 'Briefing agent...'
+                      : arcAgentBriefMessage}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Recommended action</div>
-                  <div className="mt-2 text-foreground">
-                    {lastArcAgentBrief ? formatArcAgentRecommendationAction(lastArcAgentBrief.recommendation.action) : 'Run brief'}
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Recommended action
                   </div>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Decision basis</div>
                   <div className="mt-2 text-foreground">
                     {lastArcAgentBrief
-                      ? lastArcAgentBrief.treasury.evaluation?.reasonCodes.join(', ') || 'Dependency readiness rules'
+                      ? formatArcAgentRecommendationAction(
+                          lastArcAgentBrief.recommendation.action,
+                        )
+                      : 'Run brief'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Decision basis
+                  </div>
+                  <div className="mt-2 text-foreground">
+                    {lastArcAgentBrief
+                      ? lastArcAgentBrief.treasury.evaluation?.reasonCodes.join(
+                          ', ',
+                        ) || 'Dependency readiness rules'
                       : '--'}
                   </div>
                 </div>
@@ -2930,19 +3711,31 @@ export function TreasuryDashboard() {
               {lastArcAgentBrief ? (
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Brief headline</div>
-                    <div className="mt-2 text-foreground">{lastArcAgentBrief.recommendation.headline}</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Brief headline
+                    </div>
+                    <div className="mt-2 text-foreground">
+                      {lastArcAgentBrief.recommendation.headline}
+                    </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Why</div>
-                    <div className="mt-2 text-foreground">{lastArcAgentBrief.recommendation.detail}</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Why
+                    </div>
+                    <div className="mt-2 text-foreground">
+                      {lastArcAgentBrief.recommendation.detail}
+                    </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Next steps</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Next steps
+                    </div>
                     <div className="mt-2 space-y-1 text-foreground">
-                      {lastArcAgentBrief.recommendation.nextSteps.map((step) => (
-                        <div key={step}>{step}</div>
-                      ))}
+                      {lastArcAgentBrief.recommendation.nextSteps.map(
+                        (step) => (
+                          <div key={step}>{step}</div>
+                        ),
+                      )}
                     </div>
                   </div>
                 </div>
@@ -2950,21 +3743,31 @@ export function TreasuryDashboard() {
               {lastArcAgentActivation ? (
                 <div className="grid gap-3 md:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Request tx</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Request tx
+                    </div>
                     <div className="mt-2 break-all text-foreground">
-                      {formatTx(lastArcAgentActivation.txHashes.validationRequest)}
+                      {formatTx(
+                        lastArcAgentActivation.txHashes.validationRequest,
+                      )}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reputation tx</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Reputation tx
+                    </div>
                     <div className="mt-2 break-all text-foreground">
                       {formatTx(lastArcAgentActivation.txHashes.reputation)}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Validation tx</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Validation tx
+                    </div>
                     <div className="mt-2 break-all text-foreground">
-                      {formatTx(lastArcAgentActivation.txHashes.validationResponse)}
+                      {formatTx(
+                        lastArcAgentActivation.txHashes.validationResponse,
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3001,7 +3804,13 @@ export function TreasuryDashboard() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => window.open(`${arcTestnetExplorerUrl}/address/${arcAgentIdentityRegistryAddress}`, '_blank', 'noreferrer')}
+                  onClick={() =>
+                    window.open(
+                      `${arcTestnetExplorerUrl}/address/${arcAgentIdentityRegistryAddress}`,
+                      '_blank',
+                      'noreferrer',
+                    )
+                  }
                 >
                   <ExternalLink className="h-4 w-4" />
                   Open identity registry
@@ -3016,21 +3825,37 @@ export function TreasuryDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Wallet controls</CardTitle>
-                <CardDescription>Connect a wallet for live signing, or stay in public demo mode and inspect the Arc Testnet details.</CardDescription>
+                <CardDescription>
+                  Connect a wallet for live signing, or stay in public demo mode
+                  and inspect the Arc Testnet details.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-3">
                   {!isConnected ? (
-                    <Button type="button" onClick={() => void handleConnect()} disabled={isConnecting}>
+                    <Button
+                      type="button"
+                      onClick={() => void handleConnect()}
+                      disabled={isConnecting}
+                    >
                       <Wallet className="h-4 w-4" />
                       {isConnecting ? 'Connecting…' : 'Connect live wallet'}
                     </Button>
                   ) : (
                     <>
-                      <Button type="button" variant="secondary" onClick={handleDisconnect}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handleDisconnect}
+                      >
                         Disconnect
                       </Button>
-                      <Button type="button" variant="outline" onClick={() => void handleCopyAddress()} disabled={!address}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void handleCopyAddress()}
+                        disabled={!address}
+                      >
                         <Copy className="h-4 w-4" />
                         Copy address
                       </Button>
@@ -3042,33 +3867,39 @@ export function TreasuryDashboard() {
                     variant="outline"
                     onClick={() => void handleSwitchChain()}
                     disabled={!isConnected || isSwitching}
-                    >
-                      <RefreshCcw className="h-4 w-4" />
-                      {isSwitching ? 'Switching…' : 'Switch to Arc Testnet'}
-                    </Button>
+                  >
+                    <RefreshCcw className="h-4 w-4" />
+                    {isSwitching ? 'Switching…' : 'Switch to Arc Testnet'}
+                  </Button>
                   <Button
-                      type="button"
-                      onClick={() => void handleExecuteStablecoinPolicy()}
-                      disabled={submissionInFlight}
-                    >
-                      <Send className="h-4 w-4" />
-                      {submissionInFlight
-                        ? 'Executing…'
-                        : stablecoinExecutionAction === 'top_up'
-                          ? 'Execute top-up'
-                          : stablecoinExecutionAction === 'trim'
-                            ? 'Execute trim'
-                            : 'Execute policy update'}
-                    </Button>
-                  </div>
+                    type="button"
+                    onClick={() => void handleExecuteStablecoinPolicy()}
+                    disabled={submissionInFlight}
+                  >
+                    <Send className="h-4 w-4" />
+                    {submissionInFlight
+                      ? 'Executing…'
+                      : stablecoinExecutionAction === 'top_up'
+                        ? 'Execute top-up'
+                        : stablecoinExecutionAction === 'trim'
+                          ? 'Execute trim'
+                          : 'Execute policy update'}
+                  </Button>
+                </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Arc RPC</div>
-                    <div className="mt-2 break-all text-sm text-foreground">{arcTestnetRpcUrl}</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Arc RPC
+                    </div>
+                    <div className="mt-2 break-all text-sm text-foreground">
+                      {arcTestnetRpcUrl}
+                    </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Explorer</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Explorer
+                    </div>
                     <a
                       className="mt-2 inline-flex items-center gap-1 text-sm text-primary hover:underline"
                       href={arcTestnetExplorerUrl}
@@ -3080,8 +3911,12 @@ export function TreasuryDashboard() {
                     </a>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">USDC token</div>
-                    <div className="mt-2 break-all text-sm text-foreground">{arcUsdcAddress}</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      USDC token
+                    </div>
+                    <div className="mt-2 break-all text-sm text-foreground">
+                      {arcUsdcAddress}
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -3090,7 +3925,10 @@ export function TreasuryDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Policy update</CardTitle>
-                <CardDescription>Load the deployed policy, edit the draft, and submit in live or demo mode.</CardDescription>
+                <CardDescription>
+                  Load the deployed policy, edit the draft, and submit in live
+                  or demo mode.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -3125,7 +3963,9 @@ export function TreasuryDashboard() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="maxRebalanceAmount">Max rebalance amount</Label>
+                    <Label htmlFor="maxRebalanceAmount">
+                      Max rebalance amount
+                    </Label>
                     <Input
                       id="maxRebalanceAmount"
                       inputMode="decimal"
@@ -3148,30 +3988,39 @@ export function TreasuryDashboard() {
                     disabled={!contractAddress || policyQuery.isFetching}
                   >
                     <RefreshCcw className="h-4 w-4" />
-                    {policyQuery.isFetching ? 'Loading…' : 'Load current policy'}
+                    {policyQuery.isFetching
+                      ? 'Loading…'
+                      : 'Load current policy'}
                   </Button>
                   <Button
                     onClick={() => void handleSubmitPolicy()}
                     disabled={isWriting || submissionInFlight}
                   >
                     <Send className="h-4 w-4" />
-                    {isWriting || submissionInFlight ? 'Submitting…' : 'Submit policy update'}
+                    {isWriting || submissionInFlight
+                      ? 'Submitting…'
+                      : 'Submit policy update'}
                   </Button>
                   <Badge variant={hasUnsavedChanges ? 'warning' : 'success'}>
-                    {hasUnsavedChanges ? 'Draft differs from chain' : 'Draft synced'}
+                    {hasUnsavedChanges
+                      ? 'Draft differs from chain'
+                      : 'Draft synced'}
                   </Badge>
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm text-muted-foreground">
-                  Live policy writes use the operator wallet on Arc Testnet. Public visitors can still edit the draft
-                  and save a local demo copy in this browser session.
+                  Live policy writes use the operator wallet on Arc Testnet.
+                  Public visitors can still edit the draft and save a local demo
+                  copy in this browser session.
                 </div>
 
                 <Separator />
 
                 <div className="text-sm text-muted-foreground">
                   {lastValidationError ? (
-                    <span className="text-slate-300">{lastValidationError}</span>
+                    <span className="text-slate-300">
+                      {lastValidationError}
+                    </span>
                   ) : contractAddress ? (
                     'Draft values are validated locally before a live transaction or demo save.'
                   ) : (
@@ -3184,26 +4033,38 @@ export function TreasuryDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Deployment notes</CardTitle>
-                <CardDescription>Keep the repo testnet-only and wire the deploy/runtime env values explicitly.</CardDescription>
+                <CardDescription>
+                  Keep the repo testnet-only and wire the deploy/runtime env
+                  values explicitly.
+                </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Live operator</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Live operator
+                  </div>
                   <div className="mt-2 text-sm text-foreground">
-                    The contract accepts updates from the live operator wallet. Public demo mode keeps the flow
-                    interactive without a signed transaction.
+                    The contract accepts updates from the live operator wallet.
+                    Public demo mode keeps the flow interactive without a signed
+                    transaction.
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Arc only</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Arc only
+                  </div>
                   <div className="mt-2 text-sm text-foreground">
-                    The dashboard reads and writes the Arc Testnet deployment only.
+                    The dashboard reads and writes the Arc Testnet deployment
+                    only.
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Env driven</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Env driven
+                  </div>
                   <div className="mt-2 text-sm text-foreground">
-                    RPC URL and contract address come from the shell or `.env.local`.
+                    RPC URL and contract address come from the shell or
+                    `.env.local`.
                   </div>
                 </div>
               </CardContent>
@@ -3211,32 +4072,42 @@ export function TreasuryDashboard() {
           </div>
 
           <div className="space-y-6">
-          <Card className="sticky top-6">
+            <Card className="sticky top-6">
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Activity className="h-5 w-5 text-primary" />
                   <CardTitle>Activity log</CardTitle>
                 </div>
-                <CardDescription>Recent wallet, contract, and simulation events.</CardDescription>
+                <CardDescription>
+                  Recent wallet, contract, and simulation events.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {activity.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-white/10 bg-background/40 p-5 text-sm text-muted-foreground">
-                    No activity yet. Connect a wallet or load the onchain policy to begin.
+                    No activity yet. Connect a wallet or load the onchain policy
+                    to begin.
                   </div>
                 ) : (
                   activity.map((item) => (
-                    <div key={item.id} className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div
+                      key={item.id}
+                      className="rounded-2xl border border-white/10 bg-background/50 p-4"
+                    >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="font-medium text-foreground">{item.title}</div>
-                        <Badge
-                          variant={activityBadgeVariant(item.tone)}
-                        >
+                        <div className="font-medium text-foreground">
+                          {item.title}
+                        </div>
+                        <Badge variant={activityBadgeVariant(item.tone)}>
                           {item.tone}
                         </Badge>
                       </div>
-                      <div className="mt-2 text-sm text-muted-foreground">{item.detail}</div>
-                      <div className="mt-3 text-xs text-muted-foreground">{formatTimestamp(item.createdAt)}</div>
+                      <div className="mt-2 text-sm text-muted-foreground">
+                        {item.detail}
+                      </div>
+                      <div className="mt-3 text-xs text-muted-foreground">
+                        {formatTimestamp(item.createdAt)}
+                      </div>
                     </div>
                   ))
                 )}
@@ -3250,7 +4121,8 @@ export function TreasuryDashboard() {
                   <CardTitle>Maintenance log</CardTitle>
                 </div>
                 <CardDescription>
-                  A small scratchpad for what changed, what still feels rough, and what I want to ship next.
+                  A small scratchpad for what changed, what still feels rough,
+                  and what I want to ship next.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -3260,7 +4132,9 @@ export function TreasuryDashboard() {
                     <Input
                       id="build-note-title"
                       value={buildNoteTitle}
-                      onChange={(event) => setBuildNoteTitle(event.target.value)}
+                      onChange={(event) =>
+                        setBuildNoteTitle(event.target.value)
+                      }
                       placeholder="What changed?"
                     />
                   </div>
@@ -3269,17 +4143,26 @@ export function TreasuryDashboard() {
                     <textarea
                       id="build-note-detail"
                       value={buildNoteDetail}
-                      onChange={(event) => setBuildNoteDetail(event.target.value)}
+                      onChange={(event) =>
+                        setBuildNoteDetail(event.target.value)
+                      }
                       rows={4}
                       placeholder="Short note about the current pass..."
                       className="flex min-h-[108px] w-full rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     />
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button type="button" onClick={() => void handleSaveBuildNote()}>
+                    <Button
+                      type="button"
+                      onClick={() => void handleSaveBuildNote()}
+                    >
                       Save note
                     </Button>
-                    <Button type="button" variant="outline" onClick={handleResetBuildNotes}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResetBuildNotes}
+                    >
                       Reset notes
                     </Button>
                   </div>
@@ -3289,14 +4172,21 @@ export function TreasuryDashboard() {
 
                 <div className="space-y-3">
                   {buildNotes.slice(0, 3).map((note) => (
-                    <div key={note.id} className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                    <div
+                      key={note.id}
+                      className="rounded-2xl border border-white/10 bg-background/50 p-4"
+                    >
                       <div className="flex items-center justify-between gap-3">
-                        <div className="font-medium text-foreground">{note.title}</div>
+                        <div className="font-medium text-foreground">
+                          {note.title}
+                        </div>
                         <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                           {formatTimestamp(note.createdAt)}
                         </div>
                       </div>
-                      <div className="mt-2 text-sm leading-6 text-muted-foreground">{note.detail}</div>
+                      <div className="mt-2 text-sm leading-6 text-muted-foreground">
+                        {note.detail}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -3304,7 +4194,9 @@ export function TreasuryDashboard() {
                 <Separator />
 
                 <div className="space-y-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Reference links</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Reference links
+                  </div>
                   {builderReferenceLinks.map((link) => (
                     <a
                       key={link.label}
@@ -3313,8 +4205,12 @@ export function TreasuryDashboard() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">{link.label}</div>
-                      <div className="mt-2 break-all text-sm text-foreground">{link.value}</div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        {link.label}
+                      </div>
+                      <div className="mt-2 break-all text-sm text-foreground">
+                        {link.value}
+                      </div>
                     </a>
                   ))}
                 </div>
@@ -3332,11 +4228,17 @@ function formatValidationError(policy: TreasuryPolicy): string | null {
     return 'Minimum threshold must be 0 or higher.'
   }
 
-  if (!Number.isFinite(policy.targetBalance) || policy.targetBalance < policy.minThreshold) {
+  if (
+    !Number.isFinite(policy.targetBalance) ||
+    policy.targetBalance < policy.minThreshold
+  ) {
     return 'Target balance must be at least the minimum threshold.'
   }
 
-  if (!Number.isFinite(policy.maxRebalanceAmount) || policy.maxRebalanceAmount < 0) {
+  if (
+    !Number.isFinite(policy.maxRebalanceAmount) ||
+    policy.maxRebalanceAmount < 0
+  ) {
     return 'Max rebalance amount must be 0 or higher.'
   }
 

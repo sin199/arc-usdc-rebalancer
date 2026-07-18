@@ -6,13 +6,41 @@ export type ProjectReleaseNote = {
 }
 
 export const projectTrailSummary = {
-  buildLabel: 'Verified Arc Testnet demo',
+  buildLabel: 'Official Architect reference build',
   headline:
-    'Readiness checker first, operator brief second, optional live execution, with an architect proof page for Arc review.',
-  lastReviewed: 'June 2, 2026',
+    'A fail-closed Arc treasury reference stack with signed operator actions, deterministic verification, and an auditable V2 governance path.',
+  lastReviewed: 'July 18, 2026',
 }
 
 export const projectReleaseNotes: ProjectReleaseNote[] = [
+  {
+    date: 'July 18, 2026',
+    tag: 'security',
+    title: 'Hardened every sensitive operator action',
+    detail:
+      'Treasury execution, agent activation, executor deployment, and Circle wallet creation now require payload-bound wallet authorization. Production writes fail closed unless a durable replay and rate-limit store is available.',
+  },
+  {
+    date: 'July 18, 2026',
+    tag: 'architecture',
+    title: 'Added the reviewed V2 control path',
+    detail:
+      'The repository now includes tested, undeployed V2 policy and executor contracts with two-step ownership, pause, recipient allowlists, amount caps, eligibility checks, transfer wrappers, and reentrancy protection.',
+  },
+  {
+    date: 'July 18, 2026',
+    tag: 'verification',
+    title: 'Made the complete test path deterministic',
+    detail:
+      'Web authorization, worker policy behavior, and contract governance now run without depending on a rate-limited public RPC, while production readiness exposes the durable guard state explicitly.',
+  },
+  {
+    date: 'July 18, 2026',
+    tag: 'identity',
+    title: 'Published the Official Arc Architect positioning',
+    detail:
+      'The public surfaces now identify the builder as an Official Arc Architect while clearly describing this repository as an independent community project rather than an official Arc product.',
+  },
   {
     date: 'June 2, 2026',
     tag: 'review',
@@ -87,9 +115,10 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
 
 export const projectKnownGaps = [
   'Maintenance notes are browser-local until a shared backend is added.',
-  'Live settlement still depends on the operator wallet on Arc Testnet.',
+  'Production live execution remains disabled until durable Upstash Redis replay protection is provisioned and verified.',
+  'The V2 contracts are tested reference code; deployment, multisig ownership, and migration remain pending formal review.',
+  'Any future live settlement still depends on an explicitly authorized operator wallet on Arc Testnet.',
   'Circle wallet set is optional for the current proof and required only for live crosschain execution.',
-  'The report is strongest when live policy, agent, executor, and proof links are visible together.',
 ]
 
 export const projectReferenceLinks = [

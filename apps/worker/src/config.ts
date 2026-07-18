@@ -7,6 +7,7 @@ import {
   type RobotAvailability,
   type RobotExecutionMode,
   type RobotSafetyConfig,
+  type TreasuryPolicy,
   type TreasuryJobRecipient,
 } from '@arc-usdc-rebalancer/shared'
 
@@ -18,6 +19,7 @@ export type WorkerConfig = {
   statePath: string
   pollIntervalMs: number
   balanceOverrideUsdc?: number
+  policyOverride?: TreasuryPolicy
   safety: RobotSafetyConfig
   payoutRecipients: TreasuryJobRecipient[]
   availability: RobotAvailability
@@ -77,7 +79,10 @@ function parseRecipients(value: string | undefined): TreasuryJobRecipient[] {
     return parsed
       .map((entry) => {
         const address = parseAddress(entry.address)
-        const amount = typeof entry.amountUsdc === 'number' ? entry.amountUsdc : Number(entry.amountUsdc)
+        const amount =
+          typeof entry.amountUsdc === 'number'
+            ? entry.amountUsdc
+            : Number(entry.amountUsdc)
 
         if (!address || !Number.isFinite(amount) || amount <= 0) {
           return null
@@ -126,15 +131,54 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
   const circleWalletBlockchain = env.CIRCLE_WALLET_BLOCKCHAIN?.trim()
 
   const circleExecutorAvailable = Boolean(
-    circleApiKey && circleEntitySecret && circleWalletAddress && circleWalletBlockchain,
+    circleApiKey &&
+    circleEntitySecret &&
+    circleWalletAddress &&
+    circleWalletBlockchain,
   )
 
   const mode = (env.EXECUTION_MODE?.trim() || 'dry-run') as RobotExecutionMode
-  const statePath = env.EXECUTION_STATE_PATH?.trim() || './data/execution-state.json'
+  const statePath =
+    env.EXECUTION_STATE_PATH?.trim() || './data/execution-state.json'
   const pollIntervalMs = parseNumber(env.EXECUTION_POLL_INTERVAL_MS, 60_000)
   const balanceOverrideValue = env.EXECUTION_BALANCE_OVERRIDE_USDC?.trim()
-  const balanceOverrideUsdc = balanceOverrideValue ? Number(balanceOverrideValue) : undefined
-  const bridgeRequested = parseBoolean(env.EXECUTION_BRIDGE_TOP_UP_ENABLED, false)
+  const balanceOverrideUsdc = balanceOverrideValue
+    ? Number(balanceOverrideValue)
+    : undefined
+  const policyMinOverride = env.EXECUTION_POLICY_MIN_THRESHOLD_USDC?.trim()
+  const policyTargetOverride = env.EXECUTION_POLICY_TARGET_BALANCE_USDC?.trim()
+  const policyMaxOverride =
+    env.EXECUTION_POLICY_MAX_REBALANCE_AMOUNT_USDC?.trim()
+  const policyOverrideValues = [
+    policyMinOverride,
+    policyTargetOverride,
+    policyMaxOverride,
+  ]
+  const policyOverrideNumbers = policyOverrideValues.map((value) =>
+    value ? Number(value) : Number.NaN,
+  )
+  const policyOverride = policyOverrideNumbers.every((value) =>
+    Number.isFinite(value),
+  )
+    ? {
+        minThreshold: policyOverrideNumbers[0],
+        targetBalance: policyOverrideNumbers[1],
+        maxRebalanceAmount: policyOverrideNumbers[2],
+      }
+    : undefined
+
+  if (
+    policyOverride &&
+    (policyOverride.minThreshold < 0 ||
+      policyOverride.targetBalance < policyOverride.minThreshold ||
+      policyOverride.maxRebalanceAmount < 0)
+  ) {
+    throw new Error('Execution policy override is invalid.')
+  }
+  const bridgeRequested = parseBoolean(
+    env.EXECUTION_BRIDGE_TOP_UP_ENABLED,
+    false,
+  )
 
   if (mode === 'auto' && !circleExecutorAvailable) {
     missingEnvVars.push(
@@ -147,10 +191,10 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
 
   const bridgeProviderAvailable = Boolean(
     bridgeRequested &&
-      env.BRIDGE_SOURCE_CHAIN?.trim() &&
-      env.BRIDGE_SOURCE_WALLET_ADDRESS?.trim() &&
-      env.BRIDGE_DESTINATION_CHAIN?.trim() &&
-      env.BRIDGE_DESTINATION_WALLET_ADDRESS?.trim(),
+    env.BRIDGE_SOURCE_CHAIN?.trim() &&
+    env.BRIDGE_SOURCE_WALLET_ADDRESS?.trim() &&
+    env.BRIDGE_DESTINATION_CHAIN?.trim() &&
+    env.BRIDGE_DESTINATION_WALLET_ADDRESS?.trim(),
   )
 
   if (bridgeRequested && !bridgeProviderAvailable) {
@@ -166,11 +210,19 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
     globalPaused: parseBoolean(env.EXECUTION_GLOBAL_PAUSE, false),
     policyPaused: parseBoolean(env.EXECUTION_POLICY_PAUSED, false),
     emergencyStop: parseBoolean(env.EXECUTION_EMERGENCY_STOP, false),
-    maxExecutionAmountUsdc: parseNumber(env.EXECUTION_MAX_EXECUTION_AMOUNT_USDC, 1_000),
-    dailyNotionalCapUsdc: parseNumber(env.EXECUTION_DAILY_NOTIONAL_CAP_USDC, 5_000),
+    maxExecutionAmountUsdc: parseNumber(
+      env.EXECUTION_MAX_EXECUTION_AMOUNT_USDC,
+      1_000,
+    ),
+    dailyNotionalCapUsdc: parseNumber(
+      env.EXECUTION_DAILY_NOTIONAL_CAP_USDC,
+      5_000,
+    ),
     cooldownMinutes: parseNumber(env.EXECUTION_COOLDOWN_MINUTES, 30),
     destinationAllowlist: parseAddressList(env.EXECUTION_DESTINATION_ALLOWLIST),
-    rebalanceDestinationAddress: parseAddress(env.EXECUTION_REBALANCE_DESTINATION_ADDRESS),
+    rebalanceDestinationAddress: parseAddress(
+      env.EXECUTION_REBALANCE_DESTINATION_ADDRESS,
+    ),
     bridgeTopUpEnabled: bridgeRequested,
   }
 
@@ -179,11 +231,18 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
   return {
     mode,
     rpcUrl,
-    policyAddress: policyAddress ?? ('0x0000000000000000000000000000000000000000' as Address),
-    treasuryAddress: treasuryAddress ?? ('0x0000000000000000000000000000000000000000' as Address),
+    policyAddress:
+      policyAddress ??
+      ('0x0000000000000000000000000000000000000000' as Address),
+    treasuryAddress:
+      treasuryAddress ??
+      ('0x0000000000000000000000000000000000000000' as Address),
     statePath: path.resolve(statePath),
     pollIntervalMs,
-    balanceOverrideUsdc: Number.isFinite(balanceOverrideUsdc) ? balanceOverrideUsdc : undefined,
+    balanceOverrideUsdc: Number.isFinite(balanceOverrideUsdc)
+      ? balanceOverrideUsdc
+      : undefined,
+    policyOverride,
     safety,
     payoutRecipients,
     availability: {
