@@ -2,7 +2,7 @@
 
 ## Position
 
-This repository is an independent Official Arc Architect contribution. It is a public Arc Testnet reference implementation, not an official Arc product and not a production custody service.
+This repository is a public Arc Testnet treasury reference implementation, not a production custody service. Its controls and deployment evidence must stand on their own, independent of the builder's title.
 
 ## Trust boundaries
 

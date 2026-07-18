@@ -90,8 +90,8 @@ const liveTiles = [
 ]
 
 const workingNotes = [
-  'Built by an Official Arc Architect as an independent community contribution, not an official Arc page.',
-  'The main job is to produce a readable treasury readiness report and proof trail.',
+  'The main job is to produce a readable treasury decision, readiness report, and proof trail.',
+  'The system architecture page connects product behavior to contracts, authorization, and deployment evidence.',
   'Live signing remains available, but it should never be required to understand the result.',
   'The dashboard keeps a local proof log so updates can be written down as they happen.',
 ]
@@ -193,7 +193,7 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button asChild>
-              <Link href="/architects">Architect proof</Link>
+              <Link href="/architecture">System architecture</Link>
             </Button>
           </div>
         </div>
@@ -250,8 +250,8 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/architects">
-                  Architect proof
+                <Link href="/architecture">
+                  System architecture
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -346,12 +346,12 @@ export default function HomePage() {
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/10 bg-primary/10 p-4 text-sm leading-6 text-foreground">
-                The homepage is the public entry point. The architect proof page
-                explains the deployment facts and onchain status. The robot
-                brief explains what the installed agent does in this project.
-                The case study explains the replay path. The dashboard is where
-                visitors can generate the readiness report, compare sample
-                states, and optionally hand control to the live operator.
+                The homepage is the public entry point. The architecture page
+                explains the system, deployment facts, and onchain status. The
+                operator brief explains what the installed agent does. The case
+                study explains the replay path. The dashboard is where visitors
+                generate the readiness report, compare states, and optionally
+                hand control to the live operator.
               </div>
             </CardContent>
           </Card>
@@ -507,8 +507,8 @@ export default function HomePage() {
                   operator mode if needed.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Keep the builder story legible from GitHub to the architect
-                  proof page and the review notes.
+                  Keep the technical evidence legible from GitHub to the system
+                  architecture page and release notes.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
                   Surface the report-first build without pretending the live
@@ -526,9 +526,8 @@ export default function HomePage() {
             <CardHeader className="p-0">
               <CardTitle>Open the review surface</CardTitle>
               <CardDescription>
-                The homepage is the overview. The proof page explains the
-                evidence. The dashboard is where people actually generate the
-                report.
+                The homepage is the overview. The architecture page explains the
+                evidence. The dashboard is where people generate the report.
               </CardDescription>
             </CardHeader>
 
@@ -553,7 +552,7 @@ export default function HomePage() {
                 size="lg"
                 variant="outline"
               >
-                <Link href="/architects">Open architect proof</Link>
+                <Link href="/architecture">Open system architecture</Link>
               </Button>
               <Button
                 asChild

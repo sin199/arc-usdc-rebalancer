@@ -10,10 +10,13 @@ import {
   arcAgentValidationTag,
 } from '@/lib/arc-agent'
 
-export const architectProof = {
+export const projectProof = {
   productionUrl: 'https://web-eight-chi-99.vercel.app',
-  latestDeploymentUrl: process.env.VERCEL_URL?.trim() ? `https://${process.env.VERCEL_URL.trim()}` : 'local development',
-  deploymentHash: process.env.VERCEL_DEPLOYMENT_ID?.trim() ?? 'local-development',
+  latestDeploymentUrl: process.env.VERCEL_URL?.trim()
+    ? `https://${process.env.VERCEL_URL.trim()}`
+    : 'local development',
+  deploymentHash:
+    process.env.VERCEL_DEPLOYMENT_ID?.trim() ?? 'local-development',
   mainBranch: process.env.VERCEL_GIT_COMMIT_REF?.trim() ?? 'main',
   mainCommit: process.env.VERCEL_GIT_COMMIT_SHA?.trim() ?? 'local-development',
   githubRepoUrl: 'https://github.com/sin199/arc-usdc-rebalancer',
@@ -84,4 +87,3 @@ export const architectProof = {
     },
   ],
 }
-

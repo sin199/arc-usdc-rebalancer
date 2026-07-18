@@ -30,7 +30,7 @@ test('authorization message binds the sensitive action and payload', () => {
     operatorAddress: '0x0000000000000000000000000000000000000001',
     origin: 'https://web-eight-chi-99.vercel.app',
     payloadHash,
-    requestId: 'architect-test-request',
+    requestId: 'product-test-request',
     timestamp: 1_752_814_800_000,
   })
 

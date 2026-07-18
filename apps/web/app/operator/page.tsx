@@ -73,7 +73,7 @@ export default function OperatorPage() {
                 variant="outline"
                 className="border-white/15 bg-white/5 text-foreground"
               >
-                Not a badge claim
+                Project scope
               </Badge>
             </div>
             <CardTitle className="text-3xl">
@@ -104,9 +104,10 @@ export default function OperatorPage() {
                 Boundary
               </div>
               <p className="mt-3 text-sm leading-7 text-foreground">
-                This is an independent contribution built by an Official Arc
-                Architect. It is not an official Arc product and does not
-                receive any exception from Arc rules.
+                This is a public Arc Testnet reference system, not a production
+                custody service. Live writes remain disabled until durable
+                replay protection, operator controls, and ownership migration
+                are reviewed.
               </p>
             </div>
           </CardContent>

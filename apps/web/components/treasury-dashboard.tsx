@@ -357,9 +357,9 @@ const publicLaunchPath = [
 
 const builderReferenceLinks = [
   {
-    label: 'Architect proof',
-    value: '/architects',
-    href: '/architects',
+    label: 'System architecture',
+    value: '/architecture',
+    href: '/architecture',
   },
   {
     label: 'Live demo',

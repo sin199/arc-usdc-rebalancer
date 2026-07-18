@@ -1,17 +1,15 @@
 # Arc USDC Rebalancer
 
-Official Arc Architect contribution: verified Arc Testnet readiness checker + operator brief + optional live execution.
-
-This is an independent community project built by an Official Arc Architect. It is not an official Arc product.
+A verified Arc Testnet treasury decision system with a readiness checker, operator brief, and fail-closed execution controls.
 
 The public demo is report first, execution second: visitors can generate a readiness report without a wallet, compare sample treasury states, copy markdown or an action pack, and only move into operator mode when the operator wallet, live policy, Circle readiness, and executor dependencies are ready.
 
 Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
-Architect proof: [https://web-eight-chi-99.vercel.app/architects](https://web-eight-chi-99.vercel.app/architects)
+System architecture: [https://web-eight-chi-99.vercel.app/architecture](https://web-eight-chi-99.vercel.app/architecture)
 Operator brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
 Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
-Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submission.md)
+Security model: [docs/security-model.md](./docs/security-model.md)
 
 ## What this repo shows
 
@@ -21,7 +19,7 @@ Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submi
 - A copyable readiness report with policy, balance, Circle, wallet, executor, and agent evidence.
 - A copyable action pack with exact commands and payload context for an operator to review.
 - Live action controls that render only when the deployment flag, allowlisted operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
-- A dedicated architect proof page with deployment facts, Arcscan links, and current proof status.
+- A dedicated system architecture page with deployment facts, Arcscan links, and current proof status.
 - Wallet-signed, allowlisted, amount-capped live requests with durable Redis replay protection, rate-limit, and audit checks; server-signer writes are disabled by default and fail closed without the durable guard.
 - Agent activation and Circle wallet creation use the same signed operator authorization boundary as treasury execution.
 - A V2 policy/executor reference stack adds onchain policy enforcement, pause, recipient allowlists, two-step ownership transfer, and executor caps without replacing the currently deployed contracts.
@@ -46,7 +44,7 @@ The repo is built to show how the installed robot is used inside this project:
 3. Surface the agent identity and the brief that recommends the next action.
 4. Keep live operator execution gated until all live dependencies are ready.
 5. Keep Circle wallets and Gateway visible as part of the same USDC stack.
-6. Give Arc reviewers one proof page with deployment evidence and onchain status.
+6. Give reviewers one architecture page with deployment evidence and onchain status.
 
 ## Project surface on Arc
 
@@ -208,7 +206,7 @@ The contract package is separate and can be deployed independently from the fron
 
 If you are reviewing this repo, start here:
 
-1. Open the architect proof at [web-eight-chi-99.vercel.app/architects](https://web-eight-chi-99.vercel.app/architects).
+1. Open the system architecture at [web-eight-chi-99.vercel.app/architecture](https://web-eight-chi-99.vercel.app/architecture).
 2. Open the live checker at [web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard).
 3. Generate a report, copy the action pack, and compare the sample scenarios.
 4. Confirm preview mode shows the locked execution state instead of runnable live controls.

@@ -6,7 +6,7 @@ export type ProjectReleaseNote = {
 }
 
 export const projectTrailSummary = {
-  buildLabel: 'Official Architect reference build',
+  buildLabel: 'Verified treasury reference build',
   headline:
     'A fail-closed Arc treasury reference stack with signed operator actions, deterministic verification, and an auditable V2 governance path.',
   lastReviewed: 'July 18, 2026',
@@ -36,17 +36,17 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
   },
   {
     date: 'July 18, 2026',
-    tag: 'identity',
-    title: 'Published the Official Arc Architect positioning',
+    tag: 'product',
+    title: 'Refocused public pages on the product',
     detail:
-      'The public surfaces now identify the builder as an Official Arc Architect while clearly describing this repository as an independent community project rather than an official Arc product.',
+      'The public surfaces now lead with treasury decisions, system architecture, verifiable controls, and deployment evidence.',
   },
   {
     date: 'June 2, 2026',
     tag: 'review',
-    title: 'Added an architect proof page',
+    title: 'Added a system evidence page',
     detail:
-      'The site now surfaces one proof page with the production link, deployment hash, Arc Testnet addresses, current proof status, and screenshot checklist.',
+      'The site now surfaces one architecture page with the production link, deployment hash, Arc Testnet addresses, current proof status, and screenshot checklist.',
   },
   {
     date: 'May 31, 2026',
@@ -123,9 +123,9 @@ export const projectKnownGaps = [
 
 export const projectReferenceLinks = [
   {
-    label: 'Architect proof',
-    value: '/architects',
-    href: '/architects',
+    label: 'System architecture',
+    value: '/architecture',
+    href: '/architecture',
   },
   {
     label: 'Operator brief',

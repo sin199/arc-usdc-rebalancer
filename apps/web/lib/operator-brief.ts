@@ -4,7 +4,7 @@ export const operatorBriefSummary = {
   reviewGoal:
     'Make it easy to see what the robot does, how to verify it, and which pieces are intentionally public.',
   statusNote:
-    'Built by an Official Arc Architect as an independent community contribution; the site is not an official Arc product.',
+    'The product is a public Arc Testnet reference system; live writes remain disabled until every production gate is reviewed.',
 }
 
 export const operatorBriefEvidence = [
@@ -62,24 +62,5 @@ export const operatorBriefActions = [
     label: 'GitHub repo',
     href: 'https://github.com/sin199/arc-usdc-rebalancer',
     detail: 'Inspect the source and commit trail.',
-  },
-]
-
-export const operatorBriefOfficialDocs = [
-  {
-    label: 'Program overview',
-    href: 'https://community.arc.network/en/home/resources/architects-overview',
-  },
-  {
-    label: 'Tiers & benefits',
-    href: 'https://community.arc.network/home/resources/architects-tiers-and-benefits',
-  },
-  {
-    label: 'Roles',
-    href: 'https://community.arc.network/home/resources/architects-roles',
-  },
-  {
-    label: 'Contribution opportunities',
-    href: 'https://community.arc.network/en/public/resources/architects-contribution-opportunities',
   },
 ]
