@@ -10,6 +10,7 @@
     "typecheck": "pnpm --filter @arc-usdc-rebalancer/web typecheck",
     "worker:dev": "pnpm --filter @arc-usdc-rebalancer/worker dev",
     "worker:build": "pnpm --filter @arc-usdc-rebalancer/worker build",
+    "worker:backtest": "pnpm --filter @arc-usdc-rebalancer/worker backtest",
     "worker:typecheck": "pnpm --filter @arc-usdc-rebalancer/worker typecheck",
     "worker:test": "pnpm --filter @arc-usdc-rebalancer/worker test",
     "format": "prettier --write .",

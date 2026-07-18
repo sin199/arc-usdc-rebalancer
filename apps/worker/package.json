@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "backtest": "tsx src/backtest-cli.ts",
     "dev": "tsx src/index.ts",
     "build": "tsup src/index.ts --format esm --target es2022 --out-dir dist --clean",
     "start": "node dist/index.js",
