@@ -8,8 +8,11 @@ Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi
 System architecture: [https://web-eight-chi-99.vercel.app/architecture](https://web-eight-chi-99.vercel.app/architecture)
 Operator brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
+Hackathon deck: [docs/arc-treasury-agent-deck.pptx](docs/arc-treasury-agent-deck.pptx)
 Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
 Security model: [docs/security-model.md](./docs/security-model.md)
+3-minute demo video: [docs/arc-treasury-agent-demo.mp4](./docs/arc-treasury-agent-demo.mp4)
+Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submission.md)
 
 ## What this repo shows
 
