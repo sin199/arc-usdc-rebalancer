@@ -151,7 +151,6 @@ export type ArcAgentBriefResult = {
   }
   recommendation: {
     action: ArcAgentBriefRecommendationAction
-    confidence: number
     headline: string
     detail: string
     nextSteps: string[]
@@ -241,7 +240,6 @@ function deriveArcAgentRecommendation(params: {
   if (!policyAddress) {
     return {
       action: 'load_policy',
-      confidence: 0.36,
       headline: 'Load the deployed TreasuryPolicy first.',
       detail: 'The agent cannot make a treasury call until the policy contract address is configured.',
       nextSteps: [
@@ -255,7 +253,6 @@ function deriveArcAgentRecommendation(params: {
   if (!executorAddress) {
     return {
       action: 'deploy_executor',
-      confidence: 0.48,
       headline: 'Deploy TreasuryExecutor before moving funds.',
       detail: 'The policy is visible, but the treasury cannot execute USDC movement until the executor is deployed.',
       nextSteps: [
@@ -269,7 +266,6 @@ function deriveArcAgentRecommendation(params: {
   if (!circleReadiness.apiKeyConfigured || !circleReadiness.entitySecretConfigured) {
     return {
       action: 'configure_circle',
-      confidence: 0.44,
       headline: 'Circle developer wallet secrets still need to be configured.',
       detail: 'The Arc agent can still reason about policy, but the wallet and bridge rails are incomplete.',
       nextSteps: [
@@ -283,7 +279,6 @@ function deriveArcAgentRecommendation(params: {
   if (!circleReadiness.walletSetConfigured) {
     return {
       action: 'create_circle_wallet',
-      confidence: 0.56,
       headline: 'Create a Circle wallet set so the agent can operate.',
       detail: 'The developer wallet control plane is ready enough to bootstrap, but the wallet set is not configured yet.',
       nextSteps: [
@@ -297,7 +292,6 @@ function deriveArcAgentRecommendation(params: {
   if (balanceUsdc === null) {
     return {
       action: 'hold',
-      confidence: 0.52,
       headline: 'Treasury balance is still loading.',
       detail: 'The agent can see the policy and Circle readiness, but the live treasury balance is not available yet.',
       nextSteps: [
@@ -311,7 +305,6 @@ function deriveArcAgentRecommendation(params: {
   if (evaluation?.status === 'below_min' && evaluation.amount > 0) {
     return {
       action: 'top_up',
-      confidence: 0.9,
       headline: `Top up ${formatUsdc(evaluation.amount)} USDC toward target.`,
       detail: `Treasury balance is below the minimum threshold with ${formatUsdc(balanceUsdc)} USDC available on the executor path.`,
       nextSteps: [
@@ -325,7 +318,6 @@ function deriveArcAgentRecommendation(params: {
   if (evaluation?.status === 'above_target' && evaluation.amount > 0) {
     return {
       action: 'trim',
-      confidence: 0.9,
       headline: `Trim ${formatUsdc(evaluation.amount)} USDC back to target.`,
       detail: `Treasury balance is above target with ${formatUsdc(balanceUsdc)} USDC sitting on the executor path.`,
       nextSteps: [
@@ -338,7 +330,6 @@ function deriveArcAgentRecommendation(params: {
 
   return {
     action: 'hold',
-    confidence: 0.96,
     headline: 'Treasury is inside the policy band.',
     detail:
       circleNotes.length > 0

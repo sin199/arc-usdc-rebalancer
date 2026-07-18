@@ -1,12 +1,5 @@
 import { parseUnits } from 'viem'
-import {
-  arcTestnetRpcUrl,
-  arcUsdcAddress,
-  arcUsdcDecimals,
-  evaluatePolicy,
-  formatUsdc,
-  type TreasuryPolicy,
-} from '@arc-usdc-rebalancer/shared'
+import { arcTestnetRpcUrl, arcUsdcAddress, arcUsdcDecimals, evaluatePolicy, formatUsdc, type TreasuryPolicy } from '@arc-usdc-rebalancer/shared'
 
 export type ReadinessReportInputs = {
   agentId: string
@@ -18,6 +11,7 @@ export type ReadinessReportInputs = {
   contractAddress?: string
   executorAddress?: string
   generatedAt: string
+  liveExecutionEnabled: boolean
   liveMode: boolean
   modeLabel: string
   policy: TreasuryPolicy
@@ -52,20 +46,22 @@ export type ReadinessActionPack = {
 
 export type ReadinessReport = {
   action: 'hold' | 'top_up' | 'trim' | 'review'
-  confidence: number
   actionPack: ReadinessActionPack
+  decisionBasis: string
   evidence: ReadinessReportEvidence[]
   headline: string
   markdown: string
   nextSteps: string[]
+  readiness: {
+    passed: number
+    total: number
+  }
   summary: string
   checks: ReadinessReportCheck[]
 }
 
 function formatPolicyBand(policy: TreasuryPolicy) {
-  return `${formatUsdc(policy.minThreshold)} / ${formatUsdc(policy.targetBalance)} / ${formatUsdc(
-    policy.maxRebalanceAmount,
-  )} USDC`
+  return `${formatUsdc(policy.minThreshold)} / ${formatUsdc(policy.targetBalance)} / ${formatUsdc(policy.maxRebalanceAmount)} USDC`
 }
 
 function formatAction(evaluationAction: 'hold' | 'top_up' | 'trim') {
@@ -84,7 +80,7 @@ function buildActionPack(reportAction: ReadinessReport['action'], inputs: Readin
   const amountUnits = parseUnits(String(amountUsdc), arcUsdcDecimals).toString()
   const executorAddress = inputs.executorAddress ?? '<TREASURY_EXECUTOR_ADDRESS>'
   const operatorAddress = inputs.operatorAddress ?? '<RECIPIENT_WALLET_ADDRESS>'
-  const executorFallbackNote = inputs.executorAddress ? '' : ' The dashboard will deploy a fresh TreasuryExecutor first if needed.'
+  const executorFallbackNote = inputs.executorAddress ? '' : ' Configure TREASURY_EXECUTOR_ADDRESS before attempting live execution.'
 
   if (reportAction === 'top_up' && amountUsdc > 0) {
     return {
@@ -153,10 +149,7 @@ function buildActionPack(reportAction: ReadinessReport['action'], inputs: Readin
       rpcUrl: arcTestnetRpcUrl,
       tokenAddress: arcUsdcAddress,
     },
-    summary:
-      reportAction === 'hold'
-        ? 'No chain transaction is needed. Keep monitoring and share the report.'
-        : 'Resolve the missing dependencies before preparing an execution command.',
+    summary: reportAction === 'hold' ? 'No chain transaction is needed. Keep monitoring and share the report.' : 'Resolve the missing dependencies before preparing an execution command.',
   }
 }
 
@@ -167,7 +160,8 @@ function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, 
     `Generated: ${new Date(inputs.generatedAt).toLocaleString('en-US')}`,
     `Mode: ${inputs.modeLabel}`,
     `Decision: ${report.action === 'review' ? 'Review' : formatAction(report.action)}`,
-    `Confidence: ${(report.confidence * 100).toFixed(0)}%`,
+    `Decision basis: ${report.decisionBasis}`,
+    `Execution readiness: ${report.readiness.passed}/${report.readiness.total} checks passed`,
     '',
     '## Summary',
     report.summary,
@@ -177,9 +171,7 @@ function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, 
     '',
     '## Action pack',
     report.actionPack.summary,
-    ...(report.actionPack.commands.length > 0
-      ? ['', '### Commands', ...report.actionPack.commands.map((command) => `- ${command.label}: ${command.command}`)]
-      : []),
+    ...(report.actionPack.commands.length > 0 ? ['', '### Commands', ...report.actionPack.commands.map((command) => `- ${command.label}: ${command.command}`)] : []),
     '',
     '## Next steps',
     ...report.nextSteps.map((step) => `- ${step}`),
@@ -197,7 +189,6 @@ function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, 
 export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessReport {
   const evaluation = evaluatePolicy(inputs.balance, inputs.policy)
   const policyBand = formatPolicyBand(inputs.policy)
-  const liveDependenciesReady = inputs.liveMode && inputs.circleReady && Boolean(inputs.executorAddress)
   const policyLoaded = inputs.policySourceLabel === 'Live chain snapshot' && Boolean(inputs.contractAddress)
   const reportAction: ReadinessReport['action'] =
     !inputs.contractAddress && inputs.liveMode
@@ -230,6 +221,16 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
           ? `Trim ${formatUsdc(evaluation.amount)} USDC to reduce excess above target.`
           : 'Review the live dependencies before moving funds.'
 
+  const targetDistance = Math.abs(inputs.balance - inputs.policy.targetBalance)
+  const decisionBasis =
+    reportAction === 'top_up'
+      ? `${formatUsdc(inputs.policy.minThreshold - inputs.balance)} USDC below the minimum threshold.`
+      : reportAction === 'trim'
+        ? `${formatUsdc(inputs.balance - inputs.policy.targetBalance)} USDC above the target balance.`
+        : reportAction === 'hold'
+          ? `Inside the policy band; ${formatUsdc(targetDistance)} USDC from target.`
+          : 'One or more required execution dependencies are missing.'
+
   const nextSteps: string[] = []
 
   if (!inputs.contractAddress) {
@@ -243,7 +244,7 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
   }
 
   if (!inputs.executorAddress) {
-    nextSteps.push('The live action button will deploy a fresh TreasuryExecutor first if needed.')
+    nextSteps.push('Deploy TreasuryExecutor through the explicit operator flow, then set TREASURY_EXECUTOR_ADDRESS.')
   }
 
   if (reportAction === 'hold') {
@@ -259,9 +260,19 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
     { label: 'Current balance', value: `${formatUsdc(inputs.balance)} USDC` },
     { label: 'Policy source', value: inputs.policySourceLabel },
     { label: 'Circle', value: inputs.circleSummary },
-    { label: 'Circle notes', value: inputs.circleNotes.length > 0 ? `${inputs.circleNotes.length} note(s)` : 'No notes' },
+    {
+      label: 'Circle notes',
+      value: inputs.circleNotes.length > 0 ? `${inputs.circleNotes.length} note(s)` : 'No notes',
+    },
     { label: 'Wallet set', value: inputs.walletSetId ?? 'Missing' },
-    { label: 'Executor', value: inputs.executorAddress ? inputs.executorAddress : 'Missing' },
+    {
+      label: 'Executor',
+      value: inputs.executorAddress ? inputs.executorAddress : 'Missing',
+    },
+    {
+      label: 'Server execution',
+      value: inputs.liveExecutionEnabled ? 'Enabled with wallet authorization' : 'Disabled',
+    },
     { label: 'Agent', value: `#${inputs.agentId} · ${inputs.agentTag}` },
   ]
 
@@ -286,30 +297,25 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
       detail: inputs.executorAddress ? 'TreasuryExecutor is configured.' : 'TreasuryExecutor is missing.',
     },
     {
-      label: 'Live mode',
-      passed: inputs.liveMode ? liveDependenciesReady : true,
-      detail: inputs.liveMode
-        ? 'The live path can be used once the missing dependencies are in place.'
-        : 'Demo mode keeps the report useful without a wallet.',
+      label: 'Server execution',
+      passed: inputs.liveExecutionEnabled,
+      detail: inputs.liveExecutionEnabled ? 'Live writes require an allowlisted operator wallet signature.' : 'Live writes are disabled; preview and report export remain available.',
     },
   ]
 
+  const readiness = {
+    passed: checks.filter((check) => check.passed).length,
+    total: checks.length,
+  }
+
   const report: ReadinessReport = {
     action: reportAction,
-    confidence:
-      reportAction === 'hold'
-        ? liveDependenciesReady
-          ? 0.97
-          : 0.92
-        : reportAction === 'review'
-          ? 0.56
-          : liveDependenciesReady
-            ? 0.87
-            : 0.64,
     actionPack: buildActionPack(reportAction, inputs, evaluation.amount),
+    decisionBasis,
     evidence,
     headline,
     nextSteps,
+    readiness,
     summary,
     checks,
     markdown: '',

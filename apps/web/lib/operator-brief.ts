@@ -23,7 +23,7 @@ export const operatorBriefEvidence = [
   },
   {
     label: 'Execution',
-    value: 'Server-signer top-up and trim path with a self-healing executor deployment step.',
+    value: 'Wallet-authorized server execution, disabled by default and gated by an operator allowlist.',
   },
 ]
 

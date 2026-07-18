@@ -294,7 +294,6 @@ type ArcAgentBriefResult = {
       | 'configure_circle'
       | 'create_circle_wallet'
       | 'load_policy'
-    confidence: number
     headline: string
     detail: string
     nextSteps: string[]
@@ -645,7 +644,6 @@ export function TreasuryDashboard() {
     : evaluation?.status === 'healthy'
       ? 'pass'
       : 'warn'
-  const stablecoinRobotConfidence = stablecoinRobotStatus === 'pass' ? 0.96 : stablecoinRobotStatus === 'warn' ? 0.72 : 0.25
   const stablecoinRobotReasonCodes = publicDemoMode
     ? ['PUBLIC_DEMO_MODE', ...(evaluation?.reasonCodes ?? ['POLICY_READ_ONLY'])]
     : !contractAddress
@@ -2566,7 +2564,7 @@ export function TreasuryDashboard() {
                       ? 'WARN'
                       : 'WAIT'}
                 </Badge>
-                <Badge variant="outline">{`Confidence ${stablecoinRobotConfidence.toFixed(2)}`}</Badge>
+                <Badge variant="outline">Rule-based decision</Badge>
                 <Badge variant="outline">{`Risk ${stablecoinRobotStatus === 'pass' ? 'LOW' : stablecoinRobotStatus === 'warn' ? 'MEDIUM' : 'HIGH'}`}</Badge>
                 <Badge variant={stablecoinRobotExecutionReady ? 'success' : 'warning'}>
                   {stablecoinRobotExecutionReady ? 'Execution ready' : 'Execution blocked'}
@@ -2921,9 +2919,11 @@ export function TreasuryDashboard() {
                   </div>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Confidence</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Decision basis</div>
                   <div className="mt-2 text-foreground">
-                    {lastArcAgentBrief ? `${Math.round(lastArcAgentBrief.recommendation.confidence * 100)}%` : '--'}
+                    {lastArcAgentBrief
+                      ? lastArcAgentBrief.treasury.evaluation?.reasonCodes.join(', ') || 'Dependency readiness rules'
+                      : '--'}
                   </div>
                 </div>
               </div>

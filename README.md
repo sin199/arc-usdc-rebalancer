@@ -18,9 +18,9 @@ Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submi
 - A short case study page that explains what to inspect and how to replay the build.
 - A copyable readiness report with policy, balance, Circle, wallet, executor, and agent evidence.
 - A copyable action pack with exact commands and payload context for an operator to review.
-- Live action controls that render only when operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
+- Live action controls that render only when the deployment flag, allowlisted operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
 - A dedicated architect proof page with deployment facts, Arcscan links, and current proof status.
-- A self-healing live action path that can redeploy a fresh `TreasuryExecutor` if the saved one is stale, after the live gates are satisfied.
+- Wallet-signed, allowlisted, amount-capped live requests with replay, rate-limit, and audit checks; server-signer writes are disabled by default.
 - A treasury policy and executor flow on Arc Testnet.
 - An Arc agent identity and brief surfaced inside the dashboard.
 - Circle developer-controlled wallet and Gateway readiness for USDC routing.
@@ -30,7 +30,7 @@ Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submi
 
 - It does not silently send transactions.
 - It does not execute from preview mode.
-- It does not execute without a live signer, Circle readiness, an operator wallet, a live policy snapshot, and an executor.
+- It does not execute unless live writes are explicitly enabled and the connected operator signs an allowlisted, short-lived request.
 - It is not a profit bot.
 
 ## Why this exists
@@ -160,6 +160,12 @@ Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 - `CIRCLE_GATEWAY_DESTINATION_DOMAIN` - Gateway destination domain, default `6` for Base Sepolia
 - `OWNER_PRIVATE_KEY` - Arc Testnet agent owner wallet key used by the activation route
 - `VALIDATOR_PRIVATE_KEY` - Arc Testnet validator wallet key used by the activation route
+- `ENABLE_LIVE_EXECUTION` - must be exactly `true` to enable server-signer writes; defaults to disabled
+- `LIVE_EXECUTION_OPERATOR_ALLOWLIST` - comma-separated wallet addresses allowed to authorize writes
+- `LIVE_EXECUTION_ALLOWED_ORIGINS` - comma-separated browser origins allowed to submit signed writes
+- `LIVE_EXECUTION_MAX_AMOUNT_USDC` - per-request amount ceiling, default `200`
+- `LIVE_EXECUTION_RATE_LIMIT_PER_MINUTE` - best-effort per-operator instance limit, default `3`
+- `LIVE_EXECUTION_SIGNATURE_TTL_SECONDS` - signed request lifetime, default `60`
 
 ### Contract deployment
 
@@ -204,7 +210,8 @@ If you are reviewing this repo, start here:
 - The dashboard reads and writes the deployed contract on Arc Testnet only.
 - Public visitors can explore the demo without a wallet.
 - Preview mode is for reports and copyable action packs, not live transaction submission.
-- Live signing stays gated behind the operator wallet and live dependency checks.
+- Live signing stays disabled by default and requires a fresh allowlisted operator wallet signature when enabled.
+- Product funnel events are privacy-safe and exclude wallet addresses; they are emitted as structured server logs.
 - The Circle line is the live control plane for wallets and Gateway, not a separate product.
 - The Arc agent panel surfaces the onchain identity and validation state tied to this website.
 - The brief panel turns the current state into a single recommended action.

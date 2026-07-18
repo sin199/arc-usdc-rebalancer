@@ -24,7 +24,7 @@ export function SiteHeader({ eyebrow, title, description, ctaHref, ctaLabel }: S
           <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
-      <Button asChild variant="outline" className="hidden sm:inline-flex">
+      <Button asChild variant="outline" className="shrink-0 px-3 sm:px-4">
         <Link href={ctaHref}>{ctaLabel}</Link>
       </Button>
     </header>
