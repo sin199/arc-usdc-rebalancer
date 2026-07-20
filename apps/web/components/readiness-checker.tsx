@@ -18,6 +18,7 @@ import {
   DEFAULT_TREASURY_POLICY,
   arcTestnetChainId,
   arcTestnetExplorerUrl,
+  buildTreasuryDecisionReceipt,
   circleStackSummary,
   formatUsdc,
   treasuryPolicyContractAbi,
@@ -457,12 +458,28 @@ export function ReadinessChecker() {
   }
 
   async function handleCopyActionPack() {
-    const text =
+    const commands =
       report.actionPack.commands.length > 0
         ? report.actionPack.commands
             .map((command) => `${command.label}: ${command.command}`)
             .join('\n')
         : report.actionPack.summary
+    const decisionReceipt = buildTreasuryDecisionReceipt({
+      action: report.action,
+      amountUsdc: Number(report.actionPack.payload.amountUsdc),
+      balanceUsdc: balance,
+      chainId: arcTestnetChainId,
+      executorAddress,
+      observedAt: new Date().toISOString(),
+      policy,
+      policyAddress: contractAddress,
+    })
+    const text = [
+      commands,
+      '',
+      `Decision receipt: ${decisionReceipt.receiptHash}`,
+      'Onchain anchor: not published.',
+    ].join('\n')
 
     await navigator.clipboard.writeText(text)
     trackProductEvent('action_pack_exported', {
@@ -495,15 +512,31 @@ export function ReadinessChecker() {
   }
 
   function handleDownloadActionPack() {
+    const generatedAt = new Date().toISOString()
+    const decisionReceipt = buildTreasuryDecisionReceipt({
+      action: report.action,
+      amountUsdc: Number(report.actionPack.payload.amountUsdc),
+      balanceUsdc: balance,
+      chainId: arcTestnetChainId,
+      executorAddress,
+      observedAt: generatedAt,
+      policy,
+      policyAddress: contractAddress,
+    })
     const blob = new Blob(
       [
         JSON.stringify(
           {
-            generatedAt: new Date().toISOString(),
+            generatedAt,
             action: report.action,
             headline: report.headline,
             summary: report.summary,
             actionPack: report.actionPack,
+            decisionReceipt: {
+              anchorStatus: 'not_published',
+              canonicalInputs: decisionReceipt,
+              receiptHash: decisionReceipt.receiptHash,
+            },
             report: report.markdown,
           },
           null,
@@ -1294,6 +1327,16 @@ export function ReadinessChecker() {
 
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                  Decision receipt
+                </div>
+                <p className="mt-2 text-sm leading-6 text-foreground">
+                  Generated when you copy or download this pack. Onchain anchor:
+                  {' '}not published.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   Safety note
                 </div>
                 <p className="mt-2 text-sm leading-6 text-foreground">
@@ -1333,6 +1376,14 @@ export function ReadinessChecker() {
                   <Copy className="h-4 w-4" />
                   {actionCopyState === 'copied' ? 'Copied' : 'Copy action pack'}
                 </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleDownloadActionPack}
+                >
+                  <Download className="h-4 w-4" />
+                  Download JSON
+                </Button>
                 {showLiveExecutionControls ? (
                   <>
                     <Button
@@ -1342,14 +1393,6 @@ export function ReadinessChecker() {
                     >
                       <ArrowRight className="h-4 w-4" />
                       {liveActionLabel}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleDownloadActionPack}
-                    >
-                      <Download className="h-4 w-4" />
-                      Download JSON
                     </Button>
                   </>
                 ) : null}

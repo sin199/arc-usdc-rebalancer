@@ -11,6 +11,7 @@
     "./arc": "./src/arc.ts",
     "./activity": "./src/activity.ts",
     "./backtest": "./src/backtest.ts",
+    "./decision-receipt": "./src/decision-receipt.ts",
     "./erc20": "./src/erc20.ts",
     "./execution": "./src/execution.ts",
     "./robot": "./src/robot.ts",

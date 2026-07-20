@@ -1,6 +1,7 @@
 export * from './activity'
 export * from './backtest'
 export * from './circle'
+export * from './decision-receipt'
 export * from './arc'
 export * from './erc20'
 export * from './execution'

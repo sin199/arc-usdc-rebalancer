@@ -35,6 +35,10 @@ The V2 reference contracts are intentionally not wired to the current deployment
 
 Deploying V2 is a separate, reviewed chain-state change. The existing contracts and balances must not be migrated implicitly by a frontend release.
 
+## Decision receipt anchor
+
+`TreasuryDecisionReceipt` is an optional, un-deployed registry for immutable decision hashes. A hash binds the Arc chain, policy values, observed balance, proposed action, amount, policy and executor addresses, and observation time. Recording a receipt does not custody USDC or invoke the executor. Its deployment and every record write remain separate, reviewed Arc Testnet actions; the public dashboard must show `not published` until a transaction hash exists.
+
 ## Verification expectations
 
 - Web and worker type checks pass.

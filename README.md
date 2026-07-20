@@ -21,6 +21,7 @@ Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submi
 - A short case study page that explains what to inspect and how to replay the build.
 - A copyable readiness report with policy, balance, Circle, wallet, executor, and onchain identity evidence.
 - A copyable action pack with exact commands and payload context for an operator to review.
+- A deterministic decision-receipt hash that binds policy, balance, proposed action, amount, chain, and observation time before any future anchor transaction.
 - Live action controls that render only when the deployment flag, allowlisted operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
 - A dedicated system architecture page with deployment facts, Arcscan links, and current proof status.
 - Wallet-signed, allowlisted, amount-capped live requests with durable Redis replay protection, rate-limit, and audit checks; server-signer writes are disabled by default and fail closed without the durable guard.
@@ -204,6 +205,8 @@ Frontend deployment is Vercel-based and should use `apps/web` as the project roo
 The contract package is separate and can be deployed independently from the frontend.
 
 `pnpm contracts:deploy-v2` prepares a new V2 policy/executor stack. Do not run it until the initial owner/multisig and migration plan have been reviewed.
+
+`forge script script/DeployTreasuryDecisionReceipt.s.sol:DeployTreasuryDecisionReceipt --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY` deploys an optional receipt registry. It records reviewed decision hashes only and cannot custody or move USDC. Do not run it until the owner and public proof plan have been reviewed.
 
 ## Review path
 
