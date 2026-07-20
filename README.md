@@ -13,6 +13,7 @@ Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer
 Security model: [docs/security-model.md](./docs/security-model.md)
 3-minute demo video: [docs/arc-treasury-agent-demo.mp4](./docs/arc-treasury-agent-demo.mp4)
 Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submission.md)
+Checkpoint 2 progress: [docs/checkpoint-2-progress.md](./docs/checkpoint-2-progress.md)
 
 ## What this repo shows
 
@@ -112,7 +113,7 @@ Open:
 1. Open the homepage and confirm the 30-second visitor path: dashboard, readiness report, markdown/action pack, optional operator mode.
 2. Open the dashboard and generate a readiness report from the current balance and policy inputs.
 3. Switch between below minimum, at target, and above target to confirm `top_up`, `hold`, and `trim` outputs.
-4. Copy the markdown report or the action pack in preview mode.
+4. Copy or download the action pack and confirm its decision receipt is marked `not published`.
 5. Confirm live action controls stay hidden until operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
 
 ## Demo checklist

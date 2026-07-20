@@ -57,6 +57,7 @@ const replaySteps = [
 const proofPoints = [
   'Public visitors can understand the build without a wallet.',
   'The dashboard produces one readable report instead of a wall of disconnected status cards.',
+  'Each copied or downloaded action pack includes a deterministic decision receipt, clearly marked as not published onchain.',
   'The Arc Testnet policy, Circle readiness, and executor state are visible in the same place.',
   'The live operator path stays gated until the onchain pieces are actually configured.',
 ]
@@ -125,8 +126,10 @@ export default function CaseStudyPage() {
                 Output
               </div>
               <div className="mt-2 text-sm leading-6 text-foreground">
-                The dashboard emits a copyable treasury readiness report that
-                can be pasted into chat, docs, or GitHub.
+                The dashboard emits a copyable readiness report and a
+                deterministic decision receipt for review in chat, docs, or
+                GitHub. The receipt is not an onchain record unless a future
+                transaction hash is published.
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4">

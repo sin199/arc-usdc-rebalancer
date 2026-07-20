@@ -9,6 +9,7 @@ Arc USDC Rebalancer is a public Arc Testnet DeFi Treasury demo built around one 
 - A public homepage that explains the 30-second visitor path.
 - A dashboard that produces a readable treasury readiness report from the current balance and policy band.
 - A copyable markdown report and action pack for chat, docs, GitHub, or terminal use.
+- A deterministic decision receipt generated with every copied or downloaded action pack. It binds the policy, balance, action, amount, Arc chain, and observation time; it is explicitly marked `not published` until a transaction hash exists.
 - A visible treasury operations brief that explains the policy workflow and live control path.
 - A live execution path that stays locked until the operator and live dependencies are ready.
 - A Circle control plane surface for developer-controlled wallets and Gateway readiness.
@@ -43,7 +44,8 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 3. Generate a readiness report.
 4. Compare treasury scenarios such as below minimum, at target, or above target.
 5. Copy the markdown report or action pack.
-6. Stop there if you only want the public demo.
+6. Confirm the action-pack decision receipt is marked `not published`.
+7. Stop there if you only want the public demo.
 
 ## Operator flow
 
@@ -89,6 +91,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 
 - The public demo already proves the report-first readiness flow on Arc Testnet: a visitor can inspect the readiness report, review the recommendation, and copy the markdown report or action pack without a wallet.
 - The action pack and locked execution boundary are both visible in production, so the demo shows where execution would begin and where it remains intentionally gated.
+- Decision receipts are generated locally with the exported action pack. The optional registry contract is not deployed, and no receipt is represented as onchain evidence.
 - No Arc Testnet `top_up` or `trim` transaction hash is published yet for this revision.
 - Live execution remains gated behind the operator wallet, live policy snapshot, Circle wallet-set readiness, and executor configuration.
 - No execution gates were bypassed to create this submission evidence.
@@ -102,6 +105,7 @@ Capture these five states from the live site:
 3. Dashboard at target showing the hold recommendation.
 4. Dashboard above target showing the trim recommendation.
 5. Dashboard execution locked state.
+6. Action pack with its `not published` decision-receipt notice.
 
 ## Suggested Arc House post
 
