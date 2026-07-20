@@ -9,7 +9,7 @@ Arc USDC Rebalancer is a public Arc Testnet DeFi Treasury demo built around one 
 - A public homepage that explains the 30-second visitor path.
 - A dashboard that produces a readable treasury readiness report from the current balance and policy band.
 - A copyable markdown report and action pack for chat, docs, GitHub, or terminal use.
-- A deterministic decision receipt generated with every copied or downloaded action pack. It binds the policy, balance, action, amount, Arc chain, and observation time; it is explicitly marked `not published` until a transaction hash exists.
+- A deterministic decision receipt generated with every copied or downloaded action pack. It binds the policy source, policy, balance, action, amount, Arc chain, and observation time; it is explicitly marked `not published` until a transaction hash exists.
 - A visible treasury operations brief that explains the policy workflow and live control path.
 - A live execution path that stays locked until the operator and live dependencies are ready.
 - A Circle control plane surface for developer-controlled wallets and Gateway readiness.

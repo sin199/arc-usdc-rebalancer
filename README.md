@@ -22,7 +22,7 @@ Checkpoint 2 progress: [docs/checkpoint-2-progress.md](./docs/checkpoint-2-progr
 - A short case study page that explains what to inspect and how to replay the build.
 - A copyable readiness report with policy, balance, Circle, wallet, executor, and onchain identity evidence.
 - A copyable action pack with exact commands and payload context for an operator to review.
-- A deterministic decision-receipt hash that binds policy, balance, proposed action, amount, chain, and observation time before any future anchor transaction.
+- A deterministic decision-receipt hash that binds policy source, policy, balance, proposed action, amount, chain, and observation time before any future anchor transaction.
 - Live action controls that render only when the deployment flag, allowlisted operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
 - A dedicated system architecture page with deployment facts, Arcscan links, and current proof status.
 - Wallet-signed, allowlisted, amount-capped live requests with durable Redis replay protection, rate-limit, and audit checks; server-signer writes are disabled by default and fail closed without the durable guard.

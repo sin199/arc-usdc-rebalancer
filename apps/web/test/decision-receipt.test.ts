@@ -15,17 +15,21 @@ const input = {
     targetBalance: 500,
   },
   policyAddress: '0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6',
+  policySource: 'live' as const,
 }
 
 test('treasury decision receipts are deterministic and bind their decision', () => {
   const first = buildTreasuryDecisionReceipt(input)
   const second = buildTreasuryDecisionReceipt(input)
   const changed = buildTreasuryDecisionReceipt({ ...input, amountUsdc: 199 })
+  const draft = buildTreasuryDecisionReceipt({ ...input, policySource: 'draft' })
 
   assert.equal(first.receiptHash, second.receiptHash)
   assert.notEqual(first.receiptHash, changed.receiptHash)
+  assert.notEqual(first.receiptHash, draft.receiptHash)
   assert.equal(first.amountUsdc, '200000000')
   assert.equal(first.observedAtUnix, '1784556000')
+  assert.equal(first.policySource, 'live')
 })
 
 test('treasury decision receipts reject invalid factual inputs', () => {

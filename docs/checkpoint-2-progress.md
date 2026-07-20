@@ -10,7 +10,7 @@ Arc USDC Rebalancer is a DeFi Track project for reviewable USDC treasury operati
 - Arc Testnet policy, executor, and identity evidence surfaced beside Circle readiness.
 - Deterministic backtest shared by the CLI, tests, API, and public dashboard: 1,003 balance cases, 100.00% agreement, 0 cap violations, and 9/9 safety gates passed.
 - Copyable readiness reports and action packs for review without a wallet.
-- Deterministic decision receipts generated with action-pack exports. A receipt binds chain, policy, balance, action, amount, relevant addresses, and observation time. It is marked `not published`; the optional receipt registry is not deployed.
+- Deterministic decision receipts generated with action-pack exports. A receipt binds chain, policy source, policy, balance, action, amount, relevant addresses, and observation time. It is marked `not published`; the optional receipt registry is not deployed.
 - Production execution remains disabled. The public deployment does not claim submitted treasury transactions.
 
 ## Review path

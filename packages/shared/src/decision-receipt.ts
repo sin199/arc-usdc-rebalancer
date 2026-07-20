@@ -11,6 +11,7 @@ import {
 import type { TreasuryPolicy } from './policy'
 
 export type TreasuryDecisionAction = 'hold' | 'top_up' | 'trim' | 'review'
+export type TreasuryDecisionPolicySource = 'draft' | 'live'
 
 export type TreasuryDecisionReceiptInput = {
   action: TreasuryDecisionAction
@@ -21,6 +22,7 @@ export type TreasuryDecisionReceiptInput = {
   observedAt: string
   policy: TreasuryPolicy
   policyAddress?: string
+  policySource: TreasuryDecisionPolicySource
 }
 
 export type TreasuryDecisionReceipt = {
@@ -38,6 +40,7 @@ export type TreasuryDecisionReceipt = {
     targetBalanceUsdc: string
   }
   policyAddress: Address
+  policySource: TreasuryDecisionPolicySource
   receiptHash: Hex
 }
 
@@ -51,6 +54,11 @@ const actionCodes: Record<TreasuryDecisionAction, number> = {
   top_up: 1,
   trim: 2,
   review: 3,
+}
+
+const policySourceCodes: Record<TreasuryDecisionPolicySource, number> = {
+  draft: 0,
+  live: 1,
 }
 
 function toUsdcUnits(value: number, label: string) {
@@ -94,18 +102,20 @@ export function buildTreasuryDecisionReceipt(
   )
   const amountUsdc = toUsdcUnits(input.amountUsdc, 'amountUsdc')
   const actionCode = actionCodes[input.action]
+  const policySourceCode = policySourceCodes[input.policySource]
   const observedAtUnix = BigInt(Math.floor(observedAtMs / 1_000))
 
   const receiptHash = keccak256(
     encodeAbiParameters(
       parseAbiParameters(
-        'bytes32 domain,uint256 chainId,address policyAddress,address executorAddress,uint8 action,uint256 balanceUsdc,uint256 minThresholdUsdc,uint256 targetBalanceUsdc,uint256 maxRebalanceAmountUsdc,uint256 amountUsdc,uint256 observedAtUnix',
+        'bytes32 domain,uint256 chainId,address policyAddress,address executorAddress,uint8 policySource,uint8 action,uint256 balanceUsdc,uint256 minThresholdUsdc,uint256 targetBalanceUsdc,uint256 maxRebalanceAmountUsdc,uint256 amountUsdc,uint256 observedAtUnix',
       ),
       [
         receiptDomain,
         BigInt(input.chainId),
         policyAddress,
         executorAddress,
+        policySourceCode,
         actionCode,
         balanceUsdc,
         minThresholdUsdc,
@@ -132,6 +142,7 @@ export function buildTreasuryDecisionReceipt(
       targetBalanceUsdc: targetBalanceUsdc.toString(),
     },
     policyAddress,
+    policySource: input.policySource,
     receiptHash,
   }
 }

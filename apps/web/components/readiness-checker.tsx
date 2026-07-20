@@ -473,6 +473,7 @@ export function ReadinessChecker() {
       observedAt: new Date().toISOString(),
       policy,
       policyAddress: contractAddress,
+      policySource: policyIsLive ? 'live' : 'draft',
     })
     const text = [
       commands,
@@ -522,6 +523,7 @@ export function ReadinessChecker() {
       observedAt: generatedAt,
       policy,
       policyAddress: contractAddress,
+      policySource: policyIsLive ? 'live' : 'draft',
     })
     const blob = new Blob(
       [
