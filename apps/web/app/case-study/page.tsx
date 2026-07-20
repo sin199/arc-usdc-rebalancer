@@ -79,7 +79,7 @@ export default function CaseStudyPage() {
         title="Arc USDC Rebalancer"
         description="A short public path for operators: what this repo proves, how to replay it, and what to inspect first."
         ctaHref="/operator"
-        ctaLabel="Open operator brief"
+        ctaLabel="Open treasury brief"
       />
 
       <section className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-4 pb-8 pt-2 sm:px-6 lg:px-8">
@@ -135,8 +135,8 @@ export default function CaseStudyPage() {
                 Surface
               </div>
               <div className="mt-2 text-sm leading-6 text-foreground">
-                Arc Testnet policy, Circle readiness, executor state, and agent
-                identity are visible in one flow.
+                Arc Testnet policy, Circle readiness, executor state, and onchain
+                identity evidence are visible in one flow.
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -367,7 +367,7 @@ export default function CaseStudyPage() {
           <CardContent className="flex flex-wrap gap-3">
             <Button asChild>
               <Link href="/operator">
-                Open operator brief
+                Open treasury brief
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

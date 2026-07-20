@@ -58,9 +58,9 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
   {
     date: 'May 20, 2026',
     tag: 'review',
-    title: 'Added an operator brief page',
+    title: 'Added a treasury operations brief page',
     detail:
-      'The site now has a dedicated brief surface that explains what the robot does, what to inspect first, and where to verify the project.',
+      'The site now has a dedicated brief surface that explains the treasury policy workflow, what to inspect first, and where to verify the project.',
   },
   {
     date: 'May 20, 2026',
@@ -128,7 +128,7 @@ export const projectReferenceLinks = [
     href: '/architecture',
   },
   {
-    label: 'Operator brief',
+    label: 'Treasury operations brief',
     value: '/operator',
     href: '/operator',
   },

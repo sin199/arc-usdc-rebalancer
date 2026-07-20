@@ -28,22 +28,22 @@ import {
 import { projectTrailSummary } from '@/lib/project-trail'
 
 export const metadata: Metadata = {
-  title: 'Arc USDC Rebalancer · operator brief',
+  title: 'Arc USDC Rebalancer · treasury operations brief',
   description:
-    'A public operator brief for the installed robot inside the Arc USDC Rebalancer project.',
+    'A public treasury operations brief for the Arc USDC Rebalancer policy workflow.',
 }
 
 const reviewerSteps = [
   'Open this packet and read the status note first.',
   'Verify the dashboard report, the case study, and the release notes.',
   'Check the repo trail and the live deployment for the same story.',
-  'Confirm the robot brief matches the live operator flow instead of just describing it.',
+  'Confirm the treasury brief matches the live policy workflow instead of just describing it.',
 ]
 
 const docsContext = [
-  'The installed robot is used as an operator assistant inside this project.',
-  'The dashboard is the real review surface where the robot turns state into a report.',
-  'The live action path is gated so the robot can recommend before it can execute.',
+  'The policy engine turns Arc Testnet state into a bounded treasury recommendation.',
+  'The dashboard is the review surface where policy and balance become a report.',
+  'The live action path is gated so a recommendation cannot bypass operator controls.',
   'The repo, live deployment, and notes should all tell the same story.',
 ]
 
@@ -51,9 +51,9 @@ export default function OperatorPage() {
   return (
     <main className="min-h-screen pb-16">
       <SiteHeader
-        eyebrow="Operator brief"
+        eyebrow="Treasury operations brief"
         title="Arc USDC Rebalancer"
-        description="A plain brief for the installed robot: what it does here, how to verify it, and what is intentionally public."
+        description="A plain brief for the DeFi Treasury workflow: how it is verified and what remains intentionally gated."
         ctaHref="/dashboard"
         ctaLabel="Open checker"
       />
@@ -68,7 +68,7 @@ export default function OperatorPage() {
               >
                 {projectTrailSummary.buildLabel}
               </Badge>
-              <Badge variant="success">Operator brief</Badge>
+              <Badge variant="success">Treasury brief</Badge>
               <Badge
                 variant="outline"
                 className="border-white/15 bg-white/5 text-foreground"
@@ -92,10 +92,10 @@ export default function OperatorPage() {
               </div>
               <p className="mt-3 text-sm leading-7 text-foreground">
                 This repository packages a public Arc Testnet treasury demo with
-                a live agent brief, report-first execution flow,
+                a live treasury brief, report-first execution flow,
                 developer-controlled wallets readiness, and visible maintenance
                 notes. The brief is meant to help a human understand how the
-                installed robot is being used in this project.
+                policy workflow operates in this project.
               </p>
             </div>
             <div className="rounded-3xl border border-white/10 bg-background/50 p-5">
@@ -146,11 +146,11 @@ export default function OperatorPage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <BookOpenText className="h-5 w-5 text-primary" />
-                <CardTitle>How the project frames the robot</CardTitle>
+                <CardTitle>How the project frames the treasury workflow</CardTitle>
               </div>
               <CardDescription>
                 These are the public facts the project keeps visible alongside
-                the installed robot.
+                the policy workflow.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">

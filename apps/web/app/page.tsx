@@ -31,7 +31,7 @@ import { projectReleaseNotes, projectTrailSummary } from '@/lib/project-trail'
 export const metadata: Metadata = {
   title: 'Arc USDC Rebalancer · public demo',
   description:
-    'A public Arc Testnet treasury demo with a live agent, a copyable readiness report, and a visible operator trail.',
+    'A public Arc Testnet USDC treasury policy workflow with a copyable readiness report and a visible proof trail.',
   icons: {
     icon: '/icon.svg',
   },
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
 const heroSignals = [
   {
     icon: Bot,
-    label: 'Agent',
+    label: 'Identity',
     value: `#${arcAgentId.toString()}`,
     detail: arcAgentValidationTag,
   },
@@ -137,7 +137,7 @@ const projectFacts = [
     value: '/dashboard',
   },
   {
-    label: 'Agent validation',
+    label: 'Onchain identity',
     value: arcAgentValidationTag,
   },
 ]
@@ -174,13 +174,13 @@ export default function HomePage() {
                   variant="outline"
                   className="border-white/15 bg-white/5 text-foreground"
                 >
-                  Operator brief ready
+                  Treasury brief ready
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                Arc USDC Rebalancer · agent {arcAgentId.toString()} ·{' '}
+                Arc USDC Rebalancer · onchain identity {arcAgentId.toString()} ·{' '}
                 {arcAgentValidationTag} · visitors can generate a report without
-                a wallet · operator brief included
+                a wallet · treasury brief included
               </p>
             </div>
           </div>
@@ -227,7 +227,7 @@ export default function HomePage() {
 
             <div className="space-y-4">
               <h1 className="max-w-3xl font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-                A treasury readiness checker powered by a live agent.
+                DeFi Treasury automation with a policy-bound decision layer.
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                 In 30 seconds, a visitor can open the dashboard, generate a
@@ -263,7 +263,7 @@ export default function HomePage() {
               </Button>
               <Button asChild size="lg" variant="outline">
                 <Link href="/operator">
-                  Operator brief
+                  Treasury brief
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -348,7 +348,7 @@ export default function HomePage() {
               <div className="mt-4 rounded-2xl border border-white/10 bg-primary/10 p-4 text-sm leading-6 text-foreground">
                 The homepage is the public entry point. The architecture page
                 explains the system, deployment facts, and onchain status. The
-                operator brief explains what the installed agent does. The case
+                treasury brief explains the policy workflow. The case
                 study explains the replay path. The dashboard is where visitors
                 generate the readiness report, compare states, and optionally
                 hand control to the live operator.
@@ -499,7 +499,7 @@ export default function HomePage() {
             <CardContent className="pt-6">
               <ul className="space-y-3 text-sm leading-6 text-muted-foreground">
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Show the Arc agent, treasury policy, and report output
+                  Show the Arc identity evidence, treasury policy, and report output
                   together.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
@@ -515,8 +515,8 @@ export default function HomePage() {
                   operator path is automatic.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Use the robot brief as the shortest path for someone checking
-                  what the agent does here.
+                  Use the treasury brief as the shortest path for someone checking
+                  how the policy workflow works.
                 </li>
               </ul>
             </CardContent>
@@ -544,7 +544,7 @@ export default function HomePage() {
                 size="lg"
                 variant="outline"
               >
-                <Link href="/operator">Open operator brief</Link>
+                <Link href="/operator">Open treasury brief</Link>
               </Button>
               <Button
                 asChild

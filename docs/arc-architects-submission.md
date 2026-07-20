@@ -2,14 +2,14 @@
 
 ## Summary
 
-Arc USDC Rebalancer is a public Arc Testnet treasury demo built around one simple flow: readiness checker first, operator brief second, optional live execution. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy either the markdown report or the action pack. Live execution only appears when the operator wallet, live policy, Circle readiness, executor, and actionable report are all ready.
+Arc USDC Rebalancer is a public Arc Testnet DeFi Treasury demo built around one simple flow: readiness checker first, treasury operations brief second, optional live execution. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy either the markdown report or the action pack. Live execution only appears when the operator wallet, live policy, Circle readiness, executor, and actionable report are all ready.
 
 ## What I built
 
 - A public homepage that explains the 30-second visitor path.
 - A dashboard that produces a readable treasury readiness report from the current balance and policy band.
 - A copyable markdown report and action pack for chat, docs, GitHub, or terminal use.
-- A visible operator brief that explains the installed agent and the live control path.
+- A visible treasury operations brief that explains the policy workflow and live control path.
 - A live execution path that stays locked until the operator and live dependencies are ready.
 - A Circle control plane surface for developer-controlled wallets and Gateway readiness.
 - A safe treasury-ops interface for Arc Testnet, not a silent trading bot.
@@ -20,7 +20,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 
 - It demonstrates a report-first way to operate stablecoin treasury workflows on Arc Testnet.
 - It makes the live operator path explicit instead of hiding execution behind a generic dashboard.
-- It gives the community a concrete example of how agent identity, treasury policy, Circle readiness, and execution gating can live in one place.
+- It gives the community a concrete example of how onchain identity evidence, treasury policy, Circle readiness, and execution gating can live in one place.
 - It is a readable builder artifact that can be reviewed, shared, and replayed without guessing how the system works.
 
 ## Arc surfaces used
@@ -29,8 +29,8 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 - Arc Testnet RPC
 - TreasuryPolicy reads and owner-gated updates
 - TreasuryExecutor for USDC movement
-- Arc agent identity and validation state
-- Operator brief for the installed robot
+- Arc-linked onchain identity and validation evidence
+- Treasury operations brief for the policy workflow
 - Circle developer-controlled wallets
 - Circle Gateway readiness
 - Public demo mode for visitors without a wallet
@@ -67,7 +67,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 
 - Production: [https://web-eight-chi-99.vercel.app](https://web-eight-chi-99.vercel.app)
 - Dashboard: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
-- Operator brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
+- Treasury operations brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 - Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
 - GitHub repo: [https://github.com/sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
 
@@ -81,7 +81,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 | Commit hash | `e0f5e337` |
 | Arc House post link | [community.arc.network/home/clubs/agentic-economy-dofua/resources/circle-agent-stack-builder-feedback-2026-05-12](https://community.arc.network/home/clubs/agentic-economy-dofua/resources/circle-agent-stack-builder-feedback-2026-05-12) |
 | GitHub repo | `sin199/arc-usdc-rebalancer` |
-| README alignment | README now states `Readiness checker + operator brief + optional live execution` and links this pack |
+| README alignment | README now states `Readiness checker + treasury operations brief + optional live execution` and links this pack |
 | Lint status | `pnpm lint` passed |
 | Build status | `pnpm build` passed |
 | Alias check | Production alias and latest deployment render the same public demo copy |
@@ -110,7 +110,7 @@ Title: Arc USDC Rebalancer: report-first treasury operations on Arc Testnet
 
 Body:
 
-I shipped Arc USDC Rebalancer as a public Arc Testnet treasury demo built around a simple flow: readiness checker first, operator brief second, optional live execution.
+I shipped Arc USDC Rebalancer as a public Arc Testnet DeFi Treasury demo built around a simple flow: readiness checker first, treasury operations brief second, optional live execution.
 
 Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy a markdown report or action pack.
 
@@ -120,4 +120,4 @@ Demo: https://web-eight-chi-99.vercel.app/dashboard
 
 ## Short social post
 
-Arc USDC Rebalancer is live on Arc Testnet: report-first treasury ops, operator brief, and optional live execution. Visitors can generate a readiness report and copy an action pack without a wallet. https://web-eight-chi-99.vercel.app/dashboard
+Arc USDC Rebalancer is live on Arc Testnet: policy-bound USDC treasury operations, a treasury brief, and optional live execution. Visitors can generate a readiness report and copy an action pack without a wallet. https://web-eight-chi-99.vercel.app/dashboard

@@ -9,7 +9,6 @@ import {
   Copy,
   Download,
   FileText,
-  Bot,
   RefreshCcw,
   BadgeCheck,
   ShieldCheck,
@@ -685,7 +684,7 @@ export function ReadinessChecker() {
           <CardHeader className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                <Bot className="h-5 w-5 text-primary" />
+                <ShieldCheck className="h-5 w-5 text-primary" />
                 <Badge
                   variant={
                     agentBriefQuery.isError
@@ -716,15 +715,15 @@ export function ReadinessChecker() {
                   className={`h-4 w-4 ${agentBriefQuery.isFetching ? 'animate-spin' : ''}`}
                 />
                 {agentBriefQuery.isFetching
-                  ? 'Running brief…'
-                  : 'Refresh brief'}
+                  ? 'Refreshing brief…'
+                  : 'Refresh treasury brief'}
               </Button>
             </div>
             <div>
-              <CardTitle className="text-xl">Live Agent Brief</CardTitle>
+              <CardTitle className="text-xl">Live Treasury Brief</CardTitle>
               <CardDescription>
-                The robot checks policy, balance, validation, and Circle
-                readiness. Read failures degrade to a clearly marked safe
+                The treasury policy workflow checks policy, balance, identity
+                evidence, and Circle readiness. Read failures degrade to a clearly marked safe
                 result; they never unlock fund movement.
               </CardDescription>
             </div>
@@ -742,7 +741,7 @@ export function ReadinessChecker() {
                 <div className="mt-2 text-sm leading-6 text-muted-foreground">
                   {agentBriefQuery.error instanceof Error
                     ? agentBriefQuery.error.message
-                    : 'Unknown Agent Brief error.'}
+                    : 'Unknown treasury brief error.'}
                 </div>
               </div>
             ) : agentBriefQuery.data ? (
@@ -1606,7 +1605,7 @@ export function ReadinessChecker() {
           <Card className="border-white/10 bg-card/85">
             <CardHeader className="space-y-2">
               <BadgeCheck className="h-5 w-5 text-primary" />
-              <CardTitle className="text-base">Agent identity</CardTitle>
+              <CardTitle className="text-base">Onchain identity</CardTitle>
               <CardDescription>
                 #{arcAgentId.toString()} · {arcAgentValidationTag} · Arc
                 Testnet-linked identity

@@ -1,12 +1,12 @@
 # Arc USDC Rebalancer
 
-A verified Arc Testnet treasury decision system with a readiness checker, operator brief, and fail-closed execution controls.
+A verified Arc Testnet USDC treasury policy workflow with a readiness checker, treasury operations brief, and fail-closed execution controls.
 
 The public demo is report first, execution second: visitors can generate a readiness report without a wallet, compare sample treasury states, copy markdown or an action pack, and only move into operator mode when the operator wallet, live policy, Circle readiness, and executor dependencies are ready.
 
 Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
 System architecture: [https://web-eight-chi-99.vercel.app/architecture](https://web-eight-chi-99.vercel.app/architecture)
-Operator brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
+Treasury operations brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
 Hackathon deck: [docs/arc-treasury-agent-deck.pptx](docs/arc-treasury-agent-deck.pptx)
 Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
@@ -17,19 +17,19 @@ Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submi
 ## What this repo shows
 
 - A public demo mode that visitors can use without a wallet.
-- A dedicated robot brief that explains what the installed agent does inside the project.
+- A dedicated treasury operations brief that explains the policy workflow and review path.
 - A short case study page that explains what to inspect and how to replay the build.
-- A copyable readiness report with policy, balance, Circle, wallet, executor, and agent evidence.
+- A copyable readiness report with policy, balance, Circle, wallet, executor, and onchain identity evidence.
 - A copyable action pack with exact commands and payload context for an operator to review.
 - Live action controls that render only when the deployment flag, allowlisted operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
 - A dedicated system architecture page with deployment facts, Arcscan links, and current proof status.
 - Wallet-signed, allowlisted, amount-capped live requests with durable Redis replay protection, rate-limit, and audit checks; server-signer writes are disabled by default and fail closed without the durable guard.
-- Agent activation and Circle wallet creation use the same signed operator authorization boundary as treasury execution.
+- Identity activation and Circle wallet creation use the same signed operator authorization boundary as treasury execution.
 - A V2 policy/executor reference stack adds onchain policy enforcement, pause, recipient allowlists, two-step ownership transfer, and executor caps without replacing the currently deployed contracts.
 - A treasury policy and executor flow on Arc Testnet.
-- An Arc agent identity and brief surfaced inside the dashboard.
+- An Arc-linked onchain identity surfaced as supplementary dashboard evidence.
 - Circle developer-controlled wallet and Gateway readiness for USDC routing.
-- A single dashboard that ties the agent, policy, wallet layer, and execution rail together.
+- A single dashboard that ties policy, wallet layer, and execution rail together.
 
 ## What it does not do
 
@@ -40,11 +40,11 @@ Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submi
 
 ## Why this exists
 
-The repo is built to show how the installed robot is used inside this project:
+The repo is built to show a reviewable DeFi Treasury workflow:
 
 1. Read or preview TreasuryPolicy state on Arc Testnet.
 2. Preview and simulate treasury scenarios in public demo mode.
-3. Surface the agent identity and the brief that recommends the next action.
+3. Surface onchain identity evidence and a treasury brief that recommends the next action.
 4. Keep live operator execution gated until all live dependencies are ready.
 5. Keep Circle wallets and Gateway visible as part of the same USDC stack.
 6. Give reviewers one architecture page with deployment evidence and onchain status.
@@ -56,7 +56,7 @@ The dashboard currently exposes these Arc-specific surfaces:
 - Arc Testnet chain state and RPC
 - TreasuryPolicy reads and owner-gated updates
 - TreasuryExecutor for USDC movement
-- Arc agent identity, validation, and operational brief
+- Arc-linked onchain identity and validation evidence
 - Circle control plane for wallets and Gateway
 - Public demo mode for unauthenticated visitors
 - Live operator mode for signed execution after readiness gates pass
@@ -67,7 +67,7 @@ The dashboard currently exposes these Arc-specific surfaces:
 flowchart LR
   Visitor["Visitor"] --> UI["Arc USDC Rebalancer"]
   UI --> Demo["Public demo mode"]
-  UI --> Agent["Arc agent identity + brief"]
+  UI --> Identity["Onchain identity evidence"]
   UI --> Policy["TreasuryPolicy"]
   UI --> Executor["TreasuryExecutor"]
   UI --> Circle["Circle wallets + Gateway"]
@@ -152,7 +152,7 @@ Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 - `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint used by the frontend
 - `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address
 - `TREASURY_EXECUTOR_ADDRESS` - deployed `TreasuryExecutor` contract address
-- `NEXT_PUBLIC_EXECUTION_API_URL` - optional legacy robot API base for the job center surface
+- `NEXT_PUBLIC_EXECUTION_API_URL` - optional legacy execution API base for the job center surface
 - `NEXT_PUBLIC_CIRCLE_WALLET_SET_ID` - optional wallet set to surface in the dashboard
 - `CIRCLE_API_KEY` - Circle developer API key for server-side wallet operations
 - `CIRCLE_ENTITY_SECRET` - Circle entity secret for dev-controlled wallet creation and signing
@@ -213,7 +213,7 @@ If you are reviewing this repo, start here:
 2. Open the live checker at [web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard).
 3. Generate a report, copy the action pack, and compare the sample scenarios.
 4. Confirm preview mode shows the locked execution state instead of runnable live controls.
-5. Open the operator brief at [web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator).
+5. Open the treasury operations brief at [web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator).
 6. Open the case study at [web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study).
 7. Read the release notes and this README before judging the demo.
 

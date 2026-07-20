@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 
 const systemIncludes = [
   'A public Arc Testnet treasury demo with a report-first readiness checker.',
-  'A compact operator brief that explains how the installed robot is used in the project.',
+  'A compact treasury operations brief that explains the policy workflow used in the project.',
   'Optional live execution that remains gated behind the wallet, policy, Circle, and executor checks.',
   'A fail-closed control plane with signed operator actions and durable replay protection.',
 ]
@@ -83,7 +83,7 @@ const demoLinks = [
     value: `${projectProof.productionUrl}/architecture`,
   },
   {
-    label: 'Operator brief',
+    label: 'Treasury operations brief',
     href: `${projectProof.productionUrl}/operator`,
     value: `${projectProof.productionUrl}/operator`,
   },
@@ -476,14 +476,14 @@ export default function ArchitecturePage() {
                   Body
                 </div>
                 <pre className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                  {`Arc USDC Rebalancer is a public treasury-ops reference system on Arc Testnet: a readiness checker + operator brief + optional live execution surface. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy a markdown report or action pack. Live execution only appears when the operator wallet, live policy, Circle readiness, executor, durable replay guard, and actionable report are all ready.
+                  {`Arc USDC Rebalancer is a public DeFi Treasury reference system on Arc Testnet: a readiness checker + treasury operations brief + optional live execution surface. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy a markdown report or action pack. Live execution only appears when the operator wallet, live policy, Circle readiness, executor, durable replay guard, and actionable report are all ready.
 
 What it uses:
 - Arc Testnet
 - USDC treasury policy
 - TreasuryPolicy contract
 - TreasuryExecutor contract
-- Arc agent identity and operator brief
+- Arc-linked onchain identity evidence and treasury operations brief
 - Circle developer-controlled wallet and Gateway readiness
 - Operator-gated live execution
 
@@ -527,7 +527,7 @@ Repo: ${projectProof.githubRepoUrl}
           </CardHeader>
           <CardContent>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
-              {`@Arc @samconnerone Shipped a public Arc Testnet treasury demo: report-first readiness reports, operator brief, Circle wallets/Gateway, and optional live execution. Demo: ${projectProof.productionUrl}/dashboard`}
+              {`@Arc @samconnerone Shipped a public Arc Testnet DeFi Treasury demo: report-first readiness reports, a treasury operations brief, Circle wallets/Gateway, and optional live execution. Demo: ${projectProof.productionUrl}/dashboard`}
             </div>
           </CardContent>
         </Card>
