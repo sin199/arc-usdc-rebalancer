@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { deriveArcAgentRecommendation } from '../lib/arc-agent-server'
+import {
+  deriveArcAgentRecommendation,
+  deriveBriefDataQuality,
+} from '../lib/arc-agent-server'
 
 const readyCircle = {
   apiKeyConfigured: true,
@@ -25,4 +28,28 @@ test('configured policy with unavailable data never reports a healthy hold', () 
   assert.equal(recommendation.action, 'load_policy')
   assert.match(recommendation.headline, /unavailable/i)
   assert.match(recommendation.detail, /No move should be executed/i)
+})
+
+test('supplementary validation outages do not downgrade a live treasury brief', () => {
+  const liveSource = {
+    status: 'live' as const,
+    detail: 'Live source.',
+  }
+
+  assert.equal(
+    deriveBriefDataQuality({
+      balance: liveSource,
+      circle: liveSource,
+      policy: liveSource,
+    }),
+    'live',
+  )
+  assert.equal(
+    deriveBriefDataQuality({
+      balance: { status: 'unavailable', detail: 'Unavailable.' },
+      circle: liveSource,
+      policy: liveSource,
+    }),
+    'degraded',
+  )
 })

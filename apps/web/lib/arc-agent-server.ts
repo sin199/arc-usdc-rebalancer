@@ -183,6 +183,21 @@ type RpcCacheEntry<T> = {
   observedAt: string
 }
 
+export function deriveBriefDataQuality(
+  sources: Pick<
+    ArcAgentBriefResult['dataQuality']['sources'],
+    'balance' | 'circle' | 'policy'
+  >,
+) {
+  // Identity validation is supplementary evidence. A live balance, policy,
+  // and Circle control-plane read determine whether the treasury brief is live.
+  return sources.balance.status === 'live' &&
+    sources.circle.status === 'live' &&
+    sources.policy.status === 'live'
+    ? 'live'
+    : 'degraded'
+}
+
 const briefRpcCache: {
   policy?: RpcCacheEntry<readonly [bigint, bigint, bigint]>
   balance?: RpcCacheEntry<bigint>
@@ -750,13 +765,11 @@ export async function runArcAgentBrief(
     },
     generatedAt: new Date().toISOString(),
     dataQuality: {
-      overall:
-        policyResult.source.status === 'live' &&
-        balanceResult.source.status === 'live' &&
-        validationResult.source.status === 'live' &&
-        circleSource.status === 'live'
-          ? 'live'
-          : 'degraded',
+      overall: deriveBriefDataQuality({
+        balance: balanceResult.source,
+        circle: circleSource,
+        policy: policyResult.source,
+      }),
       sources: {
         balance: balanceResult.source,
         circle: circleSource,

@@ -723,8 +723,9 @@ export function ReadinessChecker() {
               <CardTitle className="text-xl">Live Treasury Brief</CardTitle>
               <CardDescription>
                 The treasury policy workflow checks policy, balance, identity
-                evidence, and Circle readiness. Read failures degrade to a clearly marked safe
-                result; they never unlock fund movement.
+                evidence, and Circle readiness. Policy, balance, or Circle
+                read failures degrade to a clearly marked safe result; identity
+                validation is supplementary evidence and never unlocks fund movement.
               </CardDescription>
             </div>
           </CardHeader>
