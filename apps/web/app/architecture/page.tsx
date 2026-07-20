@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
-  ArrowRight,
   BadgeCheck,
   ExternalLink,
   FileText,
@@ -32,14 +31,14 @@ export const metadata: Metadata = {
 const systemIncludes = [
   'A public Arc Testnet treasury demo with a report-first readiness checker.',
   'A compact treasury operations brief that explains the policy workflow used in the project.',
-  'Optional live execution that remains gated behind the wallet, policy, Circle, and executor checks.',
+  'A future live-execution path that remains disabled until wallet, policy, Circle, and executor checks are reviewed.',
   'A fail-closed control plane with signed operator actions and durable replay protection.',
 ]
 
 const whyItMatters = [
   'It turns the treasury flow into something a reviewer can inspect in one pass.',
   'It separates preview mode from live execution instead of mixing the two together.',
-  'It keeps the Arc Testnet policy, agent identity, executor, and report trail visible in the same build.',
+  'It keeps the Arc Testnet policy, identity evidence, executor, and report trail visible in the same build.',
   'It turns architecture decisions into inspectable code, deployment evidence, and testable safety controls.',
 ]
 
@@ -51,10 +50,10 @@ const visitorFlow = [
 ]
 
 const operatorFlow = [
-  'Connect an operator wallet only when live signing is intentionally needed.',
+  'Connect an operator wallet only in a separately reviewed live deployment.',
   'Load the live policy snapshot, inspect the operator readiness panel, and confirm the execution boundary.',
   'Keep Circle wallet-set readiness visible for live crosschain execution.',
-  'Use Run top-up or Run trim only when all existing live gates are ready.',
+  'The current public deployment exposes the boundary and keeps all writes disabled.',
 ]
 
 const surfaceItems = [
@@ -101,11 +100,6 @@ const demoLinks = [
     label: 'GitHub repo',
     href: projectProof.githubRepoUrl,
     value: 'sin199/arc-usdc-rebalancer',
-  },
-  {
-    label: 'Arc House post',
-    href: projectProof.arcHousePostUrl,
-    value: 'Circle Agent Stack Builder Feedback',
   },
 ]
 
@@ -501,16 +495,6 @@ Repo: ${projectProof.githubRepoUrl}
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button asChild>
-                  <a
-                    href={projectProof.arcHousePostUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open Arc House post link
-                    <ArrowRight className="h-4 w-4" />
-                  </a>
-                </Button>
-                <Button asChild variant="outline">
                   <Link href="/dashboard">Open dashboard</Link>
                 </Button>
               </div>

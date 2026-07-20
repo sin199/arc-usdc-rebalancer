@@ -20,8 +20,6 @@ export const projectProof = {
   mainBranch: process.env.VERCEL_GIT_COMMIT_REF?.trim() ?? 'main',
   mainCommit: process.env.VERCEL_GIT_COMMIT_SHA?.trim() ?? 'local-development',
   githubRepoUrl: 'https://github.com/sin199/arc-usdc-rebalancer',
-  arcHousePostUrl:
-    'https://community.arc.network/home/clubs/agentic-economy-dofua/resources/circle-agent-stack-builder-feedback-2026-05-12',
   arcTestnetChainId,
   arcTestnetExplorerUrl,
   treasuryPolicyAddress: '0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6',
@@ -36,7 +34,7 @@ export const projectProof = {
     details: [
       'Report-first output is visible without a wallet.',
       'Action pack templates are visible while live execution stays locked.',
-      'Live execution remains gated behind operator wallet, live policy, Circle wallet-set readiness, and executor configuration.',
+      'A future live deployment would require an operator wallet, live policy, Circle wallet-set readiness, and executor configuration.',
       'Circle readiness is optional for the current proof and only becomes required for live crosschain execution.',
     ],
   },
