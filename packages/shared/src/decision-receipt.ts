@@ -33,6 +33,7 @@ export type TreasuryDecisionReceipt = {
   chainId: number
   executorAddress: Address
   observedAt: string
+  observedAtMs: string
   observedAtUnix: string
   policy: {
     maxRebalanceAmountUsdc: string
@@ -69,8 +70,16 @@ function toUsdcUnits(value: number, label: string) {
   return parseUnits(value.toFixed(6), 6)
 }
 
-function toAddress(value?: string): Address {
-  return value && isAddress(value) ? (value as Address) : zeroAddress
+function toAddress(value: string | undefined, label: string): Address {
+  if (value === undefined) {
+    return zeroAddress
+  }
+
+  if (!isAddress(value) || value === zeroAddress) {
+    throw new Error(`${label} must be a non-zero EVM address when provided.`)
+  }
+
+  return value as Address
 }
 
 export function buildTreasuryDecisionReceipt(
@@ -85,8 +94,8 @@ export function buildTreasuryDecisionReceipt(
     throw new Error('observedAt must be a valid ISO timestamp.')
   }
 
-  const policyAddress = toAddress(input.policyAddress)
-  const executorAddress = toAddress(input.executorAddress)
+  const policyAddress = toAddress(input.policyAddress, 'policyAddress')
+  const executorAddress = toAddress(input.executorAddress, 'executorAddress')
   const balanceUsdc = toUsdcUnits(input.balanceUsdc, 'balanceUsdc')
   const minThresholdUsdc = toUsdcUnits(
     input.policy.minThreshold,
@@ -104,11 +113,12 @@ export function buildTreasuryDecisionReceipt(
   const actionCode = actionCodes[input.action]
   const policySourceCode = policySourceCodes[input.policySource]
   const observedAtUnix = BigInt(Math.floor(observedAtMs / 1_000))
+  const observedAtMilliseconds = BigInt(observedAtMs)
 
   const receiptHash = keccak256(
     encodeAbiParameters(
       parseAbiParameters(
-        'bytes32 domain,uint256 chainId,address policyAddress,address executorAddress,uint8 policySource,uint8 action,uint256 balanceUsdc,uint256 minThresholdUsdc,uint256 targetBalanceUsdc,uint256 maxRebalanceAmountUsdc,uint256 amountUsdc,uint256 observedAtUnix',
+        'bytes32 domain,uint256 chainId,address policyAddress,address executorAddress,uint8 policySource,uint8 action,uint256 balanceUsdc,uint256 minThresholdUsdc,uint256 targetBalanceUsdc,uint256 maxRebalanceAmountUsdc,uint256 amountUsdc,uint256 observedAtMs',
       ),
       [
         receiptDomain,
@@ -122,7 +132,7 @@ export function buildTreasuryDecisionReceipt(
         targetBalanceUsdc,
         maxRebalanceAmountUsdc,
         amountUsdc,
-        observedAtUnix,
+        observedAtMilliseconds,
       ],
     ),
   )
@@ -135,6 +145,7 @@ export function buildTreasuryDecisionReceipt(
     chainId: input.chainId,
     executorAddress,
     observedAt: new Date(observedAtMs).toISOString(),
+    observedAtMs: observedAtMilliseconds.toString(),
     observedAtUnix: observedAtUnix.toString(),
     policy: {
       maxRebalanceAmountUsdc: maxRebalanceAmountUsdc.toString(),

@@ -23,11 +23,17 @@ test('treasury decision receipts are deterministic and bind their decision', () 
   const second = buildTreasuryDecisionReceipt(input)
   const changed = buildTreasuryDecisionReceipt({ ...input, amountUsdc: 199 })
   const draft = buildTreasuryDecisionReceipt({ ...input, policySource: 'draft' })
+  const nextMillisecond = buildTreasuryDecisionReceipt({
+    ...input,
+    observedAt: '2026-07-20T14:00:00.001Z',
+  })
 
   assert.equal(first.receiptHash, second.receiptHash)
   assert.notEqual(first.receiptHash, changed.receiptHash)
   assert.notEqual(first.receiptHash, draft.receiptHash)
+  assert.notEqual(first.receiptHash, nextMillisecond.receiptHash)
   assert.equal(first.amountUsdc, '200000000')
+  assert.equal(first.observedAtMs, '1784556000000')
   assert.equal(first.observedAtUnix, '1784556000')
   assert.equal(first.policySource, 'live')
 })
@@ -40,5 +46,21 @@ test('treasury decision receipts reject invalid factual inputs', () => {
   assert.throws(
     () => buildTreasuryDecisionReceipt({ ...input, observedAt: 'not-a-date' }),
     /valid ISO/i,
+  )
+  assert.throws(
+    () =>
+      buildTreasuryDecisionReceipt({
+        ...input,
+        executorAddress: 'not-an-address',
+      }),
+    /non-zero EVM address/i,
+  )
+  assert.throws(
+    () =>
+      buildTreasuryDecisionReceipt({
+        ...input,
+        policyAddress: '',
+      }),
+    /non-zero EVM address/i,
   )
 })
