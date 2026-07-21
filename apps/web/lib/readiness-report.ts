@@ -60,6 +60,9 @@ export type ReadinessReport = {
   checks: ReadinessReportCheck[]
 }
 
+const editableScenarioBalanceSource =
+  'Editable scenario input; not the live executor balance shown in the Treasury Brief.'
+
 function formatPolicyBand(policy: TreasuryPolicy) {
   return `${formatUsdc(policy.minThreshold)} / ${formatUsdc(policy.targetBalance)} / ${formatUsdc(policy.maxRebalanceAmount)} USDC`
 }
@@ -161,6 +164,7 @@ function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, 
     `Mode: ${inputs.modeLabel}`,
     `Decision: ${report.action === 'review' ? 'Review' : formatAction(report.action)}`,
     `Decision basis: ${report.decisionBasis}`,
+    `Balance source: ${editableScenarioBalanceSource}`,
     `Execution readiness: ${report.readiness.passed}/${report.readiness.total} checks passed`,
     '',
     '## Summary',
@@ -257,7 +261,8 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
 
   const evidence: ReadinessReportEvidence[] = [
     { label: 'Policy band', value: policyBand },
-    { label: 'Current balance', value: `${formatUsdc(inputs.balance)} USDC` },
+    { label: 'Scenario balance', value: `${formatUsdc(inputs.balance)} USDC` },
+    { label: 'Balance source', value: editableScenarioBalanceSource },
     { label: 'Policy source', value: inputs.policySourceLabel },
     { label: 'Circle', value: inputs.circleSummary },
     {

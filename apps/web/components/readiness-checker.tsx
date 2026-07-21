@@ -1044,7 +1044,7 @@ export function ReadinessChecker() {
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="current-balance">Current balance</Label>
+                <Label htmlFor="current-balance">Scenario balance</Label>
                 <div className="relative">
                   <Input
                     id="current-balance"
@@ -1060,6 +1060,10 @@ export function ReadinessChecker() {
                     USDC
                   </span>
                 </div>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Editable preview input. It is not the live executor balance
+                  shown in the Treasury Brief above.
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
