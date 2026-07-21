@@ -15,8 +15,10 @@ export type SnapshotFallbackOptions<T> = {
   now?: () => Date
   operation: () => Promise<T>
   retry?: RetryOptions
-  updateCache: (snapshot: Snapshot<T>) => void
+  updateCache: (snapshot: Snapshot<T>) => void | Promise<void>
 }
+
+const maxRetryAttempts = 3
 
 const defaultSleep = (delayMs: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, delayMs))
@@ -25,7 +27,10 @@ export async function withBoundedRetry<T>(
   operation: () => Promise<T>,
   options: RetryOptions = {},
 ): Promise<T> {
-  const attempts = Math.max(1, options.attempts ?? 3)
+  const requestedAttempts = options.attempts ?? 3
+  const attempts = Number.isFinite(requestedAttempts)
+    ? Math.min(maxRetryAttempts, Math.max(1, Math.floor(requestedAttempts)))
+    : maxRetryAttempts
   const delaysMs = options.delaysMs ?? [120, 300]
   const sleep = options.sleep ?? defaultSleep
   let lastError: unknown
@@ -37,7 +42,11 @@ export async function withBoundedRetry<T>(
       lastError = error
 
       if (attempt < attempts - 1) {
-        await sleep(delaysMs[Math.min(attempt, delaysMs.length - 1)] ?? 0)
+        try {
+          await sleep(delaysMs[Math.min(attempt, delaysMs.length - 1)] ?? 0)
+        } catch {
+          // A best-effort delay must not replace the underlying RPC failure.
+        }
       }
     }
   }
@@ -61,17 +70,10 @@ export function conciseRpcError(error: unknown) {
 export async function readWithSnapshotFallback<T>(
   options: SnapshotFallbackOptions<T>,
 ) {
-  try {
-    const value = await withBoundedRetry(options.operation, options.retry)
-    const observedAt = (options.now?.() ?? new Date()).toISOString()
-    options.updateCache({ value, observedAt })
+  let value: T
 
-    return {
-      value,
-      status: 'live' as const,
-      observedAt,
-      warning: undefined,
-    }
+  try {
+    value = await withBoundedRetry(options.operation, options.retry)
   } catch (error) {
     const reason = conciseRpcError(error)
 
@@ -90,5 +92,29 @@ export async function readWithSnapshotFallback<T>(
       observedAt: undefined,
       warning: `${options.label} is unavailable. ${reason}`,
     }
+  }
+
+  let observedAt: string
+  let warning: string | undefined
+
+  try {
+    observedAt = (options.now?.() ?? new Date()).toISOString()
+  } catch {
+    observedAt = new Date().toISOString()
+    warning = `${options.label} live read succeeded, but the supplied timestamp failed. A server timestamp was used.`
+  }
+
+  try {
+    await options.updateCache({ value, observedAt })
+  } catch {
+    const cacheWarning = `${options.label} live read succeeded, but the cache was not updated.`
+    warning = warning ? `${warning} ${cacheWarning}` : cacheWarning
+  }
+
+  return {
+    value,
+    status: 'live' as const,
+    observedAt,
+    warning,
   }
 }
