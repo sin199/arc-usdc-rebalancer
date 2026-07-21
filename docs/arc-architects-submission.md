@@ -2,7 +2,7 @@
 
 ## Summary
 
-Arc USDC Rebalancer is a public Arc Testnet DeFi Treasury demo built around one simple flow: readiness checker first, treasury operations brief second, optional live execution. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy either the markdown report or the action pack. Live execution only appears when the operator wallet, live policy, Circle readiness, executor, and actionable report are all ready.
+Arc USDC Rebalancer is a public Arc Testnet DeFi Treasury demo built around one simple flow: readiness checker first, treasury operations brief second, and a future operator execution path. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy either the markdown report or the action pack. Production execution is disabled for this revision; the operator path remains visible only to show the gates required before any future signed action.
 
 ## What I built
 
@@ -11,7 +11,7 @@ Arc USDC Rebalancer is a public Arc Testnet DeFi Treasury demo built around one 
 - A copyable markdown report and action pack for chat, docs, GitHub, or terminal use.
 - A deterministic decision receipt generated with every copied or downloaded action pack. It binds the policy source, policy, balance, action, amount, Arc chain, and observation time; it is explicitly marked `not published` until a transaction hash exists.
 - A visible treasury operations brief that explains the policy workflow and live control path.
-- A live execution path that stays locked until the operator and live dependencies are ready.
+- A future live-execution path that stays locked until the operator and live dependencies are ready; it is disabled in the production deployment.
 - A Circle control plane surface for developer-controlled wallets and Gateway readiness.
 - A safe treasury-ops interface for Arc Testnet, not a silent trading bot.
 
@@ -35,7 +35,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 - Circle developer-controlled wallets
 - Circle Gateway readiness
 - Public demo mode for visitors without a wallet
-- Operator mode for signed execution
+- Future operator mode for signed execution after the production execution flag is enabled and every gate passes
 
 ## Public visitor flow
 
@@ -54,7 +54,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 3. Confirm Circle readiness.
 4. Confirm the TreasuryExecutor.
 5. Review the actionable report.
-6. Execute only when the page shows live operator mode and the controls are explicitly unlocked.
+6. Treat execution as a future, separately reviewed operation. It is disabled in the current production deployment.
 
 ## Safety boundaries
 
@@ -72,6 +72,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 - Treasury operations brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 - Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
 - GitHub repo: [https://github.com/sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
+- Three-minute demo video: [https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4](https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4)
 
 ## Deployment evidence
 
@@ -82,7 +83,8 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 | Current public repo | `sin199/arc-usdc-rebalancer` |
 | Arc House post | Not published; no unrelated Agentic Economy resource is presented as project evidence |
 | GitHub repo | `sin199/arc-usdc-rebalancer` |
-| README alignment | README now states `Readiness checker + treasury operations brief + optional live execution` and links this pack |
+| README alignment | README states `Readiness checker + treasury operations brief + gated future execution` and links this pack |
+| Video evidence | Public three-minute H.264/AAC demo linked above |
 | Lint status | `pnpm lint` passed |
 | Build status | `pnpm build` passed |
 | Alias check | Production alias and latest deployment render the same public demo copy |
@@ -98,7 +100,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 
 ## Screenshot checklist
 
-Capture these five states from the live site:
+Capture these six states from the live site:
 
 1. Homepage hero.
 2. Dashboard below minimum showing the top_up recommendation.
@@ -113,14 +115,14 @@ Title: Arc USDC Rebalancer: report-first treasury operations on Arc Testnet
 
 Body:
 
-I shipped Arc USDC Rebalancer as a public Arc Testnet DeFi Treasury demo built around a simple flow: readiness checker first, treasury operations brief second, optional live execution.
+I shipped Arc USDC Rebalancer as a public Arc Testnet DeFi Treasury demo built around a simple flow: readiness checker first, treasury operations brief second, and a gated future execution path.
 
 Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy a markdown report or action pack.
 
-Live execution stays explicitly gated behind operator wallet, live policy, Circle readiness, executor, and an actionable report.
+Production execution stays disabled. The future operator path remains explicitly gated behind operator wallet, live policy, Circle readiness, executor, and an actionable report.
 
 Demo: https://web-eight-chi-99.vercel.app/dashboard
 
 ## Short social post
 
-Arc USDC Rebalancer is live on Arc Testnet: policy-bound USDC treasury operations, a treasury brief, and optional live execution. Visitors can generate a readiness report and copy an action pack without a wallet. https://web-eight-chi-99.vercel.app/dashboard
+Arc USDC Rebalancer is live on Arc Testnet: policy-bound USDC treasury operations and a report-first treasury brief. Visitors can generate a readiness report and copy an action pack without a wallet. Production execution is disabled. https://web-eight-chi-99.vercel.app/dashboard
