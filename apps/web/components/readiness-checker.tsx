@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useAccount, useConnect, useReadContract, useSignMessage } from 'wagmi'
+import { useAccount, useConnect, useReadContract } from 'wagmi'
 import {
   ArrowRight,
   CheckCircle2,
@@ -36,7 +36,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SiteHeader } from '@/components/site-header'
 import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
-import { buildLiveExecutionMessage } from '@/lib/live-execution-auth'
 import { trackProductEvent } from '@/lib/product-analytics'
 import { buildReadinessReport } from '@/lib/readiness-report'
 import { publicReadOnlyDeployment } from '@/lib/public-read-only'
@@ -61,21 +60,6 @@ type CircleControlPlaneStatus = {
     id?: string
     name?: string
   } | null
-}
-
-type TreasuryExecutionResponse = {
-  action?: 'top_up' | 'trim'
-  amountUsdc?: number
-  error?: string
-  mode?: 'server'
-  executorAddress?: `0x${string}`
-  ownerAddress?: `0x${string}`
-  recipient?: `0x${string}`
-  summary?: string
-  txHashes?: {
-    approve?: `0x${string}`
-    execute?: `0x${string}`
-  }
 }
 
 type LiveExecutionStatus = {
@@ -161,7 +145,6 @@ const initialPolicy = DEFAULT_TREASURY_POLICY
 export function ReadinessChecker() {
   const { address: operatorAddress } = useAccount()
   const { connectAsync, connectors, isPending: isConnecting } = useConnect()
-  const { signMessageAsync } = useSignMessage()
   const contractAddress = treasuryPolicyAddressConfig.address
   const executorAddress = treasuryExecutorAddressConfig.address
   const [balance, setBalance] = useState(initialPolicy.targetBalance)
@@ -173,14 +156,6 @@ export function ReadinessChecker() {
   const [actionCopyState, setActionCopyState] = useState<'idle' | 'copied'>(
     'idle',
   )
-  const [executionState, setExecutionState] = useState<
-    'idle' | 'running' | 'done' | 'error'
-  >('idle')
-  const [executionMessage, setExecutionMessage] = useState(
-    'Execution locked until operator wallet and live dependencies are ready. Copy the action pack in preview mode.',
-  )
-  const [executionResult, setExecutionResult] =
-    useState<TreasuryExecutionResponse | null>(null)
   const [walletConnectMessage, setWalletConnectMessage] = useState<
     string | null
   >(null)
@@ -343,8 +318,6 @@ export function ReadinessChecker() {
         circleReady ? null : 'Finish Circle readiness.',
         executorAddress ? null : 'Deploy or recheck the TreasuryExecutor.',
       ].filter((item): item is string => Boolean(item))
-  const liveExecutionLockedMessage =
-    'Execution locked until operator wallet and live dependencies are ready.'
   const liveMode = liveExecutionReady
   const modeLabel = 'Read-only preview'
   const report = buildReadinessReport({
@@ -369,26 +342,9 @@ export function ReadinessChecker() {
     .map((command) => `### ${command.label}\n${command.command}`)
     .join('\n\n')
   const actionPayloadText = JSON.stringify(report.actionPack.payload, null, 2)
-  const canRunLiveAction = liveExecutionReady && report.actionPack.actionable
-  const showLiveExecutionControls =
-    liveExecutionReady && report.actionPack.actionable
-  const liveExecutionStatusMessage = showLiveExecutionControls
-    ? 'Live execution is ready.'
-    : liveExecutionReady
-      ? 'No live transaction is needed for the current report.'
-      : `${liveExecutionLockedMessage} ${liveExecutionBlockers.join(' ')}`
-  const actionPackStatusMessage =
-    executionState === 'idle' ? liveExecutionStatusMessage : executionMessage
-  const liveActionLabel =
-    executionState === 'running'
-      ? 'Running…'
-      : liveExecutionReady
-        ? report.action === 'top_up'
-          ? 'Authorize & run top-up'
-          : report.action === 'trim'
-            ? 'Authorize & run trim'
-            : 'Run live action'
-        : 'Execution locked'
+  const liveExecutionStatusMessage =
+    'Public deployment is read-only; no treasury transaction is submitted.'
+  const actionPackStatusMessage = liveExecutionStatusMessage
 
   useEffect(() => {
     if (!operatorWalletConnected) {
@@ -565,95 +521,6 @@ export function ReadinessChecker() {
     })
 
     window.setTimeout(() => URL.revokeObjectURL(url), 2000)
-  }
-
-  async function handleRunLiveAction() {
-    if (publicReadOnlyDeployment) {
-      setExecutionState('error')
-      setExecutionMessage(
-        'Public deployment is read-only; no treasury transaction is submitted.',
-      )
-      return
-    }
-
-    if (!canRunLiveAction) {
-      setExecutionState('error')
-      setExecutionMessage(liveExecutionLockedMessage)
-      return
-    }
-
-    try {
-      setExecutionState('running')
-      setExecutionMessage('Waiting for operator authorization…')
-      setExecutionResult(null)
-
-      const requestId = crypto.randomUUID()
-      const timestamp = Date.now()
-      const origin = window.location.origin
-      const intent = {
-        action:
-          report.action === 'top_up' || report.action === 'trim'
-            ? report.action
-            : undefined,
-        amountUsdc: Number(report.actionPack.payload.amountUsdc),
-        executorAddress: executorAddress ?? undefined,
-        kind: 'execute' as const,
-        operatorAddress: operatorAddress ?? '',
-        origin,
-        requestId,
-        timestamp,
-      }
-      const signature = await signMessageAsync({
-        message: buildLiveExecutionMessage(intent),
-      })
-
-      trackProductEvent('execution_requested', {
-        action: report.action,
-        mode: modeLabel,
-      })
-      setExecutionMessage('Submitting the authorized Arc Testnet request…')
-
-      const requestBody = {
-        action: report.action,
-        amountUsdc: report.actionPack.payload.amountUsdc,
-        executorAddress: executorAddress ?? undefined,
-        operatorAddress,
-        requestId,
-        timestamp,
-      }
-      const response = await fetch('/api/treasury/execute', {
-        body: JSON.stringify(requestBody),
-        cache: 'no-store',
-        headers: {
-          'content-type': 'application/json',
-          'x-operator-signature': signature,
-        },
-        method: 'POST',
-      })
-      const payload = (await response
-        .json()
-        .catch(() => ({}))) as TreasuryExecutionResponse
-
-      if (!response.ok) {
-        throw new Error(
-          payload.error ?? `Treasury execution failed with ${response.status}.`,
-        )
-      }
-
-      setExecutionResult(payload)
-      setExecutionState('done')
-      setExecutionMessage(
-        payload.summary ??
-          'No treasury transaction was submitted by the public MVP.',
-      )
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Unknown treasury execution error.'
-      setExecutionState('error')
-      setExecutionMessage(`Execution failed: ${message}`)
-    }
   }
 
   async function loadLivePolicy() {
@@ -1404,18 +1271,6 @@ export function ReadinessChecker() {
                   <Download className="h-4 w-4" />
                   Download JSON
                 </Button>
-                {showLiveExecutionControls ? (
-                  <>
-                    <Button
-                      type="button"
-                      onClick={() => void handleRunLiveAction()}
-                      disabled={executionState === 'running'}
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                      {liveActionLabel}
-                    </Button>
-                  </>
-                ) : null}
               </div>
 
               {!liveExecutionReady ? (
@@ -1433,7 +1288,7 @@ export function ReadinessChecker() {
                     ))}
                   </ul>
                 </div>
-              ) : !showLiveExecutionControls ? (
+              ) : (
                 <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="success">No live transaction needed</Badge>
@@ -1442,34 +1297,7 @@ export function ReadinessChecker() {
                     </div>
                   </div>
                 </div>
-              ) : null}
-
-              {executionResult ? (
-                <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    Latest execution
-                  </div>
-                  <div className="mt-2 text-sm leading-6 text-foreground">
-                    {executionResult.summary}
-                  </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {executionResult.txHashes?.approve ? (
-                      <div className="rounded-xl border border-white/10 bg-card/70 p-3 text-xs text-muted-foreground">
-                        Approve tx
-                        <div className="mt-1 break-all text-sm text-foreground">
-                          {executionResult.txHashes.approve}
-                        </div>
-                      </div>
-                    ) : null}
-                    <div className="rounded-xl border border-white/10 bg-card/70 p-3 text-xs text-muted-foreground">
-                      Execute tx
-                      <div className="mt-1 break-all text-sm text-foreground">
-                        {executionResult.txHashes?.execute ?? '--'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
+              )}
             </CardContent>
           </Card>
         </div>
