@@ -35,3 +35,39 @@ test('readiness reports disclose the editable balance source', () => {
     ),
   )
 })
+
+test('public action packs contain read-only verification commands', () => {
+  const report = buildReadinessReport({
+    agentId: '4507',
+    agentTag: 'kyc_verified',
+    balance: 50,
+    circleNotes: [],
+    circleReady: false,
+    circleSummary: 'Optional crosschain readiness',
+    contractAddress: '0x0000000000000000000000000000000000000001',
+    executorAddress: '0x0000000000000000000000000000000000000002',
+    generatedAt: '2026-07-21T00:00:00.000Z',
+    liveExecutionEnabled: false,
+    liveMode: false,
+    modeLabel: 'Read-only preview',
+    policy: {
+      maxRebalanceAmount: 200,
+      minThreshold: 100,
+      targetBalance: 500,
+    },
+    policySourceLabel: 'Live chain snapshot',
+  })
+
+  assert.equal(report.action, 'top_up')
+  assert.ok(
+    report.actionPack.commands.every((command) =>
+      command.command.includes('cast call'),
+    ),
+  )
+  assert.ok(
+    report.actionPack.commands.every(
+      (command) => !command.command.includes('private-key'),
+    ),
+  )
+  assert.match(report.actionPack.summary, /no transaction is submitted/i)
+})

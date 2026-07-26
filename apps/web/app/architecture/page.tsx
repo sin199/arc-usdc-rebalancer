@@ -50,10 +50,10 @@ const visitorFlow = [
 ]
 
 const operatorFlow = [
-  'Connect an operator wallet only in a separately reviewed live deployment.',
-  'Load the live policy snapshot, inspect the operator readiness panel, and confirm the execution boundary.',
-  'Keep Circle wallet-set readiness visible for live crosschain execution.',
-  'The current public deployment exposes the boundary and keeps all writes disabled.',
+  'Open the public dashboard without a wallet.',
+  'Load the live policy snapshot and inspect the execution boundary.',
+  'Keep Circle wallet-set readiness visible as a dependency signal.',
+  'The submitted public deployment keeps all treasury writes disabled.',
 ]
 
 const surfaceItems = [

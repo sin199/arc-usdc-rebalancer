@@ -28,6 +28,8 @@ This is the complete claim. Do not describe the product as having completed a tr
 
 The video is 180 seconds at 1280x720 with H.264/AAC. Its opening identifies the DeFi Track and the Arc Testnet, USDC, Circle Wallets, and Gateway stack; its body shows the dashboard and action-pack flow; its closing states that no treasury transfer is claimed.
 
+The exported action pack contains read-only `cast call` verification commands only; it contains no private key, approval, or transfer command.
+
 ## Three-minute demo path
 
 1. Introduce the treasury problem and the report-first design.

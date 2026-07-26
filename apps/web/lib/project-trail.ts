@@ -8,8 +8,8 @@ export type ProjectReleaseNote = {
 export const projectTrailSummary = {
   buildLabel: 'Verified treasury reference build',
   headline:
-    'A fail-closed Arc treasury reference stack with signed operator actions, deterministic verification, and an auditable V2 governance path.',
-  lastReviewed: 'July 18, 2026',
+    'A read-only Arc Testnet USDC treasury decision MVP with deterministic verification and an auditable evidence path.',
+  lastReviewed: 'July 26, 2026',
 }
 
 export const projectReleaseNotes: ProjectReleaseNote[] = [
@@ -18,14 +18,14 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     tag: 'security',
     title: 'Hardened every sensitive operator action',
     detail:
-      'Treasury execution, agent activation, executor deployment, and Circle wallet creation now require payload-bound wallet authorization. Production writes fail closed unless a durable replay and rate-limit store is available.',
+      'The submitted deployment hard-disables treasury writes and keeps the Arc/USDC decision path read-only.',
   },
   {
     date: 'July 18, 2026',
     tag: 'architecture',
     title: 'Added the reviewed V2 control path',
     detail:
-      'The repository now includes tested, undeployed V2 policy and executor contracts with two-step ownership, pause, recipient allowlists, amount caps, eligibility checks, transfer wrappers, and reentrancy protection.',
+      'The repository includes tested V2 policy and executor reference contracts, but the submitted deployment does not present them as live evidence.',
   },
   {
     date: 'July 18, 2026',
@@ -39,7 +39,7 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     tag: 'product',
     title: 'Refocused public pages on the product',
     detail:
-      'The public surfaces now lead with treasury decisions, system architecture, verifiable controls, and deployment evidence.',
+      'The public surfaces now lead with treasury decisions, Arc/USDC evidence, verifiable controls, and deployment evidence.',
   },
   {
     date: 'June 2, 2026',
@@ -88,7 +88,7 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     tag: 'flow',
     title: 'Kept the report path explicit',
     detail:
-      'Visitors still land on a report first, with live signing, agent control, and Circle/Arc actions available only when they are intentionally needed.',
+      'Visitors land on a report first and can inspect Arc/USDC signals without connecting a wallet or authorizing a transaction.',
   },
   {
     date: 'May 20, 2026',
@@ -102,23 +102,22 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     tag: 'product',
     title: 'Added a copyable action pack',
     detail:
-      'The checker now emits command lines and JSON that an operator can actually use instead of only reading the report.',
+      'The checker now emits read-only verification commands and JSON alongside the report.',
   },
   {
     date: 'May 20, 2026',
     tag: 'product',
-    title: 'Added a live action button',
+    title: 'Removed public live-action claims',
     detail:
-      'The dashboard can now submit the server-signer execution path directly when the report calls for top-up or trim.',
+      'The submitted dashboard keeps treasury writes disabled and presents top-up or trim as review-only decisions.',
   },
 ]
 
 export const projectKnownGaps = [
   'Maintenance notes are browser-local until a shared backend is added.',
-  'Production live execution remains disabled until durable Upstash Redis replay protection is provisioned and verified.',
-  'The V2 contracts are tested reference code; deployment, multisig ownership, and migration remain pending formal review.',
-  'Any future live settlement still depends on an explicitly authorized operator wallet on Arc Testnet.',
-  'Circle wallet set is optional for the current proof and required only for live crosschain execution.',
+  'The submitted public deployment is read-only; no treasury transaction is sent or claimed.',
+  'The V2 contracts are tested reference code and are not presented as deployed evidence.',
+  'Circle wallet-set readiness is shown as a dependency signal, not proof of custody or transfer.',
 ]
 
 export const projectReferenceLinks = [

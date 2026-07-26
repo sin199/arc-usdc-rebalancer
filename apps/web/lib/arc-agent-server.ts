@@ -466,9 +466,9 @@ export function deriveArcAgentRecommendation(params: {
       headline: `Top up ${formatUsdc(evaluation.amount)} USDC toward target.`,
       detail: `Treasury balance is below the minimum threshold with ${formatUsdc(balanceUsdc)} USDC available on the executor path.`,
       nextSteps: [
-        'Connect the owner wallet on Arc Testnet.',
-        'Approve and execute the top-up through TreasuryExecutor.',
-        'Re-run the brief to confirm the treasury is back in band.',
+        'Review the bounded top-up recommendation and current executor state.',
+        'Keep the decision receipt marked not published in the public MVP.',
+        'Re-run the brief after the next read-only observation.',
       ],
     }
   }
@@ -479,9 +479,9 @@ export function deriveArcAgentRecommendation(params: {
       headline: `Trim ${formatUsdc(evaluation.amount)} USDC back to target.`,
       detail: `Treasury balance is above target with ${formatUsdc(balanceUsdc)} USDC sitting on the executor path.`,
       nextSteps: [
-        'Connect the owner wallet on Arc Testnet.',
-        'Select a recipient and execute the trim.',
-        'Re-run the brief after the treasury balance is reduced.',
+        'Review the bounded trim recommendation and current executor state.',
+        'Keep the decision receipt marked not published in the public MVP.',
+        'Re-run the brief after the next read-only observation.',
       ],
     }
   }
