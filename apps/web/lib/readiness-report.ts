@@ -97,10 +97,9 @@ function buildActionPack(
   ).amountUnits.toString()
   const executorAddress =
     inputs.executorAddress ?? '<TREASURY_EXECUTOR_ADDRESS>'
-  const operatorAddress = inputs.operatorAddress ?? '<RECIPIENT_WALLET_ADDRESS>'
   const executorFallbackNote = inputs.executorAddress
     ? ''
-    : ' Configure TREASURY_EXECUTOR_ADDRESS before attempting live execution.'
+    : ' The public deployment is read-only; the executor address is shown for evidence only.'
 
   if (reportAction === 'top_up' && amountUsdc > 0) {
     return {
@@ -108,12 +107,12 @@ function buildActionPack(
       amountUnits,
       commands: [
         {
-          label: 'Approve USDC',
-          command: `cast send ${arcUsdcAddress} "approve(address,uint256)" ${executorAddress} ${amountUnits} --rpc-url ${arcTestnetRpcUrl} --private-key $OWNER_PRIVATE_KEY`,
+          label: 'Read executor owner',
+          command: `cast call ${executorAddress} "owner()(address)" --rpc-url ${arcTestnetRpcUrl}`,
         },
         {
-          label: 'Execute top-up',
-          command: `cast send ${executorAddress} "executeTopUp(uint256)" ${amountUnits} --rpc-url ${arcTestnetRpcUrl} --private-key $OWNER_PRIVATE_KEY`,
+          label: 'Read executor USDC balance',
+          command: `cast call ${arcUsdcAddress} "balanceOf(address)(uint256)" ${executorAddress} --rpc-url ${arcTestnetRpcUrl}`,
         },
       ],
       payload: {
@@ -126,7 +125,7 @@ function buildActionPack(
         rpcUrl: arcTestnetRpcUrl,
         tokenAddress: arcUsdcAddress,
       },
-      summary: `Approve USDC to the executor, then submit the top-up transaction.${executorFallbackNote}`,
+      summary: `Review the bounded top-up recommendation and current executor state; no transaction is submitted by the public MVP.${executorFallbackNote}`,
     }
   }
 
@@ -136,8 +135,12 @@ function buildActionPack(
       amountUnits,
       commands: [
         {
-          label: 'Execute trim',
-          command: `cast send ${executorAddress} "executeTrim(address,uint256)" ${operatorAddress} ${amountUnits} --rpc-url ${arcTestnetRpcUrl} --private-key $OWNER_PRIVATE_KEY`,
+          label: 'Read executor owner',
+          command: `cast call ${executorAddress} "owner()(address)" --rpc-url ${arcTestnetRpcUrl}`,
+        },
+        {
+          label: 'Read executor USDC balance',
+          command: `cast call ${arcUsdcAddress} "balanceOf(address)(uint256)" ${executorAddress} --rpc-url ${arcTestnetRpcUrl}`,
         },
       ],
       payload: {
@@ -151,7 +154,7 @@ function buildActionPack(
         rpcUrl: arcTestnetRpcUrl,
         tokenAddress: arcUsdcAddress,
       },
-      summary: `Send the trim directly back to the connected operator wallet.${executorFallbackNote}`,
+      summary: `Review the bounded trim recommendation and current executor state; no transaction is submitted by the public MVP.${executorFallbackNote}`,
     }
   }
 
@@ -282,7 +285,7 @@ export function buildReadinessReport(
     )
   } else if (inputs.policySourceLabel === 'Draft policy') {
     nextSteps.push(
-      'Load the onchain policy before relying on the report for live execution.',
+      'Load the onchain policy before relying on the report for a production decision.',
     )
   }
 
@@ -294,7 +297,7 @@ export function buildReadinessReport(
 
   if (!inputs.executorAddress) {
     nextSteps.push(
-      'Deploy TreasuryExecutor through the explicit operator flow, then set TREASURY_EXECUTOR_ADDRESS.',
+      'Verify the deployed TreasuryExecutor address before treating the report as Arc evidence.',
     )
   }
 
@@ -308,7 +311,7 @@ export function buildReadinessReport(
     )
   } else {
     nextSteps.push(
-      `Confirm the ${reportAction === 'top_up' ? 'top-up' : 'trim'} amount and execute only if the live operator is ready.`,
+      `Review the ${reportAction === 'top_up' ? 'top-up' : 'trim'} amount and keep the exported receipt marked not published.`,
     )
   }
 
@@ -346,7 +349,7 @@ export function buildReadinessReport(
       detail: policyLoaded
         ? 'Onchain policy snapshot is configured and loaded.'
         : inputs.contractAddress
-          ? 'Draft policy preview is active; load the onchain snapshot before live execution.'
+          ? 'Draft policy preview is active; load the onchain snapshot before relying on the report.'
           : 'Draft policy preview is active because no policy address is configured yet.',
     },
     {

@@ -39,6 +39,7 @@ import { arcAgentId, arcAgentValidationTag } from '@/lib/arc-agent'
 import { buildLiveExecutionMessage } from '@/lib/live-execution-auth'
 import { trackProductEvent } from '@/lib/product-analytics'
 import { buildReadinessReport } from '@/lib/readiness-report'
+import { publicReadOnlyDeployment } from '@/lib/public-read-only'
 import { treasuryExecutorAddressConfig } from '@/lib/treasury-executor'
 import {
   arcTestnetRpcUrl,
@@ -313,6 +314,7 @@ export function ReadinessChecker() {
   const policyIsLive = policySourceLabel === 'Live chain snapshot'
   const liveExecutionEnabled = Boolean(liveExecutionStatusQuery.data?.enabled)
   const liveExecutionReady = Boolean(
+    !publicReadOnlyDeployment &&
     liveExecutionEnabled &&
     operatorAddress &&
     contractAddress &&
@@ -328,21 +330,23 @@ export function ReadinessChecker() {
     ) ??
     connectors.find((connector) => connector.type === 'injected') ??
     connectors[0]
-  const liveExecutionBlockers = [
-    liveExecutionEnabled
-      ? null
-      : liveExecutionStatusQuery.data?.guardMode === 'unavailable'
-        ? 'Durable replay protection is not configured; live execution fails closed.'
-        : 'Live execution is disabled for this deployment.',
-    operatorAddress ? null : 'Connect the operator wallet.',
-    policyIsLive ? null : 'Load the live onchain policy snapshot.',
-    circleReady ? null : 'Finish Circle readiness.',
-    executorAddress ? null : 'Deploy or recheck the TreasuryExecutor.',
-  ].filter((item): item is string => Boolean(item))
+  const liveExecutionBlockers = publicReadOnlyDeployment
+    ? ['Public deployment is read-only; no treasury transaction is submitted.']
+    : [
+        liveExecutionEnabled
+          ? null
+          : liveExecutionStatusQuery.data?.guardMode === 'unavailable'
+            ? 'Durable replay protection is not configured; live execution fails closed.'
+            : 'Live execution is disabled for this deployment.',
+        operatorAddress ? null : 'Connect the operator wallet.',
+        policyIsLive ? null : 'Load the live onchain policy snapshot.',
+        circleReady ? null : 'Finish Circle readiness.',
+        executorAddress ? null : 'Deploy or recheck the TreasuryExecutor.',
+      ].filter((item): item is string => Boolean(item))
   const liveExecutionLockedMessage =
     'Execution locked until operator wallet and live dependencies are ready.'
   const liveMode = liveExecutionReady
-  const modeLabel = liveExecutionReady ? 'Live operator mode' : 'Preview mode'
+  const modeLabel = 'Read-only preview'
   const report = buildReadinessReport({
     agentId: arcAgentId.toString(),
     agentTag: arcAgentValidationTag,
@@ -564,6 +568,14 @@ export function ReadinessChecker() {
   }
 
   async function handleRunLiveAction() {
+    if (publicReadOnlyDeployment) {
+      setExecutionState('error')
+      setExecutionMessage(
+        'Public deployment is read-only; no treasury transaction is submitted.',
+      )
+      return
+    }
+
     if (!canRunLiveAction) {
       setExecutionState('error')
       setExecutionMessage(liveExecutionLockedMessage)
@@ -631,7 +643,8 @@ export function ReadinessChecker() {
       setExecutionResult(payload)
       setExecutionState('done')
       setExecutionMessage(
-        payload.summary ?? 'Execution confirmed via the server signer.',
+        payload.summary ??
+          'No treasury transaction was submitted by the public MVP.',
       )
     } catch (error) {
       const message =
@@ -758,9 +771,10 @@ export function ReadinessChecker() {
               <CardTitle className="text-xl">Live Treasury Brief</CardTitle>
               <CardDescription>
                 The treasury policy workflow checks policy, balance, identity
-                evidence, and Circle readiness. Policy, balance, or Circle
-                read failures degrade to a clearly marked safe result; identity
-                validation is supplementary evidence and never unlocks fund movement.
+                evidence, and Circle readiness. Policy, balance, or Circle read
+                failures degrade to a clearly marked safe result; identity
+                validation is supplementary evidence and never unlocks fund
+                movement.
               </CardDescription>
             </div>
           </CardHeader>
@@ -1039,7 +1053,7 @@ export function ReadinessChecker() {
               <CardTitle className="text-xl">Check your treasury now</CardTitle>
               <CardDescription>
                 Keep the draft values for preview mode, or load the onchain
-                policy before switching to live operator mode.
+                policy before relying on the decision report.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -1336,8 +1350,8 @@ export function ReadinessChecker() {
                   Decision receipt
                 </div>
                 <p className="mt-2 text-sm leading-6 text-foreground">
-                  Generated when you copy or download this pack. Onchain anchor:
-                  {' '}not published.
+                  Generated when you copy or download this pack. Onchain anchor:{' '}
+                  not published.
                 </p>
               </div>
 
@@ -1480,12 +1494,12 @@ export function ReadinessChecker() {
               </Badge>
             </div>
             <CardTitle className="text-lg">
-              Live execution stays optional and gated
+              Public deployment is read-only
             </CardTitle>
             <CardDescription>
-              Preview mode remains useful without a wallet. These are the live
-              gates the page checks before it will expose any signed execution
-              path.
+              The dashboard reads Arc and USDC evidence, produces a bounded
+              decision, and exports a reviewable action pack. It never exposes a
+              treasury write path.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -1610,7 +1624,7 @@ export function ReadinessChecker() {
               </div>
               <div className="mt-2 text-sm leading-6 text-foreground">
                 {liveExecutionReady
-                  ? 'Live execution is available, but the report still stays first.'
+                  ? 'The public deployment is read-only; no treasury transaction is submitted.'
                   : liveExecutionStatusMessage}
               </div>
             </div>

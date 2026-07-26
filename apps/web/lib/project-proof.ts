@@ -34,16 +34,16 @@ export const projectProof = {
     details: [
       'Report-first output is visible without a wallet.',
       'Action pack templates are visible while live execution stays locked.',
-      'A future live deployment would require an operator wallet, live policy, Circle wallet-set readiness, and executor configuration.',
-      'Circle readiness is optional for the current proof and only becomes required for live crosschain execution.',
+      'The submitted public deployment does not expose a treasury write path.',
+      'Circle readiness is shown as a dependency signal, not proof of custody or transfer.',
     ],
   },
   safetyBoundaries: [
     'Do not paste real private keys into the browser.',
     'The site does not collect private keys.',
     'No silent transactions are sent from preview mode.',
-    'No live execution runs without the existing operator gates.',
-    'The demo is report-first, execution-second, and not a profit bot.',
+    'The submitted public deployment does not send treasury transactions.',
+    'The demo is report-first, read-only, and not a profit bot.',
   ],
   screenshotChecklist: [
     'Homepage hero with the 30-second visitor path.',

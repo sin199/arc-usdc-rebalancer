@@ -63,7 +63,7 @@ The dashboard currently exposes these Arc-specific surfaces:
 - Arc-linked onchain identity and validation evidence
 - Circle control plane for wallets and Gateway
 - Public demo mode for unauthenticated visitors
-- Live operator mode for signed execution after readiness gates pass
+- A public read-only review mode with no treasury write path
 
 ## Architecture
 
@@ -75,7 +75,7 @@ flowchart LR
   UI --> Policy["TreasuryPolicy"]
   UI --> Executor["TreasuryExecutor"]
   UI --> Circle["Circle wallets + Gateway"]
-  UI --> Live["Live operator mode"]
+  UI --> ReadOnly["Read-only review mode"]
   Live --> Guard["Signed operator + durable replay guard"]
   Guard --> Policy
   Guard --> Executor
@@ -112,11 +112,11 @@ Open:
 
 ## Reproduce in 3 minutes
 
-1. Open the homepage and confirm the 30-second visitor path: dashboard, readiness report, markdown/action pack, optional operator mode.
+1. Open the homepage and confirm the 30-second visitor path: dashboard, readiness report, and read-only action pack.
 2. Open the dashboard and generate a readiness report from the current balance and policy inputs.
 3. Switch between below minimum, at target, and above target to confirm `top_up`, `hold`, and `trim` outputs.
 4. Copy or download the action pack and confirm its decision receipt is marked `not published`.
-5. Confirm live action controls stay hidden until operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
+5. Confirm the public deployment shows the read-only boundary and never exposes treasury write controls.
 
 ## Demo checklist
 
@@ -236,7 +236,7 @@ If you are reviewing this repo, start here:
 - The public dashboard reads the deployed Arc Testnet contracts; it does not send treasury writes.
 - Public visitors can explore the demo without a wallet.
 - Preview mode is for reports and copyable action packs, not live transaction submission.
-- Live signing stays disabled in the public deployment and is not part of the submitted transaction evidence.
+- The public deployment is read-only and is not presented as having submitted a treasury transaction.
 - Product funnel events are privacy-safe and exclude wallet addresses; they are emitted as structured server logs.
 - The Circle line is the live control plane for wallets and Gateway, not a separate product.
 - The Arc agent panel surfaces the onchain identity and validation state tied to this website.

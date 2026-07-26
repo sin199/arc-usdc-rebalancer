@@ -61,8 +61,8 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 - It does not execute without a live signer and Circle configuration.
 - It does not present itself as a profit bot.
 - Preview mode never pretends to be live execution.
-- Live execution is gated by visible readiness checks.
-- The report remains useful even when live signing is unavailable.
+- The submitted public deployment has no treasury write path.
+- The report remains useful without a wallet or live signing.
 
 ## Demo links
 
@@ -76,18 +76,18 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 
 ## Deployment evidence
 
-| Item | Evidence |
-| --- | --- |
-| Production URL | `https://web-eight-chi-99.vercel.app` |
-| Public deployment | `https://web-eight-chi-99.vercel.app` |
-| Current public repo | `sin199/arc-usdc-rebalancer` |
-| Arc House post | Not published; no unrelated Agentic Economy resource is presented as project evidence |
-| GitHub repo | `sin199/arc-usdc-rebalancer` |
-| README alignment | README states `Deployed Arc Testnet decision MVP + report-first public deployment` and links this pack |
-| Video evidence | Public three-minute H.264/AAC demo linked above |
-| Lint status | `pnpm lint` passed |
-| Build status | `pnpm build` passed |
-| Alias check | Production alias and latest deployment render the same public demo copy |
+| Item                | Evidence                                                                                               |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| Production URL      | `https://web-eight-chi-99.vercel.app`                                                                  |
+| Public deployment   | `https://web-eight-chi-99.vercel.app`                                                                  |
+| Current public repo | `sin199/arc-usdc-rebalancer`                                                                           |
+| Arc House post      | Not published; no unrelated Agentic Economy resource is presented as project evidence                  |
+| GitHub repo         | `sin199/arc-usdc-rebalancer`                                                                           |
+| README alignment    | README states `Deployed Arc Testnet decision MVP + report-first public deployment` and links this pack |
+| Video evidence      | Public three-minute H.264/AAC demo linked above                                                        |
+| Lint status         | `pnpm lint` passed                                                                                     |
+| Build status        | `pnpm build` passed                                                                                    |
+| Alias check         | Production alias and latest deployment render the same public demo copy                                |
 
 ## Current onchain proof status
 

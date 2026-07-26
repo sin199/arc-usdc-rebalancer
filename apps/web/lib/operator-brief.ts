@@ -4,14 +4,14 @@ export const operatorBriefSummary = {
   reviewGoal:
     'Make it easy to verify the treasury policy workflow and see which pieces are intentionally public.',
   statusNote:
-    'The product is a public Arc Testnet reference system; live writes remain disabled until every production gate is reviewed.',
+    'The product is a public Arc Testnet decision MVP; the submitted deployment is read-only and does not send treasury writes.',
 }
 
 export const operatorBriefEvidence = [
   {
     label: 'Live demo',
     value:
-      'Public dashboard with report-first treasury flow and live operator gating.',
+      'Public dashboard with report-first treasury flow and a hard read-only boundary.',
   },
   {
     label: 'Arc surface',
@@ -31,7 +31,7 @@ export const operatorBriefEvidence = [
   {
     label: 'Execution',
     value:
-      'Wallet-authorized server execution, disabled by default and gated by an operator allowlist.',
+      'Treasury writes are not part of the submitted deployment; execution status is disabled.',
   },
 ]
 

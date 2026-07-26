@@ -69,9 +69,9 @@ const liveTiles = [
   {
     icon: Wallet,
     label: 'Wallet layer',
-    value: 'Optional',
+    value: 'Read-only',
     detail:
-      'Connect only if you want live signing. The report still works without it.',
+      'No wallet is required. The public MVP never requests a treasury signature.',
   },
   {
     icon: CircleDollarSign,
@@ -92,7 +92,7 @@ const liveTiles = [
 const workingNotes = [
   'The main job is to produce a readable treasury decision, readiness report, and proof trail.',
   'The system architecture page connects product behavior to contracts, authorization, and deployment evidence.',
-  'Live signing remains available, but it should never be required to understand the result.',
+  'The submitted deployment is read-only; a wallet is not required to understand the result.',
   'The dashboard keeps a local proof log so updates can be written down as they happen.',
 ]
 
@@ -117,9 +117,9 @@ const controlLoop = [
   },
   {
     step: '04',
-    title: 'Operator mode',
+    title: 'Review mode',
     description:
-      'Live execution stays behind the operator wallet and live dependencies.',
+      'The public MVP keeps treasury writes disabled and exposes the evidence boundary.',
   },
 ]
 
@@ -231,8 +231,8 @@ export default function HomePage() {
               </h1>
               <p className="max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
                 In 30 seconds, a visitor can open the dashboard, generate a
-                readiness report, copy the markdown or action pack, and only
-                move into operator mode if they explicitly want live execution.
+                readiness report, copy the markdown or action pack, and inspect
+                the read-only evidence boundary.
               </p>
               <p className="text-sm text-muted-foreground">
                 {projectTrailSummary.headline}
@@ -312,9 +312,9 @@ export default function HomePage() {
               </div>
               <CardTitle className="text-2xl">What is live right now</CardTitle>
               <CardDescription>
-                The page stays close to the actual proof: report first, live
-                operator mode second, and the dashboard keeps a proof log so the
-                site reads like a maintained builder contribution.
+                The page stays close to the actual proof: report first, live Arc
+                signals second, and the dashboard keeps a proof log so the site
+                reads like a maintained builder contribution.
               </CardDescription>
             </CardHeader>
 
@@ -348,8 +348,8 @@ export default function HomePage() {
               <div className="mt-4 rounded-2xl border border-white/10 bg-primary/10 p-4 text-sm leading-6 text-foreground">
                 The homepage is the public entry point. The architecture page
                 explains the system, deployment facts, and onchain status. The
-                treasury brief explains the policy workflow. The case
-                study explains the replay path. The dashboard is where visitors
+                treasury brief explains the policy workflow. The case study
+                explains the replay path. The dashboard is where visitors
                 generate the readiness report, compare states, and optionally
                 hand control to the live operator.
               </div>
@@ -456,8 +456,8 @@ export default function HomePage() {
               What visitors can do here
             </CardTitle>
             <CardDescription className="max-w-2xl">
-              Start with the report, inspect the live signals, and switch to
-              live mode only if you want signed execution.
+              Start with the report, inspect the live signals, and verify that
+              the public deployment remains read-only.
             </CardDescription>
           </CardHeader>
 
@@ -499,12 +499,12 @@ export default function HomePage() {
             <CardContent className="pt-6">
               <ul className="space-y-3 text-sm leading-6 text-muted-foreground">
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Show the Arc identity evidence, treasury policy, and report output
-                  together.
+                  Show the Arc identity evidence, treasury policy, and report
+                  output together.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Let visitors explore without a wallet, then move into live
-                  operator mode if needed.
+                  Let visitors explore without a wallet and keep treasury writes
+                  disabled in the public MVP.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
                   Keep the technical evidence legible from GitHub to the system
@@ -515,8 +515,8 @@ export default function HomePage() {
                   operator path is automatic.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Use the treasury brief as the shortest path for someone checking
-                  how the policy workflow works.
+                  Use the treasury brief as the shortest path for someone
+                  checking how the policy workflow works.
                 </li>
               </ul>
             </CardContent>

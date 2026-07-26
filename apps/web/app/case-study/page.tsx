@@ -138,8 +138,8 @@ export default function CaseStudyPage() {
                 Surface
               </div>
               <div className="mt-2 text-sm leading-6 text-foreground">
-                Arc Testnet policy, Circle readiness, executor state, and onchain
-                identity evidence are visible in one flow.
+                Arc Testnet policy, Circle readiness, executor state, and
+                onchain identity evidence are visible in one flow.
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -148,8 +148,8 @@ export default function CaseStudyPage() {
                 Replay
               </div>
               <div className="mt-2 text-sm leading-6 text-foreground">
-                You can replay the same flow locally in preview mode before you
-                ever connect a live operator wallet.
+                You can replay the same flow locally in read-only preview mode;
+                no operator wallet is required.
               </div>
             </div>
           </CardContent>
