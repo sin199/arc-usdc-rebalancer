@@ -1,8 +1,8 @@
-# Arc USDC Rebalancer: report-first treasury operations on Arc Testnet
+# Arc USDC Rebalancer: report-first treasury decision MVP on Arc Testnet
 
 ## Summary
 
-Arc USDC Rebalancer is a public Arc Testnet DeFi Treasury demo built around one simple flow: readiness checker first, treasury operations brief second, and a future operator execution path. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy either the markdown report or the action pack. Production execution is disabled for this revision; the operator path remains visible only to show the gates required before any future signed action.
+Arc USDC Rebalancer is a deployed Arc Testnet DeFi Treasury decision MVP built around one simple flow: live state read first, policy decision second, and auditable action pack third. Visitors can open the dashboard without a wallet, inspect live Arc and Circle readiness, compare treasury scenarios, and copy either the markdown report or the action pack. The public deployment does not submit treasury transactions; that boundary is explicit in the product and evidence.
 
 ## What I built
 
@@ -11,7 +11,7 @@ Arc USDC Rebalancer is a public Arc Testnet DeFi Treasury demo built around one 
 - A copyable markdown report and action pack for chat, docs, GitHub, or terminal use.
 - A deterministic decision receipt generated with every copied or downloaded action pack. It binds the policy source, policy, balance, action, amount, Arc chain, and observation time; it is explicitly marked `not published` until a transaction hash exists.
 - A visible treasury operations brief that explains the policy workflow and live control path.
-- A future live-execution path that stays locked until the operator and live dependencies are ready; it is disabled in the production deployment.
+- A public write boundary that stays hard-disabled; no treasury transfer is claimed as evidence.
 - A Circle control plane surface for developer-controlled wallets and Gateway readiness.
 - A safe treasury-ops interface for Arc Testnet, not a silent trading bot.
 
@@ -35,7 +35,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 - Circle developer-controlled wallets
 - Circle Gateway readiness
 - Public demo mode for visitors without a wallet
-- Future operator mode for signed execution after the production execution flag is enabled and every gate passes
+- A separately reviewed operator-write design, not claimed as active production behavior
 
 ## Public visitor flow
 
@@ -45,16 +45,15 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 4. Compare treasury scenarios such as below minimum, at target, or above target.
 5. Copy the markdown report or action pack.
 6. Confirm the action-pack decision receipt is marked `not published`.
-7. Stop there if you only want the public demo.
+7. Stop there: the public demo is intentionally non-executing.
 
 ## Operator flow
 
-1. Connect the operator wallet.
-2. Load the live onchain policy snapshot.
-3. Confirm Circle readiness.
-4. Confirm the TreasuryExecutor.
-5. Review the actionable report.
-6. Treat execution as a future, separately reviewed operation. It is disabled in the current production deployment.
+1. Inspect the live onchain policy snapshot.
+2. Confirm the live Circle readiness signal.
+3. Confirm the configured TreasuryExecutor address and balance read.
+4. Review the actionable report and exported decision receipt.
+5. Treat any treasury write as outside this public submission; no transfer is sent or implied.
 
 ## Safety boundaries
 
@@ -72,6 +71,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 - Treasury operations brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 - Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
 - GitHub repo: [https://github.com/sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
+- Hackathon deck: [https://github.com/sin199/arc-usdc-rebalancer/raw/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx](https://github.com/sin199/arc-usdc-rebalancer/raw/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx)
 - Three-minute demo video: [https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4](https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4)
 
 ## Deployment evidence
@@ -83,7 +83,7 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 | Current public repo | `sin199/arc-usdc-rebalancer` |
 | Arc House post | Not published; no unrelated Agentic Economy resource is presented as project evidence |
 | GitHub repo | `sin199/arc-usdc-rebalancer` |
-| README alignment | README states `Readiness checker + treasury operations brief + gated future execution` and links this pack |
+| README alignment | README states `Deployed Arc Testnet decision MVP + report-first public deployment` and links this pack |
 | Video evidence | Public three-minute H.264/AAC demo linked above |
 | Lint status | `pnpm lint` passed |
 | Build status | `pnpm build` passed |
@@ -91,12 +91,12 @@ This project shows Arc in a way that is easy to inspect and hard to misunderstan
 
 ## Current onchain proof status
 
-- The public demo already proves the report-first readiness flow on Arc Testnet: a visitor can inspect the readiness report, review the recommendation, and copy the markdown report or action pack without a wallet.
+- The public demo proves a report-first decision flow on Arc Testnet: a visitor can inspect live policy, executor-balance, validation, and Circle-readiness signals, review the recommendation, and copy the markdown report or action pack without a wallet.
 - The action pack and locked execution boundary are both visible in production, so the demo shows where execution would begin and where it remains intentionally gated.
 - Decision receipts are generated locally with the exported action pack. The optional registry contract is not deployed, and no receipt is represented as onchain evidence.
 - No Arc Testnet `top_up` or `trim` transaction hash is published yet for this revision.
-- Live execution remains gated behind the operator wallet, live policy snapshot, Circle wallet-set readiness, and executor configuration.
-- No execution gates were bypassed to create this submission evidence.
+- The public API reports `enabled: false`; no treasury write is sent by the submitted deployment.
+- The public evidence boundary is intentional: no execution gate was bypassed and no treasury transfer is implied.
 
 ## Screenshot checklist
 

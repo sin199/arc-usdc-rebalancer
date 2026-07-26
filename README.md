@@ -1,8 +1,8 @@
 # Arc USDC Rebalancer
 
-A verified Arc Testnet USDC treasury policy workflow with a readiness checker, treasury operations brief, and fail-closed execution controls.
+A deployed Arc Testnet USDC treasury decision MVP with a readiness checker, treasury operations brief, and fail-closed execution controls.
 
-The public demo is report first, execution second: visitors can generate a readiness report without a wallet, compare sample treasury states, copy markdown or an action pack, and only move into operator mode when the operator wallet, live policy, Circle readiness, and executor dependencies are ready.
+The public deployment is report-first and non-executing: visitors can generate a readiness report without a wallet, compare sample treasury states, copy markdown or an action pack, and inspect live Arc and Circle readiness without sending a treasury transaction.
 
 Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
 System architecture: [https://web-eight-chi-99.vercel.app/architecture](https://web-eight-chi-99.vercel.app/architecture)
@@ -14,6 +14,8 @@ Security model: [docs/security-model.md](./docs/security-model.md)
 3-minute demo video: [docs/arc-treasury-agent-demo.mp4](./docs/arc-treasury-agent-demo.mp4)
 Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submission.md)
 Checkpoint 2 progress: [docs/checkpoint-2-progress.md](./docs/checkpoint-2-progress.md)
+Final submission checklist: [docs/final-submission.md](./docs/final-submission.md)
+Arc Testnet evidence: [docs/arc-testnet-evidence.json](./docs/arc-testnet-evidence.json)
 
 ## What this repo shows
 
@@ -23,12 +25,12 @@ Checkpoint 2 progress: [docs/checkpoint-2-progress.md](./docs/checkpoint-2-progr
 - A copyable readiness report with policy, balance, Circle, wallet, executor, and onchain identity evidence.
 - A copyable action pack with exact commands and payload context for an operator to review.
 - A deterministic decision-receipt hash that binds policy source, policy, balance, proposed action, amount, chain, and observation time before any future anchor transaction.
-- Live action controls that render only when the deployment flag, allowlisted operator wallet, live policy, Circle readiness, executor, and actionable report state are all ready.
+- A visibly locked execution boundary in the public deployment; no treasury write is claimed or sent.
 - A dedicated system architecture page with deployment facts, Arcscan links, and current proof status.
 - Wallet-signed, allowlisted, amount-capped live requests with durable Redis replay protection, rate-limit, and audit checks; server-signer writes are disabled by default and fail closed without the durable guard.
 - Identity activation and Circle wallet creation use the same signed operator authorization boundary as treasury execution.
-- A V2 policy/executor reference stack adds onchain policy enforcement, pause, recipient allowlists, two-step ownership transfer, and executor caps without replacing the currently deployed contracts.
-- A treasury policy and executor flow on Arc Testnet.
+- A V2 policy/executor reference stack adds onchain policy enforcement, pause, recipient allowlists, two-step ownership transfer, and executor caps; it is not presented as deployed evidence.
+- A deployed Arc Testnet treasury policy and executor read path.
 - An Arc-linked onchain identity surfaced as supplementary dashboard evidence.
 - Circle developer-controlled wallet and Gateway readiness for USDC routing.
 - A single dashboard that ties policy, wallet layer, and execution rail together.
@@ -37,7 +39,7 @@ Checkpoint 2 progress: [docs/checkpoint-2-progress.md](./docs/checkpoint-2-progr
 
 - It does not silently send transactions.
 - It does not execute from preview mode.
-- It does not execute unless live writes are explicitly enabled and the connected operator signs an allowlisted, short-lived request.
+- The public deployment does not submit treasury transactions; the separately reviewed live-write path is hard-disabled there.
 - It is not a profit bot.
 
 ## Why this exists
@@ -231,10 +233,10 @@ If you are reviewing this repo, start here:
 
 ## Notes
 
-- The dashboard reads and writes the deployed contract on Arc Testnet only.
+- The public dashboard reads the deployed Arc Testnet contracts; it does not send treasury writes.
 - Public visitors can explore the demo without a wallet.
 - Preview mode is for reports and copyable action packs, not live transaction submission.
-- Live signing stays disabled by default and requires a fresh allowlisted operator wallet signature when enabled.
+- Live signing stays disabled in the public deployment and is not part of the submitted transaction evidence.
 - Product funnel events are privacy-safe and exclude wallet addresses; they are emitted as structured server logs.
 - The Circle line is the live control plane for wallets and Gateway, not a separate product.
 - The Arc agent panel surfaces the onchain identity and validation state tied to this website.

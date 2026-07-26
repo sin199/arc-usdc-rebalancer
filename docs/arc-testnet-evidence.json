@@ -1,0 +1,49 @@
+{
+  "observedAt": "2026-07-26T13:46:40Z",
+  "scope": "Public read-only verification. No transaction was submitted.",
+  "chain": {
+    "name": "Arc Testnet",
+    "chainId": 5042002,
+    "rpc": "https://rpc.testnet.arc.network",
+    "explorer": "https://testnet.arcscan.app"
+  },
+  "contracts": {
+    "policy": {
+      "address": "0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6",
+      "bytecodePresent": true,
+      "getPolicyRaw": [
+        "100000000000000000000",
+        "500000000000000000000",
+        "200000000000000000000"
+      ],
+      "displayValues": {
+        "minThresholdUsdc": 100,
+        "targetBalanceUsdc": 500,
+        "maxRebalanceAmountUsdc": 200
+      },
+      "storageDecimals": 18
+    },
+    "executor": {
+      "address": "0x5c5d0275371724779f3a6928eb0312df2b1a501f",
+      "bytecodePresent": true,
+      "owner": "0x1092E9bEc053E689930e953dCdbF8E04aB34B6F7",
+      "asset": "0x3600000000000000000000000000000000000000",
+      "balanceUsdc": 0,
+      "publicExecutionStatus": {
+        "url": "https://web-eight-chi-99.vercel.app/api/treasury/execution/status",
+        "enabled": false,
+        "guardMode": "redis"
+      }
+    },
+    "usdc": {
+      "address": "0x3600000000000000000000000000000000000000",
+      "decimals": 6
+    }
+  },
+  "verificationCommands": [
+    "cast chain-id --rpc-url https://rpc.testnet.arc.network",
+    "cast call 0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6 'getPolicy()(uint256,uint256,uint256)' --rpc-url https://rpc.testnet.arc.network",
+    "cast call 0x5c5d0275371724779f3a6928eb0312df2b1a501f 'asset()(address)' --rpc-url https://rpc.testnet.arc.network",
+    "curl -sS https://web-eight-chi-99.vercel.app/api/treasury/execution/status"
+  ]
+}

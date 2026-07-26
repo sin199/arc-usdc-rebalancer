@@ -31,7 +31,7 @@ export const metadata: Metadata = {
 const systemIncludes = [
   'A public Arc Testnet treasury demo with a report-first readiness checker.',
   'A compact treasury operations brief that explains the policy workflow used in the project.',
-  'A future live-execution path that remains disabled until wallet, policy, Circle, and executor checks are reviewed.',
+  'A live-execution boundary that is hard-disabled in the public deployment.',
   'A fail-closed control plane with signed operator actions and durable replay protection.',
 ]
 
@@ -129,7 +129,7 @@ export default function ArchitecturePage() {
                 variant="outline"
                 className="border-white/15 bg-white/5 text-foreground"
               >
-                Optional live execution
+                Execution disabled in public deployment
               </Badge>
               <Badge
                 variant="outline"
@@ -142,10 +142,10 @@ export default function ArchitecturePage() {
               Built as a verifiable treasury control system
             </CardTitle>
             <CardDescription className="max-w-3xl text-base leading-7">
-              The site proves a report-first treasury flow on Arc Testnet. Live
-              execution only appears when the operator wallet, live policy,
-              Circle wallet set, executor, and durable replay guard are all
-              ready. Every production write is designed to fail closed.
+              The site proves a report-first treasury decision flow on Arc
+              Testnet. The public deployment reads live policy, balance,
+              validation, and Circle readiness, but does not submit treasury
+              transactions. Its write boundary remains visibly fail-closed.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -336,8 +336,8 @@ export default function ArchitecturePage() {
             <CardHeader>
               <CardTitle>Deployment evidence</CardTitle>
               <CardDescription>
-                The reviewer can validate the live deployment without leaving
-                this page.
+                The reviewer can validate the live deployment and its evidence
+                boundary without leaving this page.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-2">
