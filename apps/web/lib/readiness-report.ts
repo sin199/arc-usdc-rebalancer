@@ -1,5 +1,11 @@
-import { parseUnits } from 'viem'
-import { arcTestnetRpcUrl, arcUsdcAddress, arcUsdcDecimals, evaluatePolicy, formatUsdc, type TreasuryPolicy } from '@arc-usdc-rebalancer/shared'
+import {
+  arcTestnetRpcUrl,
+  arcUsdcAddress,
+  evaluatePolicy,
+  formatUsdc,
+  type TreasuryPolicy,
+} from '@arc-usdc-rebalancer/shared'
+import { parseUsdcAmount } from './usdc-amount'
 
 export type ReadinessReportInputs = {
   agentId: string
@@ -79,11 +85,22 @@ function formatAction(evaluationAction: 'hold' | 'top_up' | 'trim') {
   return 'Hold'
 }
 
-function buildActionPack(reportAction: ReadinessReport['action'], inputs: ReadinessReportInputs, amountUsdc: number): ReadinessActionPack {
-  const amountUnits = parseUnits(String(amountUsdc), arcUsdcDecimals).toString()
-  const executorAddress = inputs.executorAddress ?? '<TREASURY_EXECUTOR_ADDRESS>'
+function buildActionPack(
+  reportAction: ReadinessReport['action'],
+  inputs: ReadinessReportInputs,
+  amountUsdc: number,
+): ReadinessActionPack {
+  const amountUnits = parseUsdcAmount(
+    amountUsdc,
+    'USDC amount',
+    true,
+  ).amountUnits.toString()
+  const executorAddress =
+    inputs.executorAddress ?? '<TREASURY_EXECUTOR_ADDRESS>'
   const operatorAddress = inputs.operatorAddress ?? '<RECIPIENT_WALLET_ADDRESS>'
-  const executorFallbackNote = inputs.executorAddress ? '' : ' Configure TREASURY_EXECUTOR_ADDRESS before attempting live execution.'
+  const executorFallbackNote = inputs.executorAddress
+    ? ''
+    : ' Configure TREASURY_EXECUTOR_ADDRESS before attempting live execution.'
 
   if (reportAction === 'top_up' && amountUsdc > 0) {
     return {
@@ -152,11 +169,18 @@ function buildActionPack(reportAction: ReadinessReport['action'], inputs: Readin
       rpcUrl: arcTestnetRpcUrl,
       tokenAddress: arcUsdcAddress,
     },
-    summary: reportAction === 'hold' ? 'No chain transaction is needed. Keep monitoring and share the report.' : 'Resolve the missing dependencies before preparing an execution command.',
+    summary:
+      reportAction === 'hold'
+        ? 'No chain transaction is needed. Keep monitoring and share the report.'
+        : 'Resolve the missing dependencies before preparing an execution command.',
   }
 }
 
-function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, evaluationMessage: string) {
+function formatMarkdown(
+  report: ReadinessReport,
+  inputs: ReadinessReportInputs,
+  evaluationMessage: string,
+) {
   const lines = [
     '# Arc USDC Rebalancer readiness report',
     '',
@@ -175,13 +199,24 @@ function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, 
     '',
     '## Action pack',
     report.actionPack.summary,
-    ...(report.actionPack.commands.length > 0 ? ['', '### Commands', ...report.actionPack.commands.map((command) => `- ${command.label}: ${command.command}`)] : []),
+    ...(report.actionPack.commands.length > 0
+      ? [
+          '',
+          '### Commands',
+          ...report.actionPack.commands.map(
+            (command) => `- ${command.label}: ${command.command}`,
+          ),
+        ]
+      : []),
     '',
     '## Next steps',
     ...report.nextSteps.map((step) => `- ${step}`),
     '',
     '## Health checks',
-    ...report.checks.map((check) => `- ${check.passed ? 'PASS' : 'WARN'} ${check.label}: ${check.detail}`),
+    ...report.checks.map(
+      (check) =>
+        `- ${check.passed ? 'PASS' : 'WARN'} ${check.label}: ${check.detail}`,
+    ),
     '',
     '## Policy note',
     evaluationMessage,
@@ -190,10 +225,14 @@ function formatMarkdown(report: ReadinessReport, inputs: ReadinessReportInputs, 
   return lines.join('\n')
 }
 
-export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessReport {
+export function buildReadinessReport(
+  inputs: ReadinessReportInputs,
+): ReadinessReport {
   const evaluation = evaluatePolicy(inputs.balance, inputs.policy)
   const policyBand = formatPolicyBand(inputs.policy)
-  const policyLoaded = inputs.policySourceLabel === 'Live chain snapshot' && Boolean(inputs.contractAddress)
+  const policyLoaded =
+    inputs.policySourceLabel === 'Live chain snapshot' &&
+    Boolean(inputs.contractAddress)
   const reportAction: ReadinessReport['action'] =
     !inputs.contractAddress && inputs.liveMode
       ? 'review'
@@ -238,25 +277,39 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
   const nextSteps: string[] = []
 
   if (!inputs.contractAddress) {
-    nextSteps.push('Set TREASURY_POLICY_ADDRESS if you want a live onchain policy snapshot. Preview mode still works.')
+    nextSteps.push(
+      'Set TREASURY_POLICY_ADDRESS if you want a live onchain policy snapshot. Preview mode still works.',
+    )
   } else if (inputs.policySourceLabel === 'Draft policy') {
-    nextSteps.push('Load the onchain policy before relying on the report for live execution.')
+    nextSteps.push(
+      'Load the onchain policy before relying on the report for live execution.',
+    )
   }
 
   if (!inputs.circleReady) {
-    nextSteps.push('Finish Circle readiness so wallet and gateway reads are available.')
+    nextSteps.push(
+      'Finish Circle readiness so wallet and gateway reads are available.',
+    )
   }
 
   if (!inputs.executorAddress) {
-    nextSteps.push('Deploy TreasuryExecutor through the explicit operator flow, then set TREASURY_EXECUTOR_ADDRESS.')
+    nextSteps.push(
+      'Deploy TreasuryExecutor through the explicit operator flow, then set TREASURY_EXECUTOR_ADDRESS.',
+    )
   }
 
   if (reportAction === 'hold') {
-    nextSteps.push('Keep monitoring and share the report if you need a review trail.')
+    nextSteps.push(
+      'Keep monitoring and share the report if you need a review trail.',
+    )
   } else if (reportAction === 'review') {
-    nextSteps.push('Resolve the missing dependency, then regenerate the report.')
+    nextSteps.push(
+      'Resolve the missing dependency, then regenerate the report.',
+    )
   } else {
-    nextSteps.push(`Confirm the ${reportAction === 'top_up' ? 'top-up' : 'trim'} amount and execute only if the live operator is ready.`)
+    nextSteps.push(
+      `Confirm the ${reportAction === 'top_up' ? 'top-up' : 'trim'} amount and execute only if the live operator is ready.`,
+    )
   }
 
   const evidence: ReadinessReportEvidence[] = [
@@ -267,7 +320,10 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
     { label: 'Circle', value: inputs.circleSummary },
     {
       label: 'Circle notes',
-      value: inputs.circleNotes.length > 0 ? `${inputs.circleNotes.length} note(s)` : 'No notes',
+      value:
+        inputs.circleNotes.length > 0
+          ? `${inputs.circleNotes.length} note(s)`
+          : 'No notes',
     },
     { label: 'Wallet set', value: inputs.walletSetId ?? 'Missing' },
     {
@@ -276,7 +332,9 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
     },
     {
       label: 'Server execution',
-      value: inputs.liveExecutionEnabled ? 'Enabled with wallet authorization' : 'Disabled',
+      value: inputs.liveExecutionEnabled
+        ? 'Enabled with wallet authorization'
+        : 'Disabled',
     },
     { label: 'Agent', value: `#${inputs.agentId} · ${inputs.agentTag}` },
   ]
@@ -294,17 +352,23 @@ export function buildReadinessReport(inputs: ReadinessReportInputs): ReadinessRe
     {
       label: 'Circle ready',
       passed: inputs.circleReady,
-      detail: inputs.circleReady ? 'Circle control plane readiness is complete.' : 'Circle still needs attention.',
+      detail: inputs.circleReady
+        ? 'Circle control plane readiness is complete.'
+        : 'Circle still needs attention.',
     },
     {
       label: 'Executor ready',
       passed: Boolean(inputs.executorAddress),
-      detail: inputs.executorAddress ? 'TreasuryExecutor is configured.' : 'TreasuryExecutor is missing.',
+      detail: inputs.executorAddress
+        ? 'TreasuryExecutor is configured.'
+        : 'TreasuryExecutor is missing.',
     },
     {
       label: 'Server execution',
       passed: inputs.liveExecutionEnabled,
-      detail: inputs.liveExecutionEnabled ? 'Live writes require an allowlisted operator wallet signature.' : 'Live writes are disabled; preview and report export remain available.',
+      detail: inputs.liveExecutionEnabled
+        ? 'Live writes require an allowlisted operator wallet signature.'
+        : 'Live writes are disabled; preview and report export remain available.',
     },
   ]
 

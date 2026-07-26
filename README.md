@@ -168,7 +168,7 @@ Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 - `CIRCLE_GATEWAY_DESTINATION_DOMAIN` - Gateway destination domain, default `6` for Base Sepolia
 - `OWNER_PRIVATE_KEY` - Arc Testnet agent owner wallet key used by the activation route
 - `VALIDATOR_PRIVATE_KEY` - Arc Testnet validator wallet key used by the activation route
-- `ENABLE_LIVE_EXECUTION` - must be exactly `true` to enable server-signer writes; defaults to disabled
+- `ENABLE_LIVE_EXECUTION` - legacy server-signer writes remain hard-disabled; this flag cannot bypass the reviewed V2 execution gate
 - `LIVE_EXECUTION_OPERATOR_ALLOWLIST` - comma-separated wallet addresses allowed to authorize writes
 - `LIVE_EXECUTION_ALLOWED_ORIGINS` - comma-separated browser origins allowed to submit signed writes
 - `LIVE_EXECUTION_MAX_AMOUNT_USDC` - per-request amount ceiling, default `200`
@@ -177,6 +177,12 @@ Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 - `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - required durable Redis state for cross-instance replay and rate-limit protection
 - `LIVE_EXECUTION_REDIS_NAMESPACE` - optional Redis key namespace
 - `LIVE_EXECUTION_ALLOW_IN_MEMORY_GUARD` - explicit local-development fallback only; ignored as a production readiness substitute
+
+### Worker API
+
+- `WORKER_API_TOKEN` - required Bearer token for every Worker `POST` endpoint; the Worker refuses mutation requests when it is missing
+- `WORKER_ALLOWED_ORIGINS` - optional comma-separated browser origins; cross-origin requests are rejected unless explicitly listed
+- `WORKER_MAX_BODY_BYTES` - maximum JSON request size, default `65536` and capped at `1048576`
 
 ### Contract deployment
 

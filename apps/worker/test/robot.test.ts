@@ -6,7 +6,7 @@ import test, { after } from 'node:test'
 import { type TreasuryJobRecord } from '@arc-usdc-rebalancer/shared'
 import { createRobotServer } from '../src/server'
 import { RobotEngine } from '../src/engine'
-import { createRobotStore } from '../src/store'
+import { createDefaultRobotStateSnapshot, createRobotStore } from '../src/store'
 import { resolveWorkerConfig } from '../src/config'
 
 const testStateDirectory = mkdtempSync(path.join(tmpdir(), 'arc-worker-tests-'))
@@ -25,6 +25,7 @@ function makeConfig(overrides: Record<string, string | undefined>) {
     EXECUTION_POLICY_MIN_THRESHOLD_USDC: '100',
     EXECUTION_POLICY_TARGET_BALANCE_USDC: '500',
     EXECUTION_POLICY_MAX_REBALANCE_AMOUNT_USDC: '200',
+    WORKER_API_TOKEN: 'test-worker-token',
     ...overrides,
   })
 }
@@ -83,7 +84,7 @@ test('dry-run job plans without submission', async () => {
   assert.ok(job.timeline.some((entry) => entry.status === 'planned'))
 })
 
-test('manual approval flow confirms after approval', async () => {
+test('manual approval flow records a simulation without a transaction', async () => {
   const { engine } = await createEngine({
     EXECUTION_MODE: 'manual-approve',
     EXECUTION_BALANCE_OVERRIDE_USDC: '50',
@@ -95,15 +96,18 @@ test('manual approval flow confirms after approval', async () => {
   assert.ok(awaitingJob)
   assert.equal(awaitingJob.status, 'awaiting-approval')
 
-  const confirmedState = await engine.approveJob(awaitingJob.id)
-  const confirmedJob = confirmedState.jobs[0]
+  const simulatedState = await engine.approveJob(awaitingJob.id)
+  const simulatedJob = simulatedState.jobs[0]
 
-  assert.ok(confirmedJob)
-  assert.equal(confirmedJob.status, 'confirmed')
-  assert.ok(confirmedJob.txHash)
-  assert.ok(confirmedJob.timeline.some((entry) => entry.status === 'approved'))
-  assert.ok(confirmedJob.timeline.some((entry) => entry.status === 'submitted'))
-  assert.ok(confirmedJob.timeline.some((entry) => entry.status === 'confirmed'))
+  assert.ok(simulatedJob)
+  assert.equal(simulatedJob.status, 'simulated')
+  assert.equal(simulatedJob.txHash, undefined)
+  assert.equal(simulatedJob.txUrl, undefined)
+  assert.ok(simulatedJob.timeline.some((entry) => entry.status === 'approved'))
+  assert.ok(
+    simulatedJob.timeline.some((entry) => entry.status === 'submitting'),
+  )
+  assert.ok(simulatedJob.timeline.some((entry) => entry.status === 'simulated'))
 })
 
 test('auto mode stays blocked without Circle credentials', async () => {
@@ -130,6 +134,7 @@ test('robot API exposes jobs and lifecycle routes', async () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: 'Bearer test-worker-token',
       },
       body: JSON.stringify({ triggerSource: 'manual' }),
     })
@@ -160,6 +165,7 @@ test('robot API exposes jobs and lifecycle routes', async () => {
       `${api.baseUrl}/api/jobs/${encodeURIComponent(jobId)}/cancel`,
       {
         method: 'POST',
+        headers: { Authorization: 'Bearer test-worker-token' },
       },
     )
     assert.equal(cancelResponse.ok, true)
@@ -180,6 +186,37 @@ test('robot API exposes jobs and lifecycle routes', async () => {
   }
 })
 
+test('worker rejects unauthenticated and oversized mutation requests', async () => {
+  const api = await startRobotApi({
+    EXECUTION_MODE: 'manual-approve',
+    EXECUTION_BALANCE_OVERRIDE_USDC: '50',
+    WORKER_MAX_BODY_BYTES: '1024',
+  })
+
+  try {
+    const unauthenticated = await fetch(`${api.baseUrl}/api/jobs`, {
+      method: 'POST',
+      body: JSON.stringify({ triggerSource: 'manual' }),
+    })
+    assert.equal(unauthenticated.status, 401)
+
+    const oversized = await fetch(`${api.baseUrl}/api/jobs`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-worker-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        triggerSource: 'manual',
+        padding: 'x'.repeat(2_000),
+      }),
+    })
+    assert.equal(oversized.status, 413)
+  } finally {
+    await api.close()
+  }
+})
+
 test('job creation route persists dashboard jobs and approval flow still works', async () => {
   const api = await startRobotApi({
     EXECUTION_MODE: 'manual-approve',
@@ -191,6 +228,7 @@ test('job creation route persists dashboard jobs and approval flow still works',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        Authorization: 'Bearer test-worker-token',
       },
       body: JSON.stringify({
         jobType: 'rebalance',
@@ -238,21 +276,22 @@ test('job creation route persists dashboard jobs and approval flow still works',
       `${api.baseUrl}/api/jobs/${encodeURIComponent(createdJob.id)}/approve`,
       {
         method: 'POST',
+        headers: { Authorization: 'Bearer test-worker-token' },
       },
     )
     assert.equal(approveResponse.ok, true)
     const approvedState = (await approveResponse.json()) as {
       jobs: TreasuryJobRecord[]
     }
-    assert.equal(approvedState.jobs[0]?.status, 'confirmed')
+    assert.equal(approvedState.jobs[0]?.status, 'simulated')
     assert.ok(
       approvedState.jobs[0]?.timeline.some(
-        (entry) => entry.status === 'submitted',
+        (entry) => entry.status === 'submitting',
       ),
     )
     assert.ok(
       approvedState.jobs[0]?.timeline.some(
-        (entry) => entry.status === 'confirmed',
+        (entry) => entry.status === 'simulated',
       ),
     )
 
@@ -266,4 +305,53 @@ test('job creation route persists dashboard jobs and approval flow still works',
   } finally {
     await api.close()
   }
+})
+
+test('concurrent approval can only claim a job once', async () => {
+  const { engine } = await createEngine({
+    EXECUTION_MODE: 'manual-approve',
+    EXECUTION_BALANCE_OVERRIDE_USDC: '50',
+  })
+  const planned = await engine.refreshSnapshot('manual')
+  const job = planned.jobs[0]
+  assert.ok(job)
+
+  const results = await Promise.allSettled([
+    engine.approveJob(job.id),
+    engine.approveJob(job.id),
+  ])
+
+  assert.equal(
+    results.filter((result) => result.status === 'fulfilled').length,
+    1,
+  )
+  assert.equal(
+    results.filter((result) => result.status === 'rejected').length,
+    1,
+  )
+  const finalState = await engine.getState()
+  assert.equal(finalState.jobs[0]?.status, 'simulated')
+})
+
+test('independent stores serialize updates to the same state file', async () => {
+  const statePath = path.join(testStateDirectory, `${crypto.randomUUID()}.json`)
+  const firstStore = createRobotStore(statePath)
+  const secondStore = createRobotStore(statePath)
+  await firstStore.write(createDefaultRobotStateSnapshot())
+
+  await Promise.all(
+    Array.from({ length: 4 }, (_, index) => {
+      const store = index % 2 === 0 ? firstStore : secondStore
+      return store.update(async (state) => {
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        return {
+          ...state,
+          lastError: String(Number(state.lastError ?? '0') + 1),
+        }
+      })
+    }),
+  )
+
+  const finalState = await firstStore.read()
+  assert.equal(finalState.lastError, '4')
 })

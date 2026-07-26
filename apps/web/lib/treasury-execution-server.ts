@@ -4,7 +4,6 @@ import {
   defineChain,
   getContract,
   http,
-  parseUnits,
   type Address,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
@@ -20,6 +19,7 @@ import {
 } from '@arc-usdc-rebalancer/shared'
 import { arcTestnetRpcUrl } from './treasury-policy'
 import { treasuryExecutorAddressConfig } from './treasury-executor'
+import { parseUsdcAmount } from './usdc-amount'
 
 const arcTestnet = defineChain({
   id: arcTestnetChainId,
@@ -84,7 +84,9 @@ function requirePrivateKey(name: string): `0x${string}` {
 }
 
 function createTreasuryExecutionClients() {
-  const ownerAccount = privateKeyToAccount(requirePrivateKey('OWNER_PRIVATE_KEY'))
+  const ownerAccount = privateKeyToAccount(
+    requirePrivateKey('OWNER_PRIVATE_KEY'),
+  )
 
   const publicClient = createPublicClient({
     chain: arcTestnet,
@@ -104,7 +106,10 @@ function createTreasuryExecutionClients() {
   }
 }
 
-async function waitForReceipt(publicClient: ReturnType<typeof createPublicClient>, hash: `0x${string}`) {
+async function waitForReceipt(
+  publicClient: ReturnType<typeof createPublicClient>,
+  hash: `0x${string}`,
+) {
   return publicClient.waitForTransactionReceipt({
     hash,
     pollingInterval: 1000,
@@ -117,19 +122,17 @@ export async function runTreasuryExecution(params: {
   recipient?: Address
   executorAddress?: Address
 }): Promise<TreasuryExecutionResult> {
-  const executorAddress = params.executorAddress ?? treasuryExecutorAddressConfig.address
+  const executorAddress =
+    params.executorAddress ?? treasuryExecutorAddressConfig.address
 
   if (!executorAddress) {
     throw new Error('TREASURY_EXECUTOR_ADDRESS is missing.')
   }
 
-  const amountUnits = parseUnits(String(params.amountUsdc), arcUsdcDecimals)
+  const amountUnits = parseUsdcAmount(params.amountUsdc).amountUnits
 
-  if (amountUnits <= 0n) {
-    throw new Error('Execution amount must be greater than zero.')
-  }
-
-  const { ownerAccount, publicClient, walletClient } = createTreasuryExecutionClients()
+  const { ownerAccount, publicClient, walletClient } =
+    createTreasuryExecutionClients()
   const executorContract = getContract({
     address: executorAddress,
     abi: treasuryExecutorContractAbi,
@@ -202,7 +205,8 @@ export async function runTreasuryExecution(params: {
 }
 
 export async function deployTreasuryExecutorServerSide(): Promise<TreasuryExecutorDeploymentResult> {
-  const { ownerAccount, publicClient, walletClient } = createTreasuryExecutionClients()
+  const { ownerAccount, publicClient, walletClient } =
+    createTreasuryExecutionClients()
 
   const txHash = await walletClient.deployContract({
     abi: treasuryExecutorContractAbi,
@@ -215,7 +219,9 @@ export async function deployTreasuryExecutorServerSide(): Promise<TreasuryExecut
   const executorAddress = receipt.contractAddress
 
   if (!executorAddress) {
-    throw new Error('TreasuryExecutor deployment did not return a contract address.')
+    throw new Error(
+      'TreasuryExecutor deployment did not return a contract address.',
+    )
   }
 
   return {

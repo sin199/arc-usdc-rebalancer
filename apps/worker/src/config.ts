@@ -22,6 +22,9 @@ export type WorkerConfig = {
   policyOverride?: TreasuryPolicy
   safety: RobotSafetyConfig
   payoutRecipients: TreasuryJobRecipient[]
+  apiToken?: string
+  allowedOrigins: string[]
+  maxBodyBytes: number
   availability: RobotAvailability
 }
 
@@ -227,6 +230,15 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
   }
 
   const payoutRecipients = parseRecipients(env.EXECUTION_PAYOUT_BATCHES_JSON)
+  const apiToken = env.WORKER_API_TOKEN?.trim() || undefined
+  const allowedOrigins = (env.WORKER_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+  const maxBodyBytes = Math.min(
+    Math.max(parseNumber(env.WORKER_MAX_BODY_BYTES, 64 * 1024), 1_024),
+    1_024 * 1_024,
+  )
 
   return {
     mode,
@@ -245,10 +257,13 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
     policyOverride,
     safety,
     payoutRecipients,
+    apiToken,
+    allowedOrigins,
+    maxBodyBytes,
     availability: {
       circleExecutorAvailable,
       bridgeProviderAvailable,
-      autoEnabled: circleExecutorAvailable && mode === 'auto',
+      autoEnabled: false,
       missingEnvVars: [...new Set(missingEnvVars)],
     },
   }

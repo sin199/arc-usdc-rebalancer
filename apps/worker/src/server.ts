@@ -1,4 +1,9 @@
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from 'node:http'
+import { timingSafeEqual } from 'node:crypto'
 import { isAddress, type Address } from 'viem'
 import type { RobotEngine } from './engine'
 import type { WorkerConfig } from './config'
@@ -12,20 +17,54 @@ type CreateJobRequest = {
   notes?: string
 }
 
-const createJobTypes = new Set<CreateJobRequest['type']>(['rebalance', 'wallet-top-up', 'payout-batch', 'treasury-sweep'])
-const createJobExecutionModes = new Set<CreateJobRequest['executionMode']>(['dry-run', 'manual-approve', 'auto'])
+const createJobTypes = new Set<CreateJobRequest['type']>([
+  'rebalance',
+  'wallet-top-up',
+  'payout-batch',
+  'treasury-sweep',
+])
+const createJobExecutionModes = new Set<CreateJobRequest['executionMode']>([
+  'dry-run',
+  'manual-approve',
+  'auto',
+])
 
-function setCorsHeaders(response: ServerResponse) {
-  response.setHeader('Access-Control-Allow-Origin', '*')
+function setCorsHeaders(
+  response: ServerResponse,
+  config: WorkerConfig,
+  origin: string | undefined,
+) {
+  if (!origin || !config.allowedOrigins.includes(origin)) {
+    return
+  }
+
+  response.setHeader('Access-Control-Allow-Origin', origin)
+  response.setHeader('Vary', 'Origin')
   response.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-  response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  response.setHeader(
+    'Access-Control-Allow-Headers',
+    'Authorization, Content-Type',
+  )
 }
 
-async function readJsonBody(request: IncomingMessage): Promise<JsonBody> {
+class RequestBodyTooLargeError extends Error {}
+
+async function readJsonBody(
+  request: IncomingMessage,
+  maxBytes: number,
+): Promise<JsonBody> {
   const chunks: Buffer[] = []
+  let totalBytes = 0
 
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+    totalBytes += buffer.byteLength
+    if (totalBytes > maxBytes) {
+      throw new RequestBodyTooLargeError(
+        'Request body exceeds the configured limit.',
+      )
+    }
+    chunks.push(buffer)
   }
 
   if (chunks.length === 0) {
@@ -43,7 +82,11 @@ async function readJsonBody(request: IncomingMessage): Promise<JsonBody> {
 
 function parseCreateJobRequest(body: JsonBody):
   | { ok: true; request: CreateJobRequest }
-  | { ok: false; statusCode: number; payload: { error: string; fieldErrors: Record<string, string> } } {
+  | {
+      ok: false
+      statusCode: number
+      payload: { error: string; fieldErrors: Record<string, string> }
+    } {
   const fieldErrors: Record<string, string> = {}
 
   const type = typeof body.jobType === 'string' ? body.jobType.trim() : ''
@@ -51,17 +94,28 @@ function parseCreateJobRequest(body: JsonBody):
     fieldErrors.jobType = 'Select one of the supported treasury job types.'
   }
 
-  const executionMode = typeof body.executionMode === 'string' ? body.executionMode.trim() : ''
-  if (!createJobExecutionModes.has(executionMode as CreateJobRequest['executionMode'])) {
+  const executionMode =
+    typeof body.executionMode === 'string' ? body.executionMode.trim() : ''
+  if (
+    !createJobExecutionModes.has(
+      executionMode as CreateJobRequest['executionMode'],
+    )
+  ) {
     fieldErrors.executionMode = 'Select a valid execution mode.'
   }
 
-  const amount = typeof body.amountUsdc === 'number' ? body.amountUsdc : Number(body.amountUsdc)
+  const amount =
+    typeof body.amountUsdc === 'number'
+      ? body.amountUsdc
+      : Number(body.amountUsdc)
   if (!Number.isFinite(amount) || amount <= 0) {
     fieldErrors.amountUsdc = 'Enter an amount greater than 0.'
   }
 
-  const destinationAddress = typeof body.destinationAddress === 'string' ? body.destinationAddress.trim() : ''
+  const destinationAddress =
+    typeof body.destinationAddress === 'string'
+      ? body.destinationAddress.trim()
+      : ''
   if (!isAddress(destinationAddress)) {
     fieldErrors.destinationAddress = 'Enter a valid 0x address.'
   }
@@ -91,24 +145,76 @@ function parseCreateJobRequest(body: JsonBody):
   }
 }
 
-function sendJson(response: ServerResponse, statusCode: number, payload: unknown) {
-  setCorsHeaders(response)
+function sendJson(
+  response: ServerResponse,
+  statusCode: number,
+  payload: unknown,
+) {
   response.statusCode = statusCode
   response.setHeader('Content-Type', 'application/json; charset=utf-8')
   response.end(JSON.stringify(payload, null, 2))
 }
 
+function hasValidApiToken(request: IncomingMessage, config: WorkerConfig) {
+  const expected = config.apiToken
+  if (!expected) {
+    return false
+  }
+
+  const authorization = request.headers.authorization ?? ''
+  const prefix = 'Bearer '
+  if (!authorization.startsWith(prefix)) {
+    return false
+  }
+
+  const provided = Buffer.from(authorization.slice(prefix.length))
+  const expectedBuffer = Buffer.from(expected)
+  return (
+    provided.byteLength === expectedBuffer.byteLength &&
+    timingSafeEqual(provided, expectedBuffer)
+  )
+}
+
 export function createRobotServer(engine: RobotEngine, config: WorkerConfig) {
   return createServer(async (request, response) => {
-    setCorsHeaders(response)
+    const origin = request.headers.origin?.trim()
+    setCorsHeaders(response, config, origin)
+
+    if (origin && !config.allowedOrigins.includes(origin)) {
+      sendJson(response, 403, { error: 'Request origin is not allowed.' })
+      return
+    }
 
     if (request.method === 'OPTIONS') {
+      if (!origin || config.allowedOrigins.length === 0) {
+        sendJson(response, 403, { error: 'CORS origin is not configured.' })
+        return
+      }
       response.statusCode = 204
       response.end()
       return
     }
 
-    const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`)
+    if (request.method === 'POST') {
+      if (!config.apiToken) {
+        sendJson(response, 503, {
+          error: 'Worker API authentication is not configured.',
+        })
+        return
+      }
+
+      if (!hasValidApiToken(request, config)) {
+        sendJson(response, 401, {
+          error: 'Bearer token authentication is required.',
+        })
+        return
+      }
+    }
+
+    const url = new URL(
+      request.url ?? '/',
+      `http://${request.headers.host ?? 'localhost'}`,
+    )
     const route = url.pathname
 
     try {
@@ -139,7 +245,7 @@ export function createRobotServer(engine: RobotEngine, config: WorkerConfig) {
       }
 
       if (request.method === 'POST' && route === '/api/jobs/create') {
-        const body = await readJsonBody(request)
+        const body = await readJsonBody(request, config.maxBodyBytes)
         const parsed = parseCreateJobRequest(body)
 
         if (!parsed.ok) {
@@ -165,9 +271,11 @@ export function createRobotServer(engine: RobotEngine, config: WorkerConfig) {
       }
 
       if (request.method === 'POST' && route === '/api/jobs') {
-        const body = await readJsonBody(request)
+        const body = await readJsonBody(request, config.maxBodyBytes)
         const triggerSource =
-          body.triggerSource === 'manual' || body.triggerSource === 'approval' || body.triggerSource === 'startup'
+          body.triggerSource === 'manual' ||
+          body.triggerSource === 'approval' ||
+          body.triggerSource === 'startup'
             ? body.triggerSource
             : 'schedule'
         const nextState = await engine.refreshSnapshot(triggerSource)
@@ -176,9 +284,11 @@ export function createRobotServer(engine: RobotEngine, config: WorkerConfig) {
       }
 
       if (request.method === 'POST' && route === '/tick') {
-        const body = await readJsonBody(request)
+        const body = await readJsonBody(request, config.maxBodyBytes)
         const triggerSource =
-          body.triggerSource === 'manual' || body.triggerSource === 'approval' || body.triggerSource === 'startup'
+          body.triggerSource === 'manual' ||
+          body.triggerSource === 'approval' ||
+          body.triggerSource === 'startup'
             ? body.triggerSource
             : 'schedule'
         const nextState = await engine.refreshSnapshot(triggerSource)
@@ -188,48 +298,76 @@ export function createRobotServer(engine: RobotEngine, config: WorkerConfig) {
 
       const approveMatch = route.match(/^\/api\/jobs\/([^/]+)\/approve$/)
       if (request.method === 'POST' && approveMatch) {
-        const nextState = await engine.approveJob(decodeURIComponent(approveMatch[1]))
+        await readJsonBody(request, config.maxBodyBytes)
+        const nextState = await engine.approveJob(
+          decodeURIComponent(approveMatch[1]),
+        )
         sendJson(response, 200, nextState)
         return
       }
 
       const rejectMatch = route.match(/^\/api\/jobs\/([^/]+)\/reject$/)
       if (request.method === 'POST' && rejectMatch) {
-        const nextState = await engine.rejectJob(decodeURIComponent(rejectMatch[1]))
+        await readJsonBody(request, config.maxBodyBytes)
+        const nextState = await engine.rejectJob(
+          decodeURIComponent(rejectMatch[1]),
+        )
         sendJson(response, 200, nextState)
         return
       }
 
       const cancelMatch = route.match(/^\/api\/jobs\/([^/]+)\/cancel$/)
       if (request.method === 'POST' && cancelMatch) {
-        const nextState = await engine.cancelJob(decodeURIComponent(cancelMatch[1]))
+        await readJsonBody(request, config.maxBodyBytes)
+        const nextState = await engine.cancelJob(
+          decodeURIComponent(cancelMatch[1]),
+        )
         sendJson(response, 200, nextState)
         return
       }
 
       const legacyApproveMatch = route.match(/^\/runs\/([^/]+)\/approve$/)
       if (request.method === 'POST' && legacyApproveMatch) {
-        const nextState = await engine.approveJob(decodeURIComponent(legacyApproveMatch[1]))
+        await readJsonBody(request, config.maxBodyBytes)
+        const nextState = await engine.approveJob(
+          decodeURIComponent(legacyApproveMatch[1]),
+        )
         sendJson(response, 200, nextState)
         return
       }
 
       const legacyRejectMatch = route.match(/^\/runs\/([^/]+)\/reject$/)
       if (request.method === 'POST' && legacyRejectMatch) {
-        const nextState = await engine.rejectJob(decodeURIComponent(legacyRejectMatch[1]))
+        await readJsonBody(request, config.maxBodyBytes)
+        const nextState = await engine.rejectJob(
+          decodeURIComponent(legacyRejectMatch[1]),
+        )
         sendJson(response, 200, nextState)
         return
       }
 
       const legacyCancelMatch = route.match(/^\/runs\/([^/]+)\/cancel$/)
       if (request.method === 'POST' && legacyCancelMatch) {
-        const nextState = await engine.cancelJob(decodeURIComponent(legacyCancelMatch[1]))
+        await readJsonBody(request, config.maxBodyBytes)
+        const nextState = await engine.cancelJob(
+          decodeURIComponent(legacyCancelMatch[1]),
+        )
         sendJson(response, 200, nextState)
         return
       }
 
       sendJson(response, 404, { error: 'Not found' })
     } catch (error) {
+      if (error instanceof RequestBodyTooLargeError) {
+        sendJson(response, 413, { error: error.message })
+        return
+      }
+
+      if (error instanceof SyntaxError) {
+        sendJson(response, 400, { error: 'Request body must be valid JSON.' })
+        return
+      }
+
       sendJson(response, 500, {
         error: error instanceof Error ? error.message : 'Unknown error',
       })

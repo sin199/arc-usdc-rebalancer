@@ -65,8 +65,6 @@ const arcTestnet = defineChain({
 })
 
 type LocalExecutionResult = {
-  txHash: string
-  txUrl?: string
   logs: string[]
 }
 
@@ -86,24 +84,13 @@ function buildAvailability(config: WorkerConfig): RobotAvailability {
   return config.availability
 }
 
-function createLocalTxHash(jobId: string) {
-  return `0x${jobId
-    .replace(/[^a-fA-F0-9]/g, '')
-    .padEnd(64, '0')
-    .slice(0, 64)}`
-}
-
-async function submitLocalExecution(
+async function simulateLocalExecution(
   job: TreasuryJobRecord,
 ): Promise<LocalExecutionResult> {
-  const txHash = createLocalTxHash(job.id)
-
   return {
-    txHash,
-    txUrl: `${arcTestnetExplorerUrl}/tx/${txHash}`,
     logs: [
-      'Local test executor accepted the approved job.',
-      `Prepared local transaction hash ${txHash}.`,
+      'Local simulation accepted the approved job; no transaction was submitted.',
+      `Simulation completed for job ${job.id}.`,
     ],
   }
 }
@@ -314,8 +301,25 @@ function appendJobEvent(
   actor: TreasuryJobTimelineEvent['actor'] = 'robot',
   patch: Partial<TreasuryJobRecord> = {},
 ) {
+  const simulationPatch =
+    status === 'simulated'
+      ? {
+          txHash: undefined,
+          txUrl: undefined,
+          executor: {
+            ...job.executor,
+            ...(patch.executor ?? {}),
+            name: 'none' as const,
+            enabled: false,
+            txHash: undefined,
+            txUrl: undefined,
+          },
+        }
+      : {}
+
   return touchJob(job, {
     ...patch,
+    ...simulationPatch,
     status,
     logs: [...job.logs, message],
     timeline: [...job.timeline, makeJobTimelineEvent(status, message, actor)],
@@ -435,8 +439,8 @@ function buildManualApprovalJob(
     candidate,
     triggerSource,
     status: 'created',
-    executorName: 'local',
-    executorEnabled: true,
+    executorName: 'none',
+    executorEnabled: false,
   })
 
   const planned = appendJobEvent(
@@ -448,8 +452,8 @@ function buildManualApprovalJob(
       result: 'Job plan recorded. Awaiting operator approval.',
       executor: {
         ...created.executor,
-        name: 'local',
-        enabled: true,
+        name: 'none',
+        enabled: false,
       },
     },
   )
@@ -463,8 +467,8 @@ function buildManualApprovalJob(
       result: 'The job is waiting for operator approval.',
       executor: {
         ...planned.executor,
-        name: 'local',
-        enabled: true,
+        name: 'none',
+        enabled: false,
       },
     },
   )
@@ -685,35 +689,32 @@ export class RobotEngine {
         )
       } else if (request.executionMode === 'auto') {
         if (this.config.availability.autoEnabled) {
-          const localResult = await submitLocalExecution(finalJob)
+          const localResult = await simulateLocalExecution(finalJob)
 
           finalJob = appendJobEvent(
             finalJob,
-            'submitted',
-            'Local test executor submitted the created job.',
-            'executor',
+            'submitting',
+            'Auto execution integration is not enabled; preparing a local simulation only.',
+            'system',
             {
-              txHash: localResult.txHash,
-              txUrl: localResult.txUrl,
+              result: localResult.logs.join(' '),
               executor: {
                 ...finalJob.executor,
-                name: 'local',
-                enabled: true,
-                txHash: localResult.txHash,
-                txUrl: localResult.txUrl,
+                name: 'none',
+                enabled: false,
               },
-              result: 'Submitted to the local test executor.',
               approvalRequired: false,
             },
           )
 
           finalJob = appendJobEvent(
             finalJob,
-            'confirmed',
-            'Local test executor confirmed the job.',
-            'executor',
+            'simulated',
+            'Local simulation completed. No chain confirmation exists.',
+            'system',
             {
-              result: 'Confirmed by the local test executor.',
+              result:
+                'Simulated only. No transaction was submitted or confirmed.',
             },
           )
         } else {
@@ -757,70 +758,73 @@ export class RobotEngine {
   }
 
   async refreshSnapshot(triggerSource: TreasuryJobTrigger = 'schedule') {
-    const currentState = await this.getState()
-    const snapshot = await readRuntimeSnapshot(this.config)
-    const now = new Date()
-    const availability = buildAvailability(this.config)
+    return this.store.update(async (state) => {
+      const currentState = this.decorateState(state)
+      const snapshot = await readRuntimeSnapshot(this.config)
+      const now = new Date()
+      const availability = buildAvailability(this.config)
 
-    const plan = selectTreasuryJobPlan({
-      now,
-      snapshot,
-      safety: this.config.safety,
-      availability,
-      jobs: currentState.jobs,
-      triggerSource,
-      mode: this.config.mode,
-    })
+      const plan = selectTreasuryJobPlan({
+        now,
+        snapshot,
+        safety: this.config.safety,
+        availability,
+        jobs: currentState.jobs,
+        triggerSource,
+        mode: this.config.mode,
+      })
 
-    const nextState: RobotRuntimeState = {
-      ...currentState,
-      snapshot,
-      mode: this.config.mode,
-      safety: this.config.safety,
-      availability,
-      lastTickAt: now.toISOString(),
-      lastError: undefined,
-    }
-
-    if (!plan.candidate) {
-      const persisted = this.decorateState(nextState)
-      await this.store.write(persisted)
-      return persisted
-    }
-
-    const candidate = plan.candidate
-    const nextJob =
-      this.config.mode === 'dry-run'
-        ? buildDryRunJob(this.config, snapshot, candidate, triggerSource)
-        : this.config.mode === 'manual-approve'
-          ? buildManualApprovalJob(
-              this.config,
-              snapshot,
-              candidate,
-              triggerSource,
-            )
-          : buildAutoFailureJob(this.config, snapshot, candidate, triggerSource)
-
-    const updatedState: RobotRuntimeState = {
-      ...nextState,
-      jobs: sortJobsByNewest([nextJob, ...currentState.jobs]),
-      lastError: nextJob.failureReason,
-      robot: buildRobotIdentity({
+      const nextState: RobotRuntimeState = {
+        ...currentState,
+        snapshot,
         mode: this.config.mode,
         safety: this.config.safety,
         availability,
-        jobs: [nextJob, ...currentState.jobs],
-        name: currentState.robot.name,
-      }),
-    }
+        lastTickAt: now.toISOString(),
+        lastError: undefined,
+      }
 
-    const persisted = this.decorateState(updatedState)
-    await this.store.write(persisted)
-    return persisted
+      if (!plan.candidate) {
+        return this.decorateState(nextState)
+      }
+
+      const candidate = plan.candidate
+      const nextJob =
+        this.config.mode === 'dry-run'
+          ? buildDryRunJob(this.config, snapshot, candidate, triggerSource)
+          : this.config.mode === 'manual-approve'
+            ? buildManualApprovalJob(
+                this.config,
+                snapshot,
+                candidate,
+                triggerSource,
+              )
+            : buildAutoFailureJob(
+                this.config,
+                snapshot,
+                candidate,
+                triggerSource,
+              )
+
+      const updatedState: RobotRuntimeState = {
+        ...nextState,
+        jobs: sortJobsByNewest([nextJob, ...currentState.jobs]),
+        lastError: nextJob.failureReason,
+        robot: buildRobotIdentity({
+          mode: this.config.mode,
+          safety: this.config.safety,
+          availability,
+          jobs: [nextJob, ...currentState.jobs],
+          name: currentState.robot.name,
+        }),
+      }
+
+      return this.decorateState(updatedState)
+    })
   }
 
   async approveJob(jobId: string) {
-    return this.store.update(async (state) => {
+    const submittingState = await this.store.update(async (state) => {
       const existing = jobById(state.jobs, jobId)
 
       if (!existing) {
@@ -842,43 +846,28 @@ export class RobotEngine {
         },
       )
 
-      const localResult = await submitLocalExecution(approved)
-      const submitted = appendJobEvent(
+      const submitting = appendJobEvent(
         approved,
-        'submitted',
-        'Local test executor submitted the approved job.',
-        'executor',
+        'submitting',
+        'Approval persisted. No real executor is configured; simulation is pending.',
+        'system',
         {
-          txHash: localResult.txHash,
-          txUrl: localResult.txUrl,
           executor: {
             ...approved.executor,
-            name: 'local',
-            enabled: true,
-            txHash: localResult.txHash,
-            txUrl: localResult.txUrl,
+            name: 'none',
+            enabled: false,
           },
-          result: 'Submitted to the local test executor.',
+          result: 'Approval persisted. No transaction has been submitted.',
           approvalRequired: false,
         },
       )
 
-      const confirmed = appendJobEvent(
-        submitted,
-        'confirmed',
-        'Local test executor confirmed the job.',
-        'executor',
-        {
-          result: 'Confirmed by the local test executor.',
-        },
-      )
-
-      const jobs = sortJobsByNewest(replaceJob(state.jobs, confirmed))
+      const jobs = sortJobsByNewest(replaceJob(state.jobs, submitting))
 
       return {
         ...state,
         jobs,
-        lastTickAt: confirmed.updatedAt,
+        lastTickAt: submitting.updatedAt,
         lastError: undefined,
         robot: buildRobotIdentity({
           mode: state.mode,
@@ -889,6 +878,84 @@ export class RobotEngine {
         }),
       }
     })
+
+    try {
+      const existing = jobById(submittingState.jobs, jobId)
+      if (!existing) {
+        throw new Error(`Job not found: ${jobId}`)
+      }
+
+      const simulation = await simulateLocalExecution(existing)
+      return this.store.update(async (state) => {
+        const current = jobById(state.jobs, jobId)
+        if (!current || current.status !== 'submitting') {
+          return state
+        }
+
+        const simulated = appendJobEvent(
+          current,
+          'simulated',
+          'Local simulation completed. No chain confirmation exists.',
+          'system',
+          {
+            result: simulation.logs.join(' '),
+            executor: {
+              ...current.executor,
+              name: 'none',
+              enabled: false,
+            },
+          },
+        )
+        const jobs = sortJobsByNewest(replaceJob(state.jobs, simulated))
+        return {
+          ...state,
+          jobs,
+          lastTickAt: simulated.updatedAt,
+          lastError: undefined,
+          robot: buildRobotIdentity({
+            mode: state.mode,
+            safety: state.safety,
+            availability: state.availability,
+            jobs,
+            name: state.robot.name,
+          }),
+        }
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Local simulation failed.'
+      return this.store.update(async (state) => {
+        const current = jobById(state.jobs, jobId)
+        if (!current || current.status !== 'submitting') {
+          return state
+        }
+
+        const failed = appendJobEvent(
+          current,
+          'failed',
+          'Local simulation failed. No transaction was submitted.',
+          'system',
+          {
+            failureReason: message,
+            result: 'Simulation failed. No transaction was submitted.',
+          },
+        )
+        const jobs = sortJobsByNewest(replaceJob(state.jobs, failed))
+        return {
+          ...state,
+          jobs,
+          lastTickAt: failed.updatedAt,
+          lastError: message,
+          robot: buildRobotIdentity({
+            mode: state.mode,
+            safety: state.safety,
+            availability: state.availability,
+            jobs,
+            name: state.robot.name,
+          }),
+        }
+      })
+    }
   }
 
   async rejectJob(jobId: string) {
@@ -941,7 +1008,9 @@ export class RobotEngine {
       }
 
       if (
+        existing.status === 'submitting' ||
         existing.status === 'submitted' ||
+        existing.status === 'simulated' ||
         existing.status === 'confirmed' ||
         existing.status === 'failed'
       ) {

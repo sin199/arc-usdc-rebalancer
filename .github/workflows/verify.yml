@@ -1,0 +1,52 @@
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify web
+        run: |
+          pnpm --filter @arc-usdc-rebalancer/web lint
+          pnpm --filter @arc-usdc-rebalancer/web typecheck
+          pnpm --filter @arc-usdc-rebalancer/web test
+          pnpm --filter @arc-usdc-rebalancer/web build
+
+      - name: Verify worker
+        run: |
+          pnpm --filter @arc-usdc-rebalancer/worker typecheck
+          pnpm --filter @arc-usdc-rebalancer/worker test
+          pnpm --filter @arc-usdc-rebalancer/worker build
+
+      - name: Verify contracts
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Build and test contracts
+        run: |
+          pnpm run contracts:build
+          pnpm run contracts:test

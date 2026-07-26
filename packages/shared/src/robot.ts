@@ -16,8 +16,10 @@ export type TreasuryJobStatus =
   | 'planned'
   | 'awaiting-approval'
   | 'approved'
+  | 'submitting'
   | 'rejected'
   | 'submitted'
+  | 'simulated'
   | 'confirmed'
   | 'failed'
   | 'cancelled'
@@ -204,32 +206,52 @@ export const SUPPORTED_JOB_TYPES: TreasuryJobType[] = [
   'invoice-settlement',
 ]
 
-const COUNTED_JOB_STATUSES = new Set<TreasuryJobStatus>(['submitted', 'confirmed'])
+const COUNTED_JOB_STATUSES = new Set<TreasuryJobStatus>([
+  'submitted',
+  'confirmed',
+])
 const PENDING_JOB_STATUSES = new Set<TreasuryJobStatus>([
   'created',
   'planned',
   'awaiting-approval',
   'approved',
+  'submitting',
   'submitted',
 ])
 
-function isAllowlistedDestination(destination: Address | undefined, allowlist: Address[]) {
+function isAllowlistedDestination(
+  destination: Address | undefined,
+  allowlist: Address[],
+) {
   if (!destination) {
     return false
   }
 
-  return allowlist.some((allowed) => allowed.toLowerCase() === destination.toLowerCase())
+  return allowlist.some(
+    (allowed) => allowed.toLowerCase() === destination.toLowerCase(),
+  )
 }
 
 function recipientSum(recipients: TreasuryJobRecipient[]) {
-  return recipients.reduce((total, recipient) => total + recipient.amountUsdc, 0)
+  return recipients.reduce(
+    (total, recipient) => total + recipient.amountUsdc,
+    0,
+  )
 }
 
-function buildRiskCheck(code: string, label: string, level: TreasuryJobRiskLevel, detail: string): TreasuryJobRiskCheck {
+function buildRiskCheck(
+  code: string,
+  label: string,
+  level: TreasuryJobRiskLevel,
+  detail: string,
+): TreasuryJobRiskCheck {
   return { code, label, level, detail }
 }
 
-function buildModeRiskCheck(mode: RobotExecutionMode, availability: RobotAvailability) {
+function buildModeRiskCheck(
+  mode: RobotExecutionMode,
+  availability: RobotAvailability,
+) {
   if (mode === 'dry-run') {
     return buildRiskCheck(
       'MODE_GATE',
@@ -269,19 +291,25 @@ function buildCommonRiskChecks(
       'GLOBAL_PAUSE',
       'Global pause',
       safety.globalPaused ? 'block' : 'pass',
-      safety.globalPaused ? 'Global pause is engaged.' : 'Global pause is clear.',
+      safety.globalPaused
+        ? 'Global pause is engaged.'
+        : 'Global pause is clear.',
     ),
     buildRiskCheck(
       'POLICY_PAUSE',
       'Policy pause',
       safety.policyPaused ? 'block' : 'pass',
-      safety.policyPaused ? 'The active policy is paused.' : 'Policy execution is active.',
+      safety.policyPaused
+        ? 'The active policy is paused.'
+        : 'Policy execution is active.',
     ),
     buildRiskCheck(
       'EMERGENCY_STOP',
       'Emergency stop',
       safety.emergencyStop ? 'block' : 'pass',
-      safety.emergencyStop ? 'Emergency stop is engaged.' : 'Emergency stop is clear.',
+      safety.emergencyStop
+        ? 'Emergency stop is engaged.'
+        : 'Emergency stop is clear.',
     ),
     buildRiskCheck(
       'DAILY_NOTIONAL_CAP',
@@ -309,7 +337,8 @@ function buildCommonRiskChecks(
       buildRiskCheck(
         'DESTINATION_ALLOWLIST',
         'Destination allowlist',
-        safety.destinationAllowlist.length === 0 || isAllowlistedDestination(destination, safety.destinationAllowlist)
+        safety.destinationAllowlist.length === 0 ||
+          isAllowlistedDestination(destination, safety.destinationAllowlist)
           ? 'pass'
           : 'block',
         safety.destinationAllowlist.length === 0
@@ -375,10 +404,14 @@ export function formatTreasuryJobStatus(status: TreasuryJobStatus): string {
       return 'Awaiting approval'
     case 'approved':
       return 'Approved'
+    case 'submitting':
+      return 'Submitting'
     case 'rejected':
       return 'Rejected'
     case 'submitted':
       return 'Submitted'
+    case 'simulated':
+      return 'Simulated (no transaction)'
     case 'confirmed':
       return 'Confirmed'
     case 'failed':
@@ -402,7 +435,13 @@ export function formatRobotStatus(status: RobotStatus): string {
 }
 
 export function isTreasuryJobTerminal(status: TreasuryJobStatus) {
-  return status === 'confirmed' || status === 'failed' || status === 'rejected' || status === 'cancelled'
+  return (
+    status === 'simulated' ||
+    status === 'confirmed' ||
+    status === 'failed' ||
+    status === 'rejected' ||
+    status === 'cancelled'
+  )
 }
 
 export function isTreasuryJobPending(status: TreasuryJobStatus) {
@@ -452,7 +491,10 @@ export function evaluateRobotSafety(
   }
 
   const dailySpentUsdc = sumRobotNotionalForDay(jobs, now)
-  const dailyRemainingUsdc = Math.max(0, safety.dailyNotionalCapUsdc - dailySpentUsdc)
+  const dailyRemainingUsdc = Math.max(
+    0,
+    safety.dailyNotionalCapUsdc - dailySpentUsdc,
+  )
 
   if (safety.dailyNotionalCapUsdc > 0 && dailyRemainingUsdc <= 0) {
     blockers.push('DAILY_NOTIONAL_CAP_REACHED')
@@ -460,16 +502,24 @@ export function evaluateRobotSafety(
 
   const lastSubmitted = [...jobs]
     .filter((job) => COUNTED_JOB_STATUSES.has(job.status))
-    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())[0]
+    .sort(
+      (left, right) =>
+        new Date(right.updatedAt).getTime() -
+        new Date(left.updatedAt).getTime(),
+    )[0]
 
   let cooldownRemainingMinutes = 0
 
   if (lastSubmitted) {
-    const elapsedMs = now.getTime() - new Date(lastSubmitted.updatedAt).getTime()
+    const elapsedMs =
+      now.getTime() - new Date(lastSubmitted.updatedAt).getTime()
     const cooldownMs = safety.cooldownMinutes * 60_000
 
     if (elapsedMs < cooldownMs) {
-      cooldownRemainingMinutes = Math.max(0, Math.ceil((cooldownMs - elapsedMs) / 60_000))
+      cooldownRemainingMinutes = Math.max(
+        0,
+        Math.ceil((cooldownMs - elapsedMs) / 60_000),
+      )
       blockers.push('COOLDOWN_ACTIVE')
     }
   }
@@ -484,7 +534,11 @@ export function evaluateRobotSafety(
   }
 }
 
-function buildPlanSummary(type: TreasuryJobType, amountUsdc: number, recipientCount = 0) {
+function buildPlanSummary(
+  type: TreasuryJobType,
+  amountUsdc: number,
+  recipientCount = 0,
+) {
   const amount = formatUsdc(amountUsdc)
 
   switch (type) {
@@ -514,9 +568,16 @@ export function buildRobotIdentity(params: {
 
   let currentStatus: RobotStatus = 'ready'
 
-  if (params.safety.globalPaused || params.safety.policyPaused || params.safety.emergencyStop) {
+  if (
+    params.safety.globalPaused ||
+    params.safety.policyPaused ||
+    params.safety.emergencyStop
+  ) {
     currentStatus = 'paused'
-  } else if (params.availability.missingEnvVars.length > 0 || (params.mode === 'auto' && !params.availability.autoEnabled)) {
+  } else if (
+    params.availability.missingEnvVars.length > 0 ||
+    (params.mode === 'auto' && !params.availability.autoEnabled)
+  ) {
     currentStatus = 'blocked'
   } else if (params.jobs.some((job) => isTreasuryJobPending(job.status))) {
     currentStatus = 'working'
@@ -542,7 +603,9 @@ export function describeApprovalRequirement(mode: RobotExecutionMode) {
   }
 }
 
-export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobPlanResult {
+export function selectTreasuryJobPlan(
+  input: TreasuryJobPlanInput,
+): TreasuryJobPlanResult {
   const safety = evaluateRobotSafety(input.jobs, input.safety, input.now)
 
   if (!safety.allowed) {
@@ -565,7 +628,8 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
 
   const snapshot = input.snapshot
   const maxUsdc = Math.max(0, input.safety.maxExecutionAmountUsdc)
-  const dailyRemainingUsdc = safety.dailyRemainingUsdc > 0 ? safety.dailyRemainingUsdc : maxUsdc
+  const dailyRemainingUsdc =
+    safety.dailyRemainingUsdc > 0 ? safety.dailyRemainingUsdc : maxUsdc
   const policyCapUsdc = Math.max(0, snapshot.policy.maxRebalanceAmount)
   const executionCapUsdc = Math.min(maxUsdc, dailyRemainingUsdc, policyCapUsdc)
 
@@ -592,7 +656,10 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
       const invalidRecipient = snapshot.payoutRecipients.find(
         (recipient) =>
           safety.destinationAllowlist.length > 0 &&
-          !isAllowlistedDestination(recipient.address, safety.destinationAllowlist),
+          !isAllowlistedDestination(
+            recipient.address,
+            safety.destinationAllowlist,
+          ),
       )
 
       if (invalidRecipient) {
@@ -604,26 +671,37 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
       }
 
       const candidate: TreasuryJobCandidate = {
-          type: 'payout-batch',
-          amountUsdc,
-          reason: 'Queued payout batch is ready to be processed.',
-          reasonCodes: ['PAYOUT_BATCH_READY'],
-          requestedAction: {
-            summary: buildPlanSummary('payout-batch', amountUsdc, snapshot.payoutRecipients.length),
-            triggerSource: input.triggerSource,
-            rationale: 'Treasury recipients are queued and within the safety limits.',
-          },
-          parameters: {
+        type: 'payout-batch',
+        amountUsdc,
+        reason: 'Queued payout batch is ready to be processed.',
+        reasonCodes: ['PAYOUT_BATCH_READY'],
+        requestedAction: {
+          summary: buildPlanSummary(
+            'payout-batch',
             amountUsdc,
-            recipients: snapshot.payoutRecipients,
-          },
-          riskChecks: [],
-          destinationAddress: snapshot.payoutRecipients[0]?.address,
-          destinationLabel: snapshot.payoutRecipients[0]?.label ?? 'Payout recipient',
+            snapshot.payoutRecipients.length,
+          ),
+          triggerSource: input.triggerSource,
+          rationale:
+            'Treasury recipients are queued and within the safety limits.',
+        },
+        parameters: {
+          amountUsdc,
           recipients: snapshot.payoutRecipients,
+        },
+        riskChecks: [],
+        destinationAddress: snapshot.payoutRecipients[0]?.address,
+        destinationLabel:
+          snapshot.payoutRecipients[0]?.label ?? 'Payout recipient',
+        recipients: snapshot.payoutRecipients,
       }
 
-      candidate.riskChecks = buildCommonRiskChecks(input.mode, input.safety, input.availability, candidate)
+      candidate.riskChecks = buildCommonRiskChecks(
+        input.mode,
+        input.safety,
+        input.availability,
+        candidate,
+      )
 
       return {
         candidate,
@@ -636,7 +714,10 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
   if (snapshot.treasuryBalanceUsdc < snapshot.policy.minThreshold) {
     const amountUsdc = Math.max(
       0,
-      Math.min(snapshot.policy.targetBalance - snapshot.treasuryBalanceUsdc, executionCapUsdc),
+      Math.min(
+        snapshot.policy.targetBalance - snapshot.treasuryBalanceUsdc,
+        executionCapUsdc,
+      ),
     )
 
     if (amountUsdc <= 0) {
@@ -648,7 +729,9 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
     }
 
     const destinationAddress = snapshot.treasuryAddress
-    const bridgeCandidate = input.safety.bridgeTopUpEnabled && input.availability.bridgeProviderAvailable
+    const bridgeCandidate =
+      input.safety.bridgeTopUpEnabled &&
+      input.availability.bridgeProviderAvailable
 
     const candidate: TreasuryJobCandidate = {
       type: bridgeCandidate ? 'bridge-top-up' : 'wallet-top-up',
@@ -679,7 +762,12 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
       destinationLabel: 'Treasury wallet',
     }
 
-    candidate.riskChecks = buildCommonRiskChecks(input.mode, input.safety, input.availability, candidate)
+    candidate.riskChecks = buildCommonRiskChecks(
+      input.mode,
+      input.safety,
+      input.availability,
+      candidate,
+    )
 
     return {
       candidate,
@@ -689,7 +777,9 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
   }
 
   if (snapshot.treasuryBalanceUsdc > snapshot.policy.targetBalance) {
-    const destination = input.safety.rebalanceDestinationAddress ?? input.safety.destinationAllowlist[0]
+    const destination =
+      input.safety.rebalanceDestinationAddress ??
+      input.safety.destinationAllowlist[0]
 
     if (!destination) {
       return {
@@ -712,7 +802,10 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
 
     const amountUsdc = Math.max(
       0,
-      Math.min(snapshot.treasuryBalanceUsdc - snapshot.policy.targetBalance, executionCapUsdc),
+      Math.min(
+        snapshot.treasuryBalanceUsdc - snapshot.policy.targetBalance,
+        executionCapUsdc,
+      ),
     )
 
     if (amountUsdc <= 0) {
@@ -726,7 +819,8 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
     const candidate: TreasuryJobCandidate = {
       type: 'treasury-sweep',
       amountUsdc,
-      reason: 'Treasury balance is above target and can be swept back into the policy band.',
+      reason:
+        'Treasury balance is above target and can be swept back into the policy band.',
       reasonCodes: ['ABOVE_TARGET_BALANCE', 'MOVE_TOWARD_TARGET'],
       requestedAction: {
         summary: buildPlanSummary('treasury-sweep', amountUsdc),
@@ -746,7 +840,12 @@ export function selectTreasuryJobPlan(input: TreasuryJobPlanInput): TreasuryJobP
       destinationLabel: 'Rebalance destination',
     }
 
-    candidate.riskChecks = buildCommonRiskChecks(input.mode, input.safety, input.availability, candidate)
+    candidate.riskChecks = buildCommonRiskChecks(
+      input.mode,
+      input.safety,
+      input.availability,
+      candidate,
+    )
 
     return {
       candidate,
@@ -800,6 +899,9 @@ export function makeJobTimelineEvent(
   }
 }
 
-export function createInitialJobLogs(summary: string, status: TreasuryJobStatus) {
+export function createInitialJobLogs(
+  summary: string,
+  status: TreasuryJobStatus,
+) {
   return [summary, `Status: ${status}`]
 }

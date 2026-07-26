@@ -8,13 +8,17 @@ async function main() {
   const server = createRobotServer(engine, config)
 
   await new Promise<void>((resolve) => {
-    server.listen(port, resolve)
+    server.listen(port, '127.0.0.1', resolve)
   })
 
   console.log(`[worker] listening on http://127.0.0.1:${port}`)
-  console.log(`[worker] mode=${config.mode} balanceOverride=${config.balanceOverrideUsdc ?? 'chain'}`)
+  console.log(
+    `[worker] mode=${config.mode} balanceOverride=${config.balanceOverrideUsdc ?? 'chain'}`,
+  )
 
-  const tickNow = async (triggerSource: 'schedule' | 'manual' | 'approval' | 'startup') => {
+  const tickNow = async (
+    triggerSource: 'schedule' | 'manual' | 'approval' | 'startup',
+  ) => {
     try {
       await engine.refreshSnapshot(triggerSource)
     } catch (error) {

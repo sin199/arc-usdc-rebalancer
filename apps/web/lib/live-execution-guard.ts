@@ -12,6 +12,7 @@ import {
 } from './live-execution-replay-store'
 
 export type LiveExecutionAuthorization = {
+  fingerprint: string
   operatorAddress: Address
   requestId: string
 }
@@ -39,10 +40,16 @@ export function getLiveExecutionStatus() {
   const enabledByFlag = process.env.ENABLE_LIVE_EXECUTION === 'true'
   const guardMode = getLiveExecutionGuardMode()
 
+  const legacyExecutorWired = false
+
   return {
     enabled:
-      enabledByFlag && allowlist.length > 0 && guardMode !== 'unavailable',
+      enabledByFlag &&
+      legacyExecutorWired &&
+      allowlist.length > 0 &&
+      guardMode !== 'unavailable',
     enabledByFlag,
+    legacyExecutorWired,
     guardMode,
     maxAmountUsdc: readPositiveNumber('LIVE_EXECUTION_MAX_AMOUNT_USDC', 200),
     operatorAllowlistConfigured: allowlist.length > 0,
@@ -109,12 +116,14 @@ export async function authorizeLiveExecution(
   intent: Omit<LiveExecutionIntent, 'origin'>,
 ): Promise<AuthorizationResult> {
   const status = getLiveExecutionStatus()
-  if (!status.enabledByFlag) {
+  if (!status.enabled) {
     return {
       ok: false,
       response: reject(
         403,
-        'Live execution is disabled for this deployment.',
+        status.enabledByFlag
+          ? 'Live execution is disabled because the reviewed V2 execution path is not wired.'
+          : 'Live execution is disabled for this deployment.',
         intent.requestId,
       ),
     }
@@ -220,6 +229,7 @@ export async function authorizeLiveExecution(
   }
 
   const message = buildLiveExecutionMessage({ ...intent, origin })
+  const requestFingerprint = message
   let recoveredAddress: Address
   try {
     recoveredAddress = await recoverMessageAddress({
@@ -283,6 +293,7 @@ export async function authorizeLiveExecution(
     rateLimit,
     requestId: intent.requestId,
     ttlMs: freshnessWindowMs,
+    fingerprint: requestFingerprint,
   })
 
   if (!reservation.ok && reservation.reason === 'unavailable') {
@@ -297,11 +308,41 @@ export async function authorizeLiveExecution(
   }
 
   if (!reservation.ok && reservation.reason === 'replayed') {
+    if (
+      reservation.record?.fingerprint &&
+      reservation.record.fingerprint !== requestFingerprint
+    ) {
+      return {
+        ok: false,
+        response: reject(
+          409,
+          'This request ID was already used for a different authorization payload.',
+          intent.requestId,
+        ),
+      }
+    }
+
+    if (reservation.record?.response) {
+      return {
+        ok: false,
+        response: NextResponse.json(reservation.record.response.payload, {
+          status: reservation.record.response.status,
+          headers: {
+            'cache-control': 'no-store',
+            'x-request-id': intent.requestId,
+          },
+        }),
+      }
+    }
+
     return {
       ok: false,
       response: reject(
         409,
-        'This execution request has already been used.',
+        reservation.record?.status === 'reserved' ||
+          reservation.record?.status === 'submitting'
+          ? 'This execution request is still being reconciled; do not retry it blindly.'
+          : 'This execution request has already been used.',
         intent.requestId,
       ),
     }
@@ -328,6 +369,7 @@ export async function authorizeLiveExecution(
   return {
     ok: true,
     authorization: {
+      fingerprint: requestFingerprint,
       operatorAddress: recoveredAddress,
       requestId: intent.requestId,
     },
