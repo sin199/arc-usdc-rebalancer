@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useAccount, useConnect, useReadContract } from 'wagmi'
+import { useReadContract } from 'wagmi'
 import {
   ArrowRight,
   CheckCircle2,
@@ -143,8 +143,6 @@ type TreasuryHistoryResponse = {
 const initialPolicy = DEFAULT_TREASURY_POLICY
 
 export function ReadinessChecker() {
-  const { address: operatorAddress } = useAccount()
-  const { connectAsync, connectors, isPending: isConnecting } = useConnect()
   const contractAddress = treasuryPolicyAddressConfig.address
   const executorAddress = treasuryExecutorAddressConfig.address
   const [balance, setBalance] = useState(initialPolicy.targetBalance)
@@ -156,12 +154,6 @@ export function ReadinessChecker() {
   const [actionCopyState, setActionCopyState] = useState<'idle' | 'copied'>(
     'idle',
   )
-  const [walletConnectMessage, setWalletConnectMessage] = useState<
-    string | null
-  >(null)
-  const [walletConnectTone, setWalletConnectTone] = useState<
-    'info' | 'success' | 'warning'
-  >('info')
   const policyHydratedRef = useRef(false)
   const dashboardStartedAtRef = useRef(Date.now())
   const lastDecisionEventRef = useRef<string | null>(null)
@@ -283,28 +275,17 @@ export function ReadinessChecker() {
   )
   const circleSummary = circleReady
     ? 'Readiness complete'
-    : operatorAddress
-      ? 'Readiness incomplete'
-      : 'Optional crosschain readiness'
+    : 'Optional crosschain readiness'
   const policyIsLive = policySourceLabel === 'Live chain snapshot'
   const liveExecutionEnabled = Boolean(liveExecutionStatusQuery.data?.enabled)
   const liveExecutionReady = Boolean(
     !publicReadOnlyDeployment &&
     liveExecutionEnabled &&
-    operatorAddress &&
     contractAddress &&
     policyIsLive &&
     circleReady &&
     executorAddress,
   )
-  const operatorWalletConnected = Boolean(operatorAddress)
-  const walletConnector =
-    connectors.find(
-      (connector) =>
-        /metamask/i.test(connector.name) || connector.id === 'metaMask',
-    ) ??
-    connectors.find((connector) => connector.type === 'injected') ??
-    connectors[0]
   const liveExecutionBlockers = publicReadOnlyDeployment
     ? ['Public deployment is read-only; no treasury transaction is submitted.']
     : [
@@ -313,7 +294,6 @@ export function ReadinessChecker() {
           : liveExecutionStatusQuery.data?.guardMode === 'unavailable'
             ? 'Durable replay protection is not configured; live execution fails closed.'
             : 'Live execution is disabled for this deployment.',
-        operatorAddress ? null : 'Connect the operator wallet.',
         policyIsLive ? null : 'Load the live onchain policy snapshot.',
         circleReady ? null : 'Finish Circle readiness.',
         executorAddress ? null : 'Deploy or recheck the TreasuryExecutor.',
@@ -335,7 +315,7 @@ export function ReadinessChecker() {
     modeLabel,
     policy,
     policySourceLabel,
-    operatorAddress: operatorAddress ?? undefined,
+    operatorAddress: undefined,
     walletSetId: circleStatusQuery.data?.walletSet?.id,
   })
   const actionCommandsText = report.actionPack.commands
@@ -345,66 +325,6 @@ export function ReadinessChecker() {
   const liveExecutionStatusMessage =
     'Public deployment is read-only; no treasury transaction is submitted.'
   const actionPackStatusMessage = liveExecutionStatusMessage
-
-  useEffect(() => {
-    if (!operatorWalletConnected) {
-      return
-    }
-
-    setWalletConnectTone('success')
-    setWalletConnectMessage(
-      `Operator wallet connected${operatorAddress ? `: ${operatorAddress}` : '.'}`,
-    )
-  }, [operatorAddress, operatorWalletConnected])
-
-  function hasInjectedWalletProvider() {
-    if (typeof window === 'undefined') {
-      return false
-    }
-
-    const injectedWindow = window as Window & {
-      ethereum?: unknown
-    }
-
-    return Boolean(injectedWindow.ethereum)
-  }
-
-  async function handleConnectOperatorWallet() {
-    setWalletConnectTone('info')
-
-    if (!walletConnector) {
-      setWalletConnectTone('warning')
-      setWalletConnectMessage(
-        'No injected wallet detected. Install MetaMask or Rabby, or open this page in a wallet-enabled browser.',
-      )
-      return
-    }
-
-    if (!hasInjectedWalletProvider()) {
-      setWalletConnectTone('warning')
-      setWalletConnectMessage(
-        'No injected wallet detected. Install MetaMask or Rabby, or open this page in a wallet-enabled browser.',
-      )
-      return
-    }
-
-    try {
-      setWalletConnectMessage('Waiting for wallet connection prompt…')
-      const result = await connectAsync({ connector: walletConnector })
-      const connectedAddress = result.accounts[0]
-
-      setWalletConnectTone('success')
-      setWalletConnectMessage(
-        connectedAddress
-          ? `Operator wallet connected: ${connectedAddress}`
-          : 'Operator wallet connected.',
-      )
-    } catch (error) {
-      console.error('Operator wallet connection failed.', error)
-      setWalletConnectTone('warning')
-      setWalletConnectMessage('Wallet connection was cancelled or failed.')
-    }
-  }
 
   async function handleCopyReport() {
     await navigator.clipboard.writeText(report.markdown)
@@ -1278,8 +1198,8 @@ export function ReadinessChecker() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="warning">Execution locked</Badge>
                     <div className="text-sm text-foreground">
-                      Execution locked until operator wallet and live
-                      dependencies are ready.
+                      Public deployment is read-only; signed execution is not
+                      available here.
                     </div>
                   </div>
                   <ul className="mt-3 space-y-2 text-sm leading-6 text-muted-foreground">
@@ -1334,15 +1254,13 @@ export function ReadinessChecker() {
             <div className="grid gap-3 md:grid-cols-5">
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Operator wallet
+                  Wallet signing
                 </div>
                 <div className="mt-2 text-sm text-foreground">
-                  {operatorWalletConnected ? 'Connected' : 'Not connected'}
+                  Disabled
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {operatorWalletConnected
-                    ? operatorAddress
-                    : 'Not connected in public preview.'}
+                  Public deployment never connects an operator wallet.
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -1392,33 +1310,17 @@ export function ReadinessChecker() {
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
                   {liveExecutionReady
-                    ? 'All current live gates are satisfied.'
-                    : 'Preview mode remains report-first.'}
+                    ? 'Live writes are not part of this public build.'
+                    : 'Read-only preview remains report-first.'}
                 </div>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {walletConnector ? (
-                <Button
-                  type="button"
-                  variant={operatorWalletConnected ? 'secondary' : 'outline'}
-                  onClick={() => void handleConnectOperatorWallet()}
-                  disabled={operatorWalletConnected || isConnecting}
-                >
-                  <Wallet className="h-4 w-4" />
-                  {operatorWalletConnected
-                    ? 'Operator wallet connected'
-                    : isConnecting
-                      ? 'Connecting…'
-                      : 'Connect operator wallet'}
-                </Button>
-              ) : (
-                <Button type="button" variant="outline" disabled>
-                  <Wallet className="h-4 w-4" />
-                  Operator wallet not connected in public preview
-                </Button>
-              )}
+              <div className="rounded-xl border border-white/10 bg-background/50 px-4 py-2.5 text-sm text-muted-foreground">
+                Public deployment is read-only; wallet connection and signed
+                execution are not available here.
+              </div>
 
               <Button
                 type="button"
@@ -1432,19 +1334,6 @@ export function ReadinessChecker() {
                   : 'Load live policy'}
               </Button>
             </div>
-
-            {walletConnectMessage ? (
-              <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Wallet connection status
-                </div>
-                <div
-                  className={`mt-2 text-sm leading-6 ${walletConnectTone === 'warning' ? 'text-foreground' : walletConnectTone === 'success' ? 'text-primary' : 'text-foreground'}`}
-                >
-                  {walletConnectMessage}
-                </div>
-              </div>
-            ) : null}
 
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
               <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
