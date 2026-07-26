@@ -27,7 +27,7 @@ Arc Testnet evidence: [docs/arc-testnet-evidence.json](./docs/arc-testnet-eviden
 - A deterministic decision-receipt hash that binds policy source, policy, balance, proposed action, amount, chain, and observation time before any future anchor transaction.
 - A visibly locked execution boundary in the public deployment; no treasury write is claimed or sent.
 - A dedicated system architecture page with deployment facts, Arcscan links, and current proof status.
-- Wallet-signed, allowlisted, amount-capped live requests with durable Redis replay protection, rate-limit, and audit checks; server-signer writes are disabled by default and fail closed without the durable guard.
+- A fail-closed, wallet-signed live-request design with allowlisting, amount caps, durable Redis replay protection, rate limits, and audit checks; this path is not enabled in the public deployment.
 - Identity activation and Circle wallet creation use the same signed operator authorization boundary as treasury execution.
 - A V2 policy/executor reference stack adds onchain policy enforcement, pause, recipient allowlists, two-step ownership transfer, and executor caps; it is not presented as deployed evidence.
 - A deployed Arc Testnet treasury policy and executor read path.

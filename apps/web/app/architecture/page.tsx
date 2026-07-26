@@ -470,7 +470,7 @@ export default function ArchitecturePage() {
                   Body
                 </div>
                 <pre className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                  {`Arc USDC Rebalancer is a public DeFi Treasury reference system on Arc Testnet: a readiness checker + treasury operations brief + optional live execution surface. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy a markdown report or action pack. Live execution only appears when the operator wallet, live policy, Circle readiness, executor, durable replay guard, and actionable report are all ready.
+                  {`Arc USDC Rebalancer is a public DeFi Treasury decision MVP on Arc Testnet: a readiness checker + treasury operations brief + auditable action pack. Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy a markdown report or action pack. The public deployment is non-executing and reports its write boundary explicitly.
 
 What it uses:
 - Arc Testnet
@@ -478,8 +478,8 @@ What it uses:
 - TreasuryPolicy contract
 - TreasuryExecutor contract
 - Arc-linked onchain identity evidence and treasury operations brief
-- Circle developer-controlled wallet and Gateway readiness
-- Operator-gated live execution
+- Circle developer-controlled wallet and Gateway readiness as live dependency signals
+- No public treasury write; exported receipts remain not published
 
 What it demonstrates:
 - report-first treasury operations
@@ -511,7 +511,7 @@ Repo: ${projectProof.githubRepoUrl}
           </CardHeader>
           <CardContent>
             <div className="rounded-2xl border border-white/10 bg-background/50 p-4 text-sm leading-6 text-foreground">
-              {`@Arc @samconnerone Shipped a public Arc Testnet DeFi Treasury demo: report-first readiness reports, a treasury operations brief, Circle wallets/Gateway, and optional live execution. Demo: ${projectProof.productionUrl}/dashboard`}
+              {`@Arc @samconnerone Shipped a public Arc Testnet DeFi Track treasury decision MVP: report-first readiness reports, a treasury operations brief, USDC policy decisions, and Circle Wallets/Gateway readiness signals. The public deployment sends no treasury transaction. Demo: ${projectProof.productionUrl}/dashboard`}
             </div>
           </CardContent>
         </Card>

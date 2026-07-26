@@ -1,0 +1,30 @@
+FINAL VIDEO SCRIPT / 180 SECONDS
+
+0:00-0:10
+Arc USDC Rebalancer
+DeFi Track | Arc Testnet
+Policy-bound USDC treasury decision MVP
+
+0:10-0:22
+Core stack: Arc Testnet + USDC + Circle developer-controlled Wallets + Gateway.
+Public deployment: report-first and non-executing.
+
+0:22-0:55
+Explain the problem: treasury operators need a bounded answer before any money movement.
+Show the dashboard and the live Arc policy, executor balance, validation, and Circle readiness cards.
+
+0:55-1:35
+Show the three policy outcomes: below minimum produces top_up, in-band produces hold, above target produces trim.
+Explain that the recommendation is capped by the policy and exported as a reviewable action pack.
+
+1:35-2:10
+Show the Arc chain ID, policy and executor addresses, USDC asset, Circle Wallet/Gateway readiness, and the public execution status.
+State clearly: no treasury transaction has been submitted; the receipt is not published.
+
+2:10-2:40
+Copy the report and action pack. Show the deterministic decision receipt and the architecture page.
+Explain that the MVP is useful without a wallet and fails closed when live writes are unavailable.
+
+2:40-3:00
+Final evidence: public dashboard, public repository, DeFi Track deck.
+Closing statement: this MVP makes a policy-bound USDC treasury decision on Arc Testnet and prepares a reviewable action; it does not claim a completed transfer.

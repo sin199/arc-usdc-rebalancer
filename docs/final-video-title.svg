@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#081728"/>
+  <rect x="64" y="54" width="1152" height="612" rx="28" fill="#132941"/>
+  <rect x="64" y="54" width="12" height="612" fill="#ff9b5c"/>
+  <text x="122" y="166" fill="#f7fbff" font-family="Helvetica,Arial,sans-serif" font-size="58" font-weight="700">Arc USDC Rebalancer</text>
+  <text x="122" y="226" fill="#4dd9ce" font-family="Helvetica,Arial,sans-serif" font-size="32" font-weight="600">DeFi Track | Arc Testnet</text>
+  <text x="122" y="302" fill="#f7fbff" font-family="Helvetica,Arial,sans-serif" font-size="31">Policy-bound USDC treasury decision MVP</text>
+  <text x="122" y="386" fill="#d6e1ed" font-family="Helvetica,Arial,sans-serif" font-size="27">Read live Arc policy and balance.</text>
+  <text x="122" y="430" fill="#d6e1ed" font-family="Helvetica,Arial,sans-serif" font-size="27">Evaluate hold, top_up, or trim.</text>
+  <text x="122" y="474" fill="#d6e1ed" font-family="Helvetica,Arial,sans-serif" font-size="27">Export an auditable action pack.</text>
+  <text x="122" y="558" fill="#4dd9ce" font-family="Helvetica,Arial,sans-serif" font-size="20">Core stack: Arc Testnet + USDC + Circle Wallets + Gateway</text>
+  <text x="122" y="598" fill="#a6b6c8" font-family="Helvetica,Arial,sans-serif" font-size="20">Public deployment: report-first, non-executing</text>
+  <text x="122" y="628" fill="#a6b6c8" font-family="Helvetica,Arial,sans-serif" font-size="20">No treasury transaction submitted</text>
+</svg>

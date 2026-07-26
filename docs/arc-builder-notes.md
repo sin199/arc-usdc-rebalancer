@@ -4,11 +4,11 @@ This repository is a public Arc Testnet treasury demo. It is meant to read like 
 
 ## Builder milestones
 
-- Connected the dashboard to Arc Testnet policy reads and owner-gated writes.
+- Connected the dashboard to Arc Testnet policy reads; owner-gated contract writes remain outside the public deployment.
 - Added a public demo mode so visitors can inspect the flow without a wallet.
 - Added Arc-linked onchain identity evidence and a treasury operations brief.
 - Added Circle developer-controlled wallet and Gateway readiness surfaces.
-- Split the dashboard into public demo mode and live operator mode.
+- Split the dashboard into public report mode and a separately reviewed, disabled operator-write design.
 
 ## What reviewers should see first
 
@@ -24,4 +24,4 @@ This repository is a public Arc Testnet treasury demo. It is meant to read like 
 - USDC-first.
 - Policy-driven.
 - Public demo for visitors.
-- Signed operator actions for live execution.
+- Signed operator action controls are fail-closed and not enabled in the public deployment.

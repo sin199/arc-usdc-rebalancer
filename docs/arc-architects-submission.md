@@ -111,18 +111,18 @@ Capture these six states from the live site:
 
 ## Suggested Arc House post
 
-Title: Arc USDC Rebalancer: report-first treasury operations on Arc Testnet
+Title: Arc USDC Rebalancer: DeFi Track treasury decisions on Arc Testnet
 
 Body:
 
-I shipped Arc USDC Rebalancer as a public Arc Testnet DeFi Treasury demo built around a simple flow: readiness checker first, treasury operations brief second, and a gated future execution path.
+I shipped Arc USDC Rebalancer as a public Arc Testnet DeFi Track treasury decision MVP: live policy and balance read first, bounded USDC decision second, and an auditable action pack third.
 
 Visitors can open the dashboard without a wallet, generate a readiness report, compare treasury scenarios, and copy a markdown report or action pack.
 
-Production execution stays disabled. The future operator path remains explicitly gated behind operator wallet, live policy, Circle readiness, executor, and an actionable report.
+The public deployment stays non-executing. It uses Arc Testnet, USDC policy state, and Circle developer-controlled wallet/Gateway readiness signals, and it clearly marks exported receipts as not published.
 
 Demo: https://web-eight-chi-99.vercel.app/dashboard
 
 ## Short social post
 
-Arc USDC Rebalancer is live on Arc Testnet: policy-bound USDC treasury operations and a report-first treasury brief. Visitors can generate a readiness report and copy an action pack without a wallet. Production execution is disabled. https://web-eight-chi-99.vercel.app/dashboard
+Arc USDC Rebalancer is live on Arc Testnet: a DeFi Track USDC treasury decision MVP with policy-bound reports, Circle Wallets/Gateway readiness, and an auditable action pack. The public deployment sends no treasury transaction. https://web-eight-chi-99.vercel.app/dashboard

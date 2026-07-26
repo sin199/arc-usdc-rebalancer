@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#081728"/>
+  <rect x="64" y="54" width="1152" height="612" rx="28" fill="#132941"/>
+  <rect x="64" y="54" width="12" height="612" fill="#ff9b5c"/>
+  <text x="122" y="164" fill="#f7fbff" font-family="Helvetica,Arial,sans-serif" font-size="38" font-weight="700">Reviewable before execution</text>
+  <text x="122" y="226" fill="#4dd9ce" font-family="Helvetica,Arial,sans-serif" font-size="23" font-weight="600">DeFi Track | Arc Testnet | USDC treasury</text>
+  <text x="122" y="316" fill="#f7fbff" font-family="Helvetica,Arial,sans-serif" font-size="22">Functional MVP: live policy read, bounded decision, action pack</text>
+  <text x="122" y="374" fill="#d6e1ed" font-family="Helvetica,Arial,sans-serif" font-size="26">Dashboard: web-eight-chi-99.vercel.app/dashboard</text>
+  <text x="122" y="418" fill="#d6e1ed" font-family="Helvetica,Arial,sans-serif" font-size="26">Repo: github.com/sin199/arc-usdc-rebalancer</text>
+  <text x="122" y="500" fill="#4dd9ce" font-family="Helvetica,Arial,sans-serif" font-size="27">The public MVP prepares a reviewable action.</text>
+  <text x="122" y="544" fill="#4dd9ce" font-family="Helvetica,Arial,sans-serif" font-size="27">It does not claim a completed treasury transfer.</text>
+  <text x="122" y="612" fill="#a6b6c8" font-family="Helvetica,Arial,sans-serif" font-size="18">Arc Testnet evidence and DeFi presentation are in the public repository.</text>
+</svg>
