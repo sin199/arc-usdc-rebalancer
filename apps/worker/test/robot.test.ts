@@ -217,6 +217,37 @@ test('worker rejects unauthenticated and oversized mutation requests', async () 
   }
 })
 
+test('worker rejects USDC amounts with more than six fractional digits', async () => {
+  const api = await startRobotApi({
+    EXECUTION_MODE: 'manual-approve',
+    EXECUTION_BALANCE_OVERRIDE_USDC: '50',
+  })
+
+  try {
+    const response = await fetch(`${api.baseUrl}/api/jobs/create`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer test-worker-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        jobType: 'rebalance',
+        amountUsdc: '1.0000001',
+        destinationAddress: '0x0000000000000000000000000000000000000005',
+        executionMode: 'manual-approve',
+      }),
+    })
+
+    assert.equal(response.status, 400)
+    const payload = (await response.json()) as {
+      fieldErrors?: { amountUsdc?: string }
+    }
+    assert.match(payload.fieldErrors?.amountUsdc ?? '', /at most 6/i)
+  } finally {
+    await api.close()
+  }
+})
+
 test('job creation route persists dashboard jobs and approval flow still works', async () => {
   const api = await startRobotApi({
     EXECUTION_MODE: 'manual-approve',

@@ -25,6 +25,8 @@ This repository is a public Arc Testnet treasury reference implementation, not a
 
 The Worker mutation API separately requires `WORKER_API_TOKEN`, rejects unconfigured cross-origin requests, limits JSON body size, and binds the standalone listener to `127.0.0.1`.
 
+Worker monetary inputs are rejected when they contain more than 6 fractional digits. Boundary parsing canonicalizes accepted values to USDC base units before the internal simulation types use numeric display values; this is not an authorization to execute real funds.
+
 ## V2 contract controls
 
 The V2 reference contracts are intentionally not wired to the current deployment yet. They add:

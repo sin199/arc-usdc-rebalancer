@@ -7,6 +7,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { isAddress, type Address } from 'viem'
 import type { RobotEngine } from './engine'
 import type { WorkerConfig } from './config'
+import { parseWorkerUsdcAmount } from './usdc-amount'
 
 type JsonBody = Record<string, unknown>
 type CreateJobRequest = {
@@ -104,12 +105,12 @@ function parseCreateJobRequest(body: JsonBody):
     fieldErrors.executionMode = 'Select a valid execution mode.'
   }
 
-  const amount =
-    typeof body.amountUsdc === 'number'
-      ? body.amountUsdc
-      : Number(body.amountUsdc)
-  if (!Number.isFinite(amount) || amount <= 0) {
-    fieldErrors.amountUsdc = 'Enter an amount greater than 0.'
+  let amount = 0
+  try {
+    amount = parseWorkerUsdcAmount(body.amountUsdc).amountUsdc
+  } catch (error) {
+    fieldErrors.amountUsdc =
+      error instanceof Error ? error.message : 'Enter a valid USDC amount.'
   }
 
   const destinationAddress =

@@ -10,6 +10,7 @@ import {
   type TreasuryPolicy,
   type TreasuryJobRecipient,
 } from '@arc-usdc-rebalancer/shared'
+import { parseWorkerUsdcAmount } from './usdc-amount'
 
 export type WorkerConfig = {
   mode: RobotExecutionMode
@@ -44,6 +45,18 @@ function parseNumber(value: string | undefined, fallback: number) {
   const parsed = Number(value)
 
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function parseUsdcEnv(
+  value: string | undefined,
+  fallback: number,
+  label: string,
+) {
+  if (value === undefined || value.trim() === '') {
+    return fallback
+  }
+
+  return parseWorkerUsdcAmount(value, label, true).amountUsdc
 }
 
 function parseAddress(value: string | undefined): Address | undefined {
@@ -82,12 +95,17 @@ function parseRecipients(value: string | undefined): TreasuryJobRecipient[] {
     return parsed
       .map((entry) => {
         const address = parseAddress(entry.address)
-        const amount =
-          typeof entry.amountUsdc === 'number'
-            ? entry.amountUsdc
-            : Number(entry.amountUsdc)
+        let amount: number
+        try {
+          amount = parseWorkerUsdcAmount(
+            entry.amountUsdc,
+            'Payout recipient amount',
+          ).amountUsdc
+        } catch {
+          return null
+        }
 
-        if (!address || !Number.isFinite(amount) || amount <= 0) {
+        if (!address) {
           return null
         }
 
@@ -146,7 +164,7 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
   const pollIntervalMs = parseNumber(env.EXECUTION_POLL_INTERVAL_MS, 60_000)
   const balanceOverrideValue = env.EXECUTION_BALANCE_OVERRIDE_USDC?.trim()
   const balanceOverrideUsdc = balanceOverrideValue
-    ? Number(balanceOverrideValue)
+    ? parseUsdcEnv(balanceOverrideValue, 0, 'EXECUTION_BALANCE_OVERRIDE_USDC')
     : undefined
   const policyMinOverride = env.EXECUTION_POLICY_MIN_THRESHOLD_USDC?.trim()
   const policyTargetOverride = env.EXECUTION_POLICY_TARGET_BALANCE_USDC?.trim()
@@ -157,11 +175,17 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
     policyTargetOverride,
     policyMaxOverride,
   ]
-  const policyOverrideNumbers = policyOverrideValues.map((value) =>
-    value ? Number(value) : Number.NaN,
+  const policyOverrideNumbers = policyOverrideValues.map((value, index) =>
+    value
+      ? parseUsdcEnv(
+          value,
+          0,
+          ['min threshold', 'target balance', 'max rebalance amount'][index],
+        )
+      : undefined,
   )
-  const policyOverride = policyOverrideNumbers.every((value) =>
-    Number.isFinite(value),
+  const policyOverride = policyOverrideNumbers.every(
+    (value): value is number => value !== undefined,
   )
     ? {
         minThreshold: policyOverrideNumbers[0],
@@ -213,13 +237,15 @@ export function resolveWorkerConfig(env = process.env): WorkerConfig {
     globalPaused: parseBoolean(env.EXECUTION_GLOBAL_PAUSE, false),
     policyPaused: parseBoolean(env.EXECUTION_POLICY_PAUSED, false),
     emergencyStop: parseBoolean(env.EXECUTION_EMERGENCY_STOP, false),
-    maxExecutionAmountUsdc: parseNumber(
+    maxExecutionAmountUsdc: parseUsdcEnv(
       env.EXECUTION_MAX_EXECUTION_AMOUNT_USDC,
       1_000,
+      'EXECUTION_MAX_EXECUTION_AMOUNT_USDC',
     ),
-    dailyNotionalCapUsdc: parseNumber(
+    dailyNotionalCapUsdc: parseUsdcEnv(
       env.EXECUTION_DAILY_NOTIONAL_CAP_USDC,
       5_000,
+      'EXECUTION_DAILY_NOTIONAL_CAP_USDC',
     ),
     cooldownMinutes: parseNumber(env.EXECUTION_COOLDOWN_MINUTES, 30),
     destinationAllowlist: parseAddressList(env.EXECUTION_DESTINATION_ALLOWLIST),

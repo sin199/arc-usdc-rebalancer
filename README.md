@@ -184,6 +184,8 @@ Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
 - `WORKER_ALLOWED_ORIGINS` - optional comma-separated browser origins; cross-origin requests are rejected unless explicitly listed
 - `WORKER_MAX_BODY_BYTES` - maximum JSON request size, default `65536` and capped at `1048576`
 
+Worker monetary inputs (job amounts, payout recipients, balance overrides, policy thresholds, execution caps, and daily caps) must be decimal USDC values with at most 6 fractional digits. They are canonicalized to USDC base units at the boundary before entering the simulation model.
+
 ### Contract deployment
 
 Copy `packages/contracts/.env.example` to `packages/contracts/.env` and set:
