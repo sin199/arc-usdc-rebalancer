@@ -1,58 +1,83 @@
-# Final Submission Readiness
+# Final Submission Pack
 
 ## Official requirements
 
-The Encode Club final checkpoint requires:
+Encode Club's Final Submission is due Sunday, 9 August 2026, Anywhere on
+Earth (UTC-12). The required deliverables are:
 
-- a functional MVP deployed on Arc;
-- a public code repository;
-- a three-minute video pitch and demo;
-- a presentation deck.
+- a functional MVP;
+- a three-minute pitch and demo covering what was built, how it works, the
+  selected track, and the core products used;
+- a presentation deck;
+- a public code repository.
 
-The project is submitted to the **DeFi Track** only. The public product is a policy-bound USDC treasury decision MVP, not an autonomous transfer bot.
+Submit this project to the **DeFi Track only**.
 
-## Truthful final description
+## Final description
 
-Arc USDC Rebalancer is a deployed Arc Testnet DeFi Treasury MVP. It reads the live TreasuryPolicy and executor balance, checks Arc-linked validation and Circle developer-controlled wallet readiness, evaluates a bounded `top_up`, `hold`, or `trim` decision, and exports an auditable markdown report and action pack. The public deployment is intentionally non-executing: it reports `enabled: false`, sends no treasury transaction, and marks exported decision receipts as `not published`.
+Arc USDC Rebalancer is a deployed Arc Testnet DeFi Treasury MVP. It reads the
+live TreasuryPolicy and executor USDC balance, checks Arc-linked validation and
+Circle developer-controlled Wallets and Gateway readiness, evaluates a bounded
+`top_up`, `hold`, or `trim` decision, and exports an auditable markdown report
+and action pack.
 
-This is the complete claim. Do not describe the product as having completed a treasury transfer, autonomous custody, or confirmed Arc transaction.
+The public deployment is intentionally read-only. It reports
+`enabled: false`, exposes no wallet connection or signed execution path, sends
+no treasury transaction, and marks exported decision receipts as
+`not published`.
 
 ## Submission links
 
-- MVP dashboard: https://web-eight-chi-99.vercel.app/dashboard
-- Architecture and evidence: https://web-eight-chi-99.vercel.app/architecture
-- Case study: https://web-eight-chi-99.vercel.app/case-study
+- MVP: https://web-eight-chi-99.vercel.app/dashboard
+- Architecture and Arc evidence:
+  https://web-eight-chi-99.vercel.app/architecture
+- Reproducible case study:
+  https://web-eight-chi-99.vercel.app/case-study
 - Public repository: https://github.com/sin199/arc-usdc-rebalancer
-- Video: https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4
-- Deck: https://github.com/sin199/arc-usdc-rebalancer/raw/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx
-
-The video is 180 seconds at 1280x720 with H.264/AAC. Its opening identifies the DeFi Track and the Arc Testnet, USDC, Circle Wallets, and Gateway stack; its body shows the dashboard and action-pack flow; its closing states that no treasury transfer is claimed.
-
-The exported action pack contains read-only `cast call` verification commands only; it contains no private key, approval, or transfer command.
+- Three-minute video:
+  https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4
+- Presentation:
+  https://github.com/sin199/arc-usdc-rebalancer/raw/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx
 
 ## Three-minute demo path
 
-1. Introduce the treasury problem and the report-first design.
-2. Open the dashboard and show the live Arc Testnet and Circle readiness cards.
-3. Compare below-minimum, at-target, and above-target policy outcomes.
-4. Export the action pack and show the deterministic receipt marked `not published`.
-5. Show the architecture page, public Arc contract addresses, and the locked execution status.
-6. Close with the exact boundary: the public MVP makes a policy decision and prepares a reviewable action; it does not send a treasury transaction.
+1. Identify the DeFi Track and the Arc, USDC, Circle Wallets, and Gateway
+   stack.
+2. Show the live Arc policy, executor balance, source quality, and Circle
+   readiness.
+3. Compare the below-minimum, at-target, and above-target outcomes.
+4. Show the exported action pack and execution lock.
+5. Show Arc chain ID `5042002`, the deployed policy and executor addresses,
+   and the reproducible case study.
+6. Close with the exact boundary: the MVP prepares a reviewable action and
+   does not claim a completed treasury transfer.
 
-## Reviewer verification
+The video is exactly 180 seconds at 1280x720, with H.264 video and AAC audio.
+Its visuals were rebuilt from the current read-only production interface on
+28 July 2026.
 
-The public deployment currently exposes these independently checkable facts:
+## Reviewer-verifiable facts
 
-- Arc Testnet chain ID `5042002`.
-- Live policy read at `0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6`.
-- Live executor and USDC asset read at `0x5c5d0275371724779f3a6928eb0312df2b1a501f` and `0x3600000000000000000000000000000000000000`.
-- Circle control-plane readiness is displayed as a dependency signal, not as proof of a transfer.
-- Public execution status is `enabled: false`.
+- TreasuryPolicy:
+  `0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6`
+- TreasuryExecutor:
+  `0x5c5d0275371724779f3a6928eb0312df2b1a501f`
+- Arc Testnet USDC:
+  `0x3600000000000000000000000000000000000000`
+- Public execution status: `enabled: false`
+- Legacy executor wiring: `false`
+- Deterministic verification: 1,003 balance cases, 100% expected-action
+  agreement, 9/9 safety gates, and zero submitted transactions
 
-The read-only capture is recorded in [`arc-testnet-evidence.json`](./arc-testnet-evidence.json). The evidence does not include private keys, wallet credentials, or a fabricated transaction hash.
+The dated read-only capture is in
+[`arc-testnet-evidence.json`](./arc-testnet-evidence.json). It contains no
+private key, wallet credential, or fabricated transaction hash.
 
-## Go/no-go
+## Submission gate
 
-**Go** for a truthful DeFi Treasury decision MVP submission using the links above.
+**Go** only when the Final Submission form is open and all six public links
+above return successfully.
 
-**No-go** for any submission text or video narration that claims live treasury movement, confirmed transactions, autonomous custody, or Agentic Economy track compliance.
+**No-go** for any form text, video narration, or deck copy that claims live
+treasury movement, autonomous custody, a confirmed Arc transaction, or
+Agentic Economy Track compliance.

@@ -1013,7 +1013,7 @@ export function ReadinessChecker() {
                       ? 'Review'
                       : report.action === 'hold'
                         ? 'Hold'
-                        : 'Move funds'}
+                        : 'Review action'}
                   </Badge>
                   <Badge
                     variant="outline"

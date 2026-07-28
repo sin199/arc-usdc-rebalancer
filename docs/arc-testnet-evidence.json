@@ -1,6 +1,6 @@
 {
-  "observedAt": "2026-07-26T13:46:40Z",
-  "scope": "Public read-only verification. No transaction was submitted.",
+  "observedAt": "2026-07-28T11:54:39.894Z",
+  "scope": "Public read-only verification. No transaction submitted.",
   "chain": {
     "name": "Arc Testnet",
     "chainId": 5042002,
@@ -31,14 +31,26 @@
       "balanceUsdc": 0,
       "publicExecutionStatus": {
         "url": "https://web-eight-chi-99.vercel.app/api/treasury/execution/status",
+        "authorization": "wallet_signature",
         "enabled": false,
-        "guardMode": "redis"
+        "enabledByFlag": false,
+        "guardMode": "redis",
+        "legacyExecutorWired": false,
+        "maxAmountUsdc": 200
       }
     },
     "usdc": {
       "address": "0x3600000000000000000000000000000000000000",
       "decimals": 6
     }
+  },
+  "sourceQuality": {
+    "overall": "live",
+    "balance": "live",
+    "circle": "live",
+    "policy": "live",
+    "validation": "live",
+    "identity": "configured"
   },
   "verificationCommands": [
     "cast chain-id --rpc-url https://rpc.testnet.arc.network",
