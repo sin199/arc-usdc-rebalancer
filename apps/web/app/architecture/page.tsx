@@ -367,7 +367,7 @@ export default function ArchitecturePage() {
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Main commit
+                  Deployment commit
                 </div>
                 <div className="mt-2 break-all text-sm text-foreground">
                   {projectProof.mainCommit}

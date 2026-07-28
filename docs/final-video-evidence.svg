@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#071523"/>
+  <rect x="64" y="54" width="1152" height="612" rx="28" fill="#142b42"/>
+  <rect x="64" y="54" width="12" height="612" fill="#ff9f5a"/>
+
+  <text x="122" y="137" fill="#f7fbff" font-family="Helvetica,Arial,sans-serif" font-size="42" font-weight="700">Arc deployment evidence</text>
+  <text x="122" y="184" fill="#42d7d0" font-family="Helvetica,Arial,sans-serif" font-size="22" font-weight="700">Live read path verified on Arc Testnet | 28 July 2026</text>
+
+  <text x="122" y="268" fill="#9fb2c6" font-family="Helvetica,Arial,sans-serif" font-size="17">CHAIN ID</text>
+  <text x="122" y="305" fill="#f7fbff" font-family="Helvetica,Arial,sans-serif" font-size="30" font-weight="700">5042002</text>
+
+  <text x="122" y="382" fill="#9fb2c6" font-family="Helvetica,Arial,sans-serif" font-size="17">TREASURY POLICY</text>
+  <text x="122" y="419" fill="#f7fbff" font-family="Menlo,Monaco,monospace" font-size="21">0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6</text>
+
+  <text x="122" y="496" fill="#9fb2c6" font-family="Helvetica,Arial,sans-serif" font-size="17">TREASURY EXECUTOR</text>
+  <text x="122" y="533" fill="#f7fbff" font-family="Menlo,Monaco,monospace" font-size="21">0x5c5d0275371724779f3a6928eb0312df2b1a501f</text>
+
+  <text x="122" y="610" fill="#42d7d0" font-family="Helvetica,Arial,sans-serif" font-size="22" font-weight="700">USDC read live | Public write path locked | No transaction submitted</text>
+</svg>
