@@ -1,243 +1,210 @@
 # Arc USDC Rebalancer
 
-A deployed Arc Testnet USDC treasury decision MVP with a readiness checker, treasury operations brief, and fail-closed execution controls.
+Arc USDC Rebalancer is a deployed Arc Testnet DeFi treasury decision MVP. It
+turns live Arc and Circle readiness signals into a bounded `top_up`, `hold`, or
+`trim` recommendation and an auditable action pack.
 
-The public deployment is report-first and non-executing: visitors can generate a readiness report without a wallet, compare sample treasury states, copy markdown or an action pack, and inspect live Arc and Circle readiness without sending a treasury transaction.
+The public deployment is intentionally read-only. It exposes no wallet or
+signing interface, submits no treasury transaction, and never presents a
+decision receipt as an onchain confirmation.
 
-Live demo: [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
-System architecture: [https://web-eight-chi-99.vercel.app/architecture](https://web-eight-chi-99.vercel.app/architecture)
-Treasury operations brief: [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
-Case study: [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
-Hackathon deck: [docs/arc-usdc-rebalancer-defi-treasury-deck.pptx](docs/arc-usdc-rebalancer-defi-treasury-deck.pptx)
-Repo: [sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
-Security model: [docs/security-model.md](./docs/security-model.md)
-3-minute demo video: [docs/arc-treasury-agent-demo.mp4](./docs/arc-treasury-agent-demo.mp4)
-Submission pack: [docs/arc-architects-submission.md](./docs/arc-architects-submission.md)
-Checkpoint 2 progress: [docs/checkpoint-2-progress.md](./docs/checkpoint-2-progress.md)
-Final submission checklist: [docs/final-submission.md](./docs/final-submission.md)
-Arc Testnet evidence: [docs/arc-testnet-evidence.json](./docs/arc-testnet-evidence.json)
+## Public artifacts
 
-## What this repo shows
+- [Live dashboard](https://web-eight-chi-99.vercel.app/dashboard)
+- [System architecture](https://web-eight-chi-99.vercel.app/architecture)
+- [Treasury operations brief](https://web-eight-chi-99.vercel.app/operator)
+- [Reproducible case study](https://web-eight-chi-99.vercel.app/case-study)
+- [Three-minute demo](./docs/arc-treasury-agent-demo.mp4)
+- [DeFi Track deck](./docs/arc-usdc-rebalancer-defi-treasury-deck.pptx)
+- [Final submission pack](./docs/final-submission.md)
+- [Security model](./docs/security-model.md)
 
-- A public demo mode that visitors can use without a wallet.
-- A dedicated treasury operations brief that explains the policy workflow and review path.
-- A short case study page that explains what to inspect and how to replay the build.
-- A copyable readiness report with policy, balance, Circle, wallet, executor, and onchain identity evidence.
-- A copyable action pack with exact commands and payload context for an operator to review.
-- A deterministic decision-receipt hash that binds policy source, policy, balance, proposed action, amount, chain, and observation time before any future anchor transaction.
-- A visibly locked execution boundary in the public deployment; no treasury write is claimed or sent.
-- A dedicated system architecture page with deployment facts, Arcscan links, and current proof status.
-- A fail-closed, wallet-signed live-request design with allowlisting, amount caps, durable Redis replay protection, rate limits, and audit checks; this path is not enabled in the public deployment.
-- Identity activation and Circle wallet creation use the same signed operator authorization boundary as treasury execution.
-- A V2 policy/executor reference stack adds onchain policy enforcement, pause, recipient allowlists, two-step ownership transfer, and executor caps; it is not presented as deployed evidence.
-- A deployed Arc Testnet treasury policy and executor read path.
-- An Arc-linked onchain identity surfaced as supplementary dashboard evidence.
-- Circle developer-controlled wallet and Gateway readiness for USDC routing.
-- A single dashboard that ties policy, wallet layer, and execution rail together.
+## Why this is a DeFi project
 
-## What it does not do
+Treasury operators need an auditable answer before moving stablecoins:
 
-- It does not silently send transactions.
-- It does not execute from preview mode.
-- The public deployment does not submit treasury transactions; the separately reviewed live-write path is hard-disabled there.
-- It is not a profit bot.
+- Is the executor balance below the policy minimum?
+- Is the balance already inside the allowed band?
+- Is it above the target?
+- Which evidence supports the recommendation?
+- Is the public execution boundary still locked?
 
-## Why this exists
+Treasury infrastructure using Arc and USDC is an explicit DeFi Track use case.
+This project does not claim Agentic Economy Track eligibility or autonomous
+custody.
 
-The repo is built to show a reviewable DeFi Treasury workflow:
+## What works today
 
-1. Read or preview TreasuryPolicy state on Arc Testnet.
-2. Preview and simulate treasury scenarios in public demo mode.
-3. Surface onchain identity evidence and a treasury brief that recommends the next action.
-4. Keep live operator execution gated until all live dependencies are ready.
-5. Keep Circle wallets and Gateway visible as part of the same USDC stack.
-6. Give reviewers one architecture page with deployment evidence and onchain status.
+- Reads the deployed TreasuryPolicy from Arc Testnet.
+- Reads the configured TreasuryExecutor USDC balance.
+- Surfaces Arc-linked validation as supplementary evidence.
+- Checks Circle developer-controlled Wallets and Gateway readiness.
+- Evaluates deterministic, policy-bounded `top_up`, `hold`, and `trim`
+  outcomes.
+- Exports a Markdown report and JSON action pack.
+- Marks local decision receipts `not published`.
+- Provides a reproducible case study covering 1,003 balance cases, 100%
+  expected-action agreement, 9/9 safety gates, and zero submitted
+  transactions.
 
-## Project surface on Arc
+## Public safety boundary
 
-The dashboard currently exposes these Arc-specific surfaces:
+- `GET /api/treasury/execution/status` reports `enabled: false`.
+- The legacy executor is not wired into the submitted public path.
+- No environment flag can enable that legacy path.
+- The dashboard exposes no wallet connection or signing control.
+- Mutation requests to the public treasury execution route fail closed.
+- Worker jobs are simulations and do not fabricate transaction hashes or
+  Arcscan confirmations.
 
-- Arc Testnet chain state and RPC
-- TreasuryPolicy reads and owner-gated updates
-- TreasuryExecutor for USDC movement
-- Arc-linked onchain identity and validation evidence
-- Circle control plane for wallets and Gateway
-- Public demo mode for unauthenticated visitors
-- A public read-only review mode with no treasury write path
+The Solidity execution code remains in the repository for review, but it is
+not reachable from the public deployment.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  Visitor["Visitor"] --> UI["Arc USDC Rebalancer"]
-  UI --> Demo["Public demo mode"]
-  UI --> Identity["Onchain identity evidence"]
-  UI --> Policy["TreasuryPolicy"]
-  UI --> Executor["TreasuryExecutor"]
-  UI --> Circle["Circle wallets + Gateway"]
-  UI --> ReadOnly["Read-only review mode"]
-  Live --> Guard["Signed operator + durable replay guard"]
-  Guard --> Policy
-  Guard --> Executor
-  Circle --> Executor
+  Visitor["Reviewer"] --> Web["Next.js dashboard"]
+  Web --> Policy["TreasuryPolicy read"]
+  Web --> Balance["TreasuryExecutor USDC balance read"]
+  Web --> Validation["Arc validation evidence"]
+  Web --> Circle["Circle Wallets and Gateway readiness"]
   Policy --> Arc["Arc Testnet"]
-  Executor --> Arc
+  Balance --> Arc
+  Validation --> Arc
+  Web --> Decision["Deterministic policy evaluation"]
+  Decision --> Report["Markdown report and JSON action pack"]
+  Report --> Receipt["Decision receipt: not published"]
+  Web --> Locked["Public execution: hard-disabled"]
 ```
 
-## Repo layout
+## Review in three minutes
 
-- `apps/web` - Next.js dashboard and API routes.
-- `packages/contracts` - Solidity contracts and Foundry scripts.
-- `packages/shared` - Arc, Circle, policy, and execution helpers.
+1. Open the [dashboard](https://web-eight-chi-99.vercel.app/dashboard).
+2. Inspect the live Arc policy, executor balance, validation, and Circle
+   readiness.
+3. Set the scenario below the minimum and confirm a bounded `top_up`.
+4. Set it inside the policy band and confirm `hold`.
+5. Set it above the target and confirm a bounded `trim`.
+6. Copy the action pack and confirm that its receipt is marked
+   `not published`.
+7. Confirm that the UI says `Execution locked`, exposes no wallet control, and
+   submits no transaction.
 
-## Quick start
+## Repository layout
 
-Install dependencies from the repository root:
+- `apps/web` - Next.js dashboard and server routes
+- `apps/worker` - authenticated local simulation worker
+- `packages/contracts` - Foundry contracts, deployment scripts, and tests
+- `packages/shared` - shared Arc, Circle, policy, and amount helpers
+- `docs` - submission copy, evidence, deck, video, and security model
+
+## Run locally
+
+Requirements:
+
+- Node.js 22 or newer
+- pnpm 10
+- Foundry for contract builds and tests
+
+Install dependencies:
 
 ```bash
 pnpm install
 ```
 
-Run the frontend:
+Copy `apps/web/.env.example` to `apps/web/.env.local`, then start the web app:
 
 ```bash
-pnpm --filter @arc-usdc-rebalancer/web dev
+pnpm dev
 ```
 
 Open:
 
 - `http://localhost:3000`
 - `http://localhost:3000/dashboard`
+- `http://localhost:3000/architecture`
 - `http://localhost:3000/case-study`
 
-## Reproduce in 3 minutes
+The dashboard remains useful in preview mode when live configuration is
+missing. Missing reads degrade to a labeled safe result rather than unlocking
+execution.
 
-1. Open the homepage and confirm the 30-second visitor path: dashboard, readiness report, and read-only action pack.
-2. Open the dashboard and generate a readiness report from the current balance and policy inputs.
-3. Switch between below minimum, at target, and above target to confirm `top_up`, `hold`, and `trim` outputs.
-4. Copy or download the action pack and confirm its decision receipt is marked `not published`.
-5. Confirm the public deployment shows the read-only boundary and never exposes treasury write controls.
-
-## Demo checklist
-
-Use these screenshots to show the public flow without implying live execution:
-
-1. Homepage hero with the 30-second visitor path.
-2. Dashboard below minimum, showing a `top_up` readiness report.
-3. Dashboard at target, showing a `hold` readiness report.
-4. Dashboard above target, showing a `trim` readiness report.
-5. Dashboard preview mode with `Execution locked until operator wallet and live dependencies are ready.`
-
-## Reproduce locally in 1 minute
-
-If you just want the app running locally, use the dashboard in preview mode:
-
-```bash
-pnpm install
-pnpm --filter @arc-usdc-rebalancer/web dev
-```
-
-Then open `http://localhost:3000/case-study` first, followed by `http://localhost:3000/dashboard`.
-
-## Arc Testnet details
+## Arc Testnet configuration
 
 - Chain ID: `5042002`
 - RPC: `https://rpc.testnet.arc.network`
 - Explorer: `https://testnet.arcscan.app`
 - Native currency: `USDC`
-- USDC token address used by the app: `0x3600000000000000000000000000000000000000`
+- USDC address: `0x3600000000000000000000000000000000000000`
+- TreasuryPolicy: `0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6`
+- TreasuryExecutor: `0x5c5d0275371724779f3a6928eb0312df2b1a501f`
 
-## Environment variables
+Runtime configuration is documented in:
 
-### Frontend runtime
+- [`apps/web/.env.example`](./apps/web/.env.example)
+- [`apps/worker/.env.example`](./apps/worker/.env.example)
+- [`packages/contracts/.env.example`](./packages/contracts/.env.example)
 
-Copy `apps/web/.env.example` to `apps/web/.env.local` and set:
-
-- `ARC_TESTNET_RPC_URL` - Arc Testnet RPC endpoint used by the frontend
-- `TREASURY_POLICY_ADDRESS` - deployed `TreasuryPolicy` contract address
-- `TREASURY_EXECUTOR_ADDRESS` - deployed `TreasuryExecutor` contract address
-- `NEXT_PUBLIC_EXECUTION_API_URL` - optional legacy execution API base for the job center surface
-- `NEXT_PUBLIC_CIRCLE_WALLET_SET_ID` - optional wallet set to surface in the dashboard
-- `CIRCLE_API_KEY` - Circle developer API key for server-side wallet operations
-- `CIRCLE_ENTITY_SECRET` - Circle entity secret for dev-controlled wallet creation and signing
-- `CIRCLE_WALLET_SET_ID` - optional Circle wallet set to reuse for live wallet listing
-- `CIRCLE_WALLET_SET_NAME` - wallet set name used when the dashboard creates a new set
-- `CIRCLE_WALLET_NAME` - wallet name used when the dashboard creates a new wallet
-- `CIRCLE_WALLET_BLOCKCHAIN` - target blockchain for the created wallet, default `ARC-TESTNET`
-- `CIRCLE_WALLET_ACCOUNT_TYPE` - `EOA` or `SCA`
-- `CIRCLE_GATEWAY_API_BASE` - Gateway API base, default testnet endpoint
-- `CIRCLE_GATEWAY_SOURCE_DOMAIN` - Gateway source domain, default `26` for Arc Testnet
-- `CIRCLE_GATEWAY_DESTINATION_DOMAIN` - Gateway destination domain, default `6` for Base Sepolia
-- `OWNER_PRIVATE_KEY` - Arc Testnet agent owner wallet key used by the activation route
-- `VALIDATOR_PRIVATE_KEY` - Arc Testnet validator wallet key used by the activation route
-- `ENABLE_LIVE_EXECUTION` - legacy server-signer writes remain hard-disabled; this flag cannot bypass the reviewed V2 execution gate
-- `LIVE_EXECUTION_OPERATOR_ALLOWLIST` - comma-separated wallet addresses allowed to authorize writes
-- `LIVE_EXECUTION_ALLOWED_ORIGINS` - comma-separated browser origins allowed to submit signed writes
-- `LIVE_EXECUTION_MAX_AMOUNT_USDC` - per-request amount ceiling, default `200`
-- `LIVE_EXECUTION_RATE_LIMIT_PER_MINUTE` - best-effort per-operator instance limit, default `3`
-- `LIVE_EXECUTION_SIGNATURE_TTL_SECONDS` - signed request lifetime, default `60`
-- `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` - required durable Redis state for cross-instance replay and rate-limit protection
-- `LIVE_EXECUTION_REDIS_NAMESPACE` - optional Redis key namespace
-- `LIVE_EXECUTION_ALLOW_IN_MEMORY_GUARD` - explicit local-development fallback only; ignored as a production readiness substitute
-
-### Worker API
-
-- `WORKER_API_TOKEN` - required Bearer token for every Worker `POST` endpoint; the Worker refuses mutation requests when it is missing
-- `WORKER_ALLOWED_ORIGINS` - optional comma-separated browser origins; cross-origin requests are rejected unless explicitly listed
-- `WORKER_MAX_BODY_BYTES` - maximum JSON request size, default `65536` and capped at `1048576`
-
-Worker monetary inputs (job amounts, payout recipients, balance overrides, policy thresholds, execution caps, and daily caps) must be decimal USDC values with at most 6 fractional digits. They are canonicalized to USDC base units at the boundary before entering the simulation model.
-
-### Contract deployment
-
-Copy `packages/contracts/.env.example` to `packages/contracts/.env` and set:
-
-- `ARC_TESTNET_RPC_URL`
-- `PRIVATE_KEY`
-- `MIN_THRESHOLD_USDC`
-- `TARGET_BALANCE_USDC`
-- `MAX_REBALANCE_AMOUNT_USDC`
-- `EXECUTOR_MAX_AMOUNT_USDC` - V2 executor-level cap, expressed in whole USDC before the deploy script converts to 6 decimals
+Never commit private keys, Circle credentials, worker bearer tokens, or Redis
+credentials.
 
 ## Circle bootstrap
 
-If you need to create a fresh Circle developer secret and wallet set, run:
+To create a development Circle wallet set for local testing:
 
 ```bash
 pnpm circle:bootstrap
 ```
 
-The command generates a new entity secret, registers it with Circle, creates an Arc Testnet wallet set, and provisions one developer-controlled wallet.
+This command uses server-side credentials. It is not required to inspect the
+public read-only dashboard.
 
-## Deployment
+## Verification
 
-Frontend deployment is Vercel-based and should use `apps/web` as the project root.
+Web:
 
-The contract package is separate and can be deployed independently from the frontend.
+```bash
+pnpm lint
+pnpm typecheck
+pnpm --filter @arc-usdc-rebalancer/web test
+pnpm build
+```
 
-`pnpm contracts:deploy-v2` prepares a new V2 policy/executor stack. Do not run it until the initial owner/multisig and migration plan have been reviewed.
+Worker:
 
-`forge script script/DeployTreasuryDecisionReceipt.s.sol:DeployTreasuryDecisionReceipt --rpc-url $ARC_TESTNET_RPC_URL --broadcast --private-key $PRIVATE_KEY` deploys an optional receipt registry. It records reviewed decision hashes only and cannot custody or move USDC. Do not run it until the owner and public proof plan have been reviewed.
+```bash
+pnpm worker:typecheck
+pnpm worker:test
+pnpm worker:build
+```
 
-## Review path
+Contracts:
 
-If you are reviewing this repo, start here:
+```bash
+pnpm contracts:build
+pnpm contracts:test
+```
 
-1. Open the system architecture at [web-eight-chi-99.vercel.app/architecture](https://web-eight-chi-99.vercel.app/architecture).
-2. Open the live checker at [web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard).
-3. Generate a report, copy the action pack, and compare the sample scenarios.
-4. Confirm preview mode shows the locked execution state instead of runnable live controls.
-5. Open the treasury operations brief at [web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator).
-6. Open the case study at [web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study).
-7. Read the release notes and this README before judging the demo.
+The GitHub Actions `Verify` workflow runs these checks on pushes and pull
+requests to `main`.
 
-## Notes
+## Contract deployment warning
 
-- The public dashboard reads the deployed Arc Testnet contracts; it does not send treasury writes.
-- Public visitors can explore the demo without a wallet.
-- Preview mode is for reports and copyable action packs, not live transaction submission.
-- The public deployment is read-only and is not presented as having submitted a treasury transaction.
-- Product funnel events are privacy-safe and exclude wallet addresses; they are emitted as structured server logs.
-- The Circle line is the live control plane for wallets and Gateway, not a separate product.
-- The Arc agent panel surfaces the onchain identity and validation state tied to this website.
-- The brief panel turns the current state into a single recommended action.
+`pnpm contracts:deploy-v2` prepares a new V2 policy and executor stack. Do not
+broadcast it without a reviewed owner or multisig migration plan.
+
+The optional decision-receipt registry records reviewed hashes only; it cannot
+custody or move USDC. It is not deployed as part of the submitted public
+evidence.
+
+## Evidence boundary
+
+The submission proves a functional read, evaluate, and report workflow on Arc
+Testnet. It does not claim:
+
+- a completed treasury transfer;
+- autonomous custody;
+- a confirmed Arc transaction;
+- a published onchain decision receipt;
+- Agentic Economy Track compliance.
