@@ -9,7 +9,7 @@ export const projectTrailSummary = {
   buildLabel: 'Verified treasury reference build',
   headline:
     'A read-only Arc Testnet USDC treasury decision MVP with deterministic verification and an auditable evidence path.',
-  lastReviewed: 'July 26, 2026',
+  lastReviewed: 'July 29, 2026',
 }
 
 export const projectReleaseNotes: ProjectReleaseNote[] = [
@@ -46,7 +46,7 @@ export const projectReleaseNotes: ProjectReleaseNote[] = [
     tag: 'review',
     title: 'Added a system evidence page',
     detail:
-      'The site now surfaces one architecture page with the production link, deployment hash, Arc Testnet addresses, current proof status, and screenshot checklist.',
+      'The site now surfaces one architecture page with the production link, deployment ID and commit, Arc Testnet addresses, current proof status, and screenshot checklist.',
   },
   {
     date: 'May 31, 2026',

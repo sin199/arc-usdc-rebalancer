@@ -59,7 +59,7 @@ const proofPoints = [
   'The dashboard produces one readable report instead of a wall of disconnected status cards.',
   'Each copied or downloaded action pack includes a deterministic decision receipt, clearly marked as not published onchain.',
   'The Arc Testnet policy, Circle readiness, and executor state are visible in the same place.',
-  'The live operator path stays gated until the onchain pieces are actually configured.',
+  'The public write path remains hard-disabled; execution contracts are retained only for code review.',
 ]
 
 const localRunSteps = [
@@ -265,7 +265,8 @@ export default function CaseStudyPage() {
             <CardHeader>
               <CardTitle>1-minute local run</CardTitle>
               <CardDescription>
-                Use preview mode locally first. Live mode is optional and gated.
+                The local reviewer flow is preview-only and does not require an
+                operator wallet.
               </CardDescription>
             </CardHeader>
             <CardContent>

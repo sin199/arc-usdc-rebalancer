@@ -32,12 +32,12 @@ const systemIncludes = [
   'A public Arc Testnet treasury demo with a report-first readiness checker.',
   'A compact treasury operations brief that explains the policy workflow used in the project.',
   'A live-execution boundary that is hard-disabled in the public deployment.',
-  'A fail-closed control plane with signed operator actions and durable replay protection.',
+  'A fail-closed authorization design retained for code review but unreachable from the public UI.',
 ]
 
 const whyItMatters = [
   'It turns the treasury flow into something a reviewer can inspect in one pass.',
-  'It separates preview mode from live execution instead of mixing the two together.',
+  'It separates review artifacts from treasury writes instead of mixing the two together.',
   'It keeps the Arc Testnet policy, identity evidence, executor, and report trail visible in the same build.',
   'It turns architecture decisions into inspectable code, deployment evidence, and testable safety controls.',
 ]
@@ -58,8 +58,8 @@ const operatorFlow = [
 
 const surfaceItems = [
   'Arc Testnet chain state',
-  'TreasuryPolicy reads and owner-gated updates',
-  'TreasuryExecutor for USDC movement',
+  'TreasuryPolicy live reads',
+  'TreasuryExecutor address and USDC balance reads',
   'Arc agent identity and validation status',
   'Circle developer-controlled wallet and Gateway readiness',
   'Public demo mode and report-first action pack',
@@ -75,6 +75,11 @@ const demoLinks = [
     label: 'Dashboard',
     href: `${projectProof.productionUrl}/dashboard`,
     value: `${projectProof.productionUrl}/dashboard`,
+  },
+  {
+    label: 'Final demo',
+    href: projectProof.demoPageUrl,
+    value: projectProof.demoPageUrl,
   },
   {
     label: 'System architecture',
@@ -248,11 +253,11 @@ export default function ArchitecturePage() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Wallet className="h-5 w-5 text-primary" />
-                <CardTitle>Visitor and operator flow</CardTitle>
+                <CardTitle>Visitor and review flow</CardTitle>
               </div>
               <CardDescription>
-                Preview mode stays useful without a wallet. Live mode is
-                explicit.
+                Public review stays useful without a wallet. Treasury writes
+                remain unavailable.
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 md:grid-cols-2">
@@ -268,7 +273,7 @@ export default function ArchitecturePage() {
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Operator flow
+                  Operator review flow
                 </div>
                 <div className="mt-3 space-y-2 text-sm leading-6 text-foreground">
                   {operatorFlow.map((line) => (
@@ -359,10 +364,10 @@ export default function ArchitecturePage() {
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Deployment hash
+                  Deployment ID
                 </div>
                 <div className="mt-2 break-all text-sm text-foreground">
-                  {projectProof.deploymentHash}
+                  {projectProof.deploymentId}
                 </div>
               </div>
               <div className="rounded-2xl border border-white/10 bg-background/50 p-4">
@@ -483,9 +488,9 @@ What it uses:
 
 What it demonstrates:
 - report-first treasury operations
-- clear preview vs live execution boundaries
-- no silent transactions
-- no execution without live dependencies
+ - clear report-versus-write boundaries
+ - no silent transactions
+ - no public treasury execution path
 - stablecoin treasury actions that can be inspected before execution
 
 Demo: ${projectProof.productionUrl}/dashboard

@@ -17,7 +17,7 @@ const body = Manrope({
 export const metadata: Metadata = {
   title: 'Arc USDC Rebalancer',
   description:
-    'A verified Arc Testnet USDC treasury policy demo with copyable reports, live operator gating, and a public proof trail.',
+    'A verified Arc Testnet USDC treasury policy demo with copyable reports, a hard-disabled write boundary, and a public proof trail.',
 }
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

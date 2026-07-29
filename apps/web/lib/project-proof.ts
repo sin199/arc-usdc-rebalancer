@@ -10,16 +10,26 @@ import {
   arcAgentValidationTag,
 } from '@/lib/arc-agent'
 
+const productionUrl = 'https://web-eight-chi-99.vercel.app'
+const repositoryUrl = 'https://github.com/sin199/arc-usdc-rebalancer'
+const artifactCdnUrl =
+  'https://cdn.jsdelivr.net/gh/sin199/arc-usdc-rebalancer@main/docs'
+
 export const projectProof = {
-  productionUrl: 'https://web-eight-chi-99.vercel.app',
+  productionUrl,
+  demoPageUrl: `${productionUrl}/demo`,
+  demoVideoUrl: `${artifactCdnUrl}/arc-treasury-agent-demo.mp4`,
+  deckPdfUrl: `${artifactCdnUrl}/arc-usdc-rebalancer-defi-treasury-deck.pdf`,
+  deckPptxUrl:
+    'https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx',
   latestDeploymentUrl: process.env.VERCEL_URL?.trim()
     ? `https://${process.env.VERCEL_URL.trim()}`
     : 'local development',
-  deploymentHash:
+  deploymentId:
     process.env.VERCEL_DEPLOYMENT_ID?.trim() ?? 'local-development',
   mainBranch: process.env.VERCEL_GIT_COMMIT_REF?.trim() ?? 'main',
   mainCommit: process.env.VERCEL_GIT_COMMIT_SHA?.trim() ?? 'local-development',
-  githubRepoUrl: 'https://github.com/sin199/arc-usdc-rebalancer',
+  githubRepoUrl: repositoryUrl,
   arcTestnetChainId,
   arcTestnetExplorerUrl,
   treasuryPolicyAddress: '0x4bFa1e67B1163B452d39f27F799B0A7D28F545f6',

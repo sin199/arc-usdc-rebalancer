@@ -25,7 +25,7 @@ Arc USDC Rebalancer is a DeFi Track project for reviewable USDC treasury operati
 2. Compare the three sample balance states and inspect the recommendation.
 3. Copy or download the action pack and confirm the decision receipt says `not published`.
 4. Confirm the dashboard keeps execution locked in public preview.
-5. Review the [case study](https://web-eight-chi-99.vercel.app/case-study), [source repository](https://github.com/sin199/arc-usdc-rebalancer), [deck](https://github.com/sin199/arc-usdc-rebalancer/raw/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx), and [3-minute demo](https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4).
+5. Review the [case study](https://web-eight-chi-99.vercel.app/case-study), [source repository](https://github.com/sin199/arc-usdc-rebalancer), [deck](https://cdn.jsdelivr.net/gh/sin199/arc-usdc-rebalancer@main/docs/arc-usdc-rebalancer-defi-treasury-deck.pdf), and [3-minute demo](https://web-eight-chi-99.vercel.app/demo).
 
 ## Boundaries
 

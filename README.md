@@ -11,11 +11,13 @@ decision receipt as an onchain confirmation.
 ## Public artifacts
 
 - [Live dashboard](https://web-eight-chi-99.vercel.app/dashboard)
+- [Watch the three-minute demo](https://web-eight-chi-99.vercel.app/demo)
 - [System architecture](https://web-eight-chi-99.vercel.app/architecture)
 - [Treasury operations brief](https://web-eight-chi-99.vercel.app/operator)
 - [Reproducible case study](https://web-eight-chi-99.vercel.app/case-study)
-- [Three-minute demo](./docs/arc-treasury-agent-demo.mp4)
-- [DeFi Track deck](./docs/arc-usdc-rebalancer-defi-treasury-deck.pptx)
+- [Three-minute demo MP4](./docs/arc-treasury-agent-demo.mp4)
+- [DeFi Track deck PDF](./docs/arc-usdc-rebalancer-defi-treasury-deck.pdf)
+- [Editable DeFi Track deck](./docs/arc-usdc-rebalancer-defi-treasury-deck.pptx)
 - [Final submission pack](./docs/final-submission.md)
 - [Security model](./docs/security-model.md)
 
@@ -123,6 +125,7 @@ Open:
 
 - `http://localhost:3000`
 - `http://localhost:3000/dashboard`
+- `http://localhost:3000/demo`
 - `http://localhost:3000/architecture`
 - `http://localhost:3000/case-study`
 

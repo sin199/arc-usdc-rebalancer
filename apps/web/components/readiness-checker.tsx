@@ -1229,11 +1229,9 @@ export function ReadinessChecker() {
                 variant="outline"
                 className="border-primary/25 bg-primary/10 text-primary"
               >
-                Operator readiness
+                Public boundary
               </Badge>
-              <Badge variant={liveExecutionReady ? 'success' : 'warning'}>
-                {liveExecutionReady ? 'Execution ready' : 'Execution locked'}
-              </Badge>
+              <Badge variant="warning">Execution locked</Badge>
               <Badge
                 variant="outline"
                 className="border-white/15 bg-white/5 text-foreground"
@@ -1305,14 +1303,10 @@ export function ReadinessChecker() {
                 <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   Execution
                 </div>
-                <div className="mt-2 text-sm text-foreground">
-                  {liveExecutionReady ? 'Ready' : 'Locked'}
-                </div>
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {liveExecutionReady
-                    ? 'Live writes are not part of this public build.'
-                    : 'Read-only preview remains report-first.'}
-                </div>
+              <div className="mt-2 text-sm text-foreground">Locked</div>
+              <div className="mt-1 text-xs text-muted-foreground">
+                Read-only preview remains report-first.
+              </div>
               </div>
             </div>
 
@@ -1340,9 +1334,7 @@ export function ReadinessChecker() {
                 Why execution is locked
               </div>
               <div className="mt-2 text-sm leading-6 text-foreground">
-                {liveExecutionReady
-                  ? 'The public deployment is read-only; no treasury transaction is submitted.'
-                  : liveExecutionStatusMessage}
+                {liveExecutionStatusMessage}
               </div>
             </div>
           </CardContent>
@@ -1378,7 +1370,7 @@ export function ReadinessChecker() {
               <CardTitle className="text-base">Executor</CardTitle>
               <CardDescription>
                 {executorAddress
-                  ? 'Configured for live execution.'
+                  ? 'Address configured; public execution remains locked.'
                   : 'Missing until an executor is deployed.'}
               </CardDescription>
             </CardHeader>

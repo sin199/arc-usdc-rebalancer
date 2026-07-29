@@ -43,10 +43,14 @@ treasury transaction, and marks exported decision receipts as `not published`.
 - Reproducible case study:
   https://web-eight-chi-99.vercel.app/case-study
 - Public repository: https://github.com/sin199/arc-usdc-rebalancer
-- Three-minute video:
-  https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4
-- Presentation:
-  https://github.com/sin199/arc-usdc-rebalancer/raw/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx
+- Three-minute video player:
+  https://web-eight-chi-99.vercel.app/demo
+- Direct MP4:
+  https://cdn.jsdelivr.net/gh/sin199/arc-usdc-rebalancer@main/docs/arc-treasury-agent-demo.mp4
+- Presentation PDF:
+  https://cdn.jsdelivr.net/gh/sin199/arc-usdc-rebalancer@main/docs/arc-usdc-rebalancer-defi-treasury-deck.pdf
+- Editable presentation:
+  https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx
 
 ## Three-minute demo path
 
@@ -88,8 +92,8 @@ private key, wallet credential, or fabricated transaction hash.
 
 ## Submission gate
 
-**Go** only when the Final Submission form is open and all six public links
-above return successfully.
+**Go** only when the Final Submission form is open and every required public
+link above returns successfully.
 
 **No-go** if any form text, video narration, or deck copy claims live treasury
 movement, autonomous custody, a confirmed Arc transaction, or Agentic Economy

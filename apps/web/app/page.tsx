@@ -262,6 +262,12 @@ export default function HomePage() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
+                <Link href="/demo">
+                  Watch demo
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline">
                 <Link href="/operator">
                   Treasury brief
                   <ArrowRight className="h-4 w-4" />
@@ -350,8 +356,8 @@ export default function HomePage() {
                 explains the system, deployment facts, and onchain status. The
                 treasury brief explains the policy workflow. The case study
                 explains the replay path. The dashboard is where visitors
-                generate the readiness report, compare states, and optionally
-                hand control to the live operator.
+                generate the readiness report, compare states, and verify that
+                the public execution boundary remains locked.
               </div>
             </CardContent>
           </Card>
@@ -360,8 +366,8 @@ export default function HomePage() {
             <CardHeader className="p-0">
               <CardTitle>Deployment facts</CardTitle>
               <CardDescription>
-                Short facts that keep the report path and live path legible at a
-                glance.
+                Short facts that keep the live-read path and locked write
+                boundary legible at a glance.
               </CardDescription>
             </CardHeader>
 
@@ -511,8 +517,8 @@ export default function HomePage() {
                   architecture page and release notes.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
-                  Surface the report-first build without pretending the live
-                  operator path is automatic.
+                  Surface the report-first build without presenting an
+                  unavailable operator write path as live.
                 </li>
                 <li className="rounded-2xl border border-white/10 bg-background/45 p-4">
                   Use the treasury brief as the shortest path for someone

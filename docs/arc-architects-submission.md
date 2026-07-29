@@ -90,6 +90,8 @@ submitted public deployment does not wire any treasury write path.
   [https://web-eight-chi-99.vercel.app](https://web-eight-chi-99.vercel.app)
 - Dashboard:
   [https://web-eight-chi-99.vercel.app/dashboard](https://web-eight-chi-99.vercel.app/dashboard)
+- Three-minute demo player:
+  [https://web-eight-chi-99.vercel.app/demo](https://web-eight-chi-99.vercel.app/demo)
 - Treasury operations brief:
   [https://web-eight-chi-99.vercel.app/operator](https://web-eight-chi-99.vercel.app/operator)
 - Architecture:
@@ -98,10 +100,12 @@ submitted public deployment does not wire any treasury write path.
   [https://web-eight-chi-99.vercel.app/case-study](https://web-eight-chi-99.vercel.app/case-study)
 - GitHub repository:
   [https://github.com/sin199/arc-usdc-rebalancer](https://github.com/sin199/arc-usdc-rebalancer)
-- Hackathon deck:
-  [https://github.com/sin199/arc-usdc-rebalancer/raw/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx](https://github.com/sin199/arc-usdc-rebalancer/raw/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx)
-- Three-minute demo video:
-  [https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4](https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-treasury-agent-demo.mp4)
+- Hackathon deck PDF:
+  [https://cdn.jsdelivr.net/gh/sin199/arc-usdc-rebalancer@main/docs/arc-usdc-rebalancer-defi-treasury-deck.pdf](https://cdn.jsdelivr.net/gh/sin199/arc-usdc-rebalancer@main/docs/arc-usdc-rebalancer-defi-treasury-deck.pdf)
+- Editable hackathon deck:
+  [https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx](https://raw.githubusercontent.com/sin199/arc-usdc-rebalancer/main/docs/arc-usdc-rebalancer-defi-treasury-deck.pptx)
+- Direct demo MP4:
+  [https://cdn.jsdelivr.net/gh/sin199/arc-usdc-rebalancer@main/docs/arc-treasury-agent-demo.mp4](https://cdn.jsdelivr.net/gh/sin199/arc-usdc-rebalancer@main/docs/arc-treasury-agent-demo.mp4)
 
 ## Deployment evidence
 
