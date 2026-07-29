@@ -65,8 +65,8 @@ treasury transaction, and marks exported decision receipts as `not published`.
 
 The video is exactly 180 seconds at 1280x720, with H.264 video and AAC audio.
 The visuals were rebuilt from the current read-only production interface on
-28 July 2026. The narration was independently transcribed and reconciled with
-the public read-only boundary on 28 July 2026.
+28 July 2026. The replacement narration was independently transcribed and
+reconciled with the public read-only boundary on 29 July 2026.
 
 ## Reviewer-verifiable facts
 

@@ -2,20 +2,20 @@ FINAL VIDEO SCRIPT / 180 SECONDS
 
 0:00-0:10
 Arc USDC Rebalancer is our DeFi Track MVP: policy-bound USDC treasury
-decisions on Arc Testnet, with Circle Wallets and Gateway readiness.
+decisions on Arc Testnet, with Circle Wallets Gateway readiness.
 
 0:10-0:40
-On the production dashboard, the Treasury Brief reads the deployed Arc
-policy, executor USDC balance, validation signal, and Circle control-plane
-readiness. Those independent reads become one source-labeled result. The site
-is functional, but deliberately report-first: it does not ask for a wallet,
-and it cannot send a treasury transaction.
+On the production dashboard, Treasury Brief reads the deployed Arc policy,
+the executor's USDC balance, its validation signal, and Circle control-plane
+readiness. Those independent reads become one source-labelled result. The
+site is functional, but deliberately report-first: it never asks for a
+wallet, and it cannot send a treasury transaction.
 
 0:40-0:55
-Here the scenario balance is seventy-five USDC, below the one-hundred
+Here, the scenario balance is seventy-five USDC, below the one-hundred-USDC
 minimum. The deterministic policy recommends a top-up, capped by both the
-target gap and the maximum rebalance amount. It creates a review action, not a
-transfer.
+target gap and the maximum rebalance amount. It creates a review action, not
+a transfer.
 
 0:55-1:10
 At five hundred USDC, the balance sits inside the allowed band, so the result
@@ -24,27 +24,26 @@ zero-value payload for review.
 
 1:10-1:40
 At seven hundred USDC, the same policy recommends a bounded trim toward the
-target. The operator can inspect reason codes, exact USDC units, chain ID,
-token address, and executor address, then copy Markdown or JSON. These exports
-are decision artifacts only; they are marked not published and contain no
-transaction hash.
+target. The operator can inspect the reason codes, exact USDC units, chain
+ID, token address, and executor address, then copy Markdown or JSON. These
+exports are decision artifacts only. They are marked not published and
+contain no transaction hash.
 
 1:40-2:10
 The public execution gate remains locked. The legacy executor is not wired,
-there is no signing interface, and the API rejects execution even if an
-environment flag changes. The Arc evidence page exposes chain ID
-five-zero-four-two-zero-zero-two, deployed policy and executor addresses, and
-the native USDC asset, without claiming custody or settlement.
+there is no signing interface, and the API rejects execution even if the
+environment flag changes. The Arc evidence page exposes chain ID five zero
+four two zero zero two, the deployed policy and executor addresses, and the
+native USDC asset, without claiming custody or settlement.
 
 2:10-2:40
 The architecture keeps live reads, deterministic evaluation, and reporting
-separate from any transaction path. Arc RPC failures, Circle read failures,
-or missing validation degrade to a clearly labeled safe result. Reproducible
-tests cover one thousand and three balance cases, with expected decisions in
-every case, nine of nine safety gates, and zero submitted transactions.
+separate from any transaction path. The reproducible case study covers
+below-band, in-band, and above-band scenarios; expected decisions in every
+case; nine out of nine safety gates; and zero submitted transactions.
 
 2:40-3:00
-That is the complete MVP: real Arc and Circle evidence, bounded DeFi treasury
-recommendations, and auditable outputs that a reviewer can reproduce from the
+This is a complete MVP: real Arc and Circle evidence, bounded DeFi treasury
+recommendations, and auditable outputs that reviewers can reproduce from the
 public repository. It prepares a reviewable action; it does not claim a
-completed transfer. Dashboard, code, deck, and case study are public.
+completed transfer. The dashboard, code, deck, and case study are public.
